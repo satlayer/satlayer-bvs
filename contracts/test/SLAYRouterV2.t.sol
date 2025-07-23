@@ -1260,4 +1260,34 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         assertEq(uint8(request.status), uint8(ISLAYRouterSlashingV2.Status.Pending));
         assertEq(request.mbips, 0);
     }
+
+    function test_SlashingRequestId_hash() public {
+        uint32 requestResolution = uint32(block.timestamp) + 7 days;
+        ISLAYRouterSlashingV2.Request memory request = ISLAYRouterSlashingV2.Request({
+            status: ISLAYRouterSlashingV2.Status.Pending,
+            service: makeAddr("Service"),
+            operator: makeAddr("Operator"),
+            mbips: 1000000,
+            timestamp: uint32(block.timestamp),
+            requestTime: uint32(block.timestamp),
+            requestResolution: requestResolution,
+            requestExpiry: requestResolution + 7 days
+        });
+
+        vm.startSnapshotGas("SlashingRequestId", "hash(Request)");
+        bytes32 id = SlashingRequestId.hash(request);
+        vm.stopSnapshotGas();
+        bytes32 expectedId = keccak256(
+            abi.encode(
+                request.service,
+                request.mbips,
+                request.timestamp,
+                request.requestTime,
+                request.operator,
+                request.requestResolution,
+                request.requestExpiry
+            )
+        );
+        assertEq(id, expectedId, "SlashingRequestId hash does not match expected value");
+    }
 }

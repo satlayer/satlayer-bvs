@@ -56,12 +56,12 @@ contract SLAYVaultV2 is
     /// @notice The SLAYRouter contract that manages pausing and whitelisting
     /// @dev This is an immutable reference to the router contract
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-    SLAYRouterV2 public immutable router;
+    SLAYRouterV2 public immutable ROUTER;
 
     /// @notice The SLAYRegistry contract that manages operators and withdrawal delays
     /// @dev This is an immutable reference to the registry contract
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-    SLAYRegistryV2 public immutable registry;
+    SLAYRegistryV2 public immutable REGISTRY;
 
     /**
      * @notice The address where the vault is delegated to
@@ -117,8 +117,8 @@ contract SLAYVaultV2 is
      * @custom:oz-upgrades-unsafe-allow constructor
      */
     constructor(SLAYRouterV2 router_, SLAYRegistryV2 registry_) {
-        router = router_;
-        registry = registry_;
+        ROUTER = router_;
+        REGISTRY = registry_;
         _disableInitializers();
     }
 
@@ -171,7 +171,7 @@ contract SLAYVaultV2 is
      * @dev Checks if the SLAYRouter is paused and reverts if it is
      */
     function _requireNotPaused() internal view virtual {
-        if (router.paused()) {
+        if (ROUTER.paused()) {
             revert EnforcedPause();
         }
     }
@@ -187,7 +187,7 @@ contract SLAYVaultV2 is
 
     /// @inheritdoc ISLAYVaultV2
     function isWhitelisted() public view override returns (bool) {
-        return router.isVaultWhitelisted(address(this));
+        return ROUTER.isVaultWhitelisted(address(this));
     }
 
     /// @inheritdoc ISLAYVaultV2
@@ -240,7 +240,7 @@ contract SLAYVaultV2 is
         pendingRedemptionRequest.shares += shares;
 
         // reset the claimableAt to the current time + withdrawalDelay
-        uint32 withdrawalDelay = registry.getWithdrawalDelay(_delegated);
+        uint32 withdrawalDelay = REGISTRY.getWithdrawalDelay(_delegated);
         pendingRedemptionRequest.claimableAt = block.timestamp + withdrawalDelay;
 
         // update _totalPendingRedemption
@@ -465,11 +465,11 @@ contract SLAYVaultV2 is
 
     /// @inheritdoc ISLAYVaultV2
     function lockSlashing(uint256 amount) external override {
-        if (_msgSender() != address(router)) {
+        if (_msgSender() != address(ROUTER)) {
             revert NotRouter();
         }
 
-        SafeERC20.safeTransfer(IERC20(asset()), address(router), amount);
+        SafeERC20.safeTransfer(IERC20(asset()), address(ROUTER), amount);
 
         emit SlashingLocked(amount);
     }

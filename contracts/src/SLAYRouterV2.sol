@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/Math.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -58,7 +58,7 @@ contract SLAYRouterV2 is
      * The router uses this to verify service status and retrieve slashing parameters.
      * @custom:oz-upgrades-unsafe-allow state-variable-immutable
      */
-    ISLAYRegistryV2 public immutable registry;
+    ISLAYRegistryV2 public immutable REGISTRY;
 
     /**
      * @dev Mapping that stores the whitelist status for each vault address.
@@ -120,7 +120,7 @@ contract SLAYRouterV2 is
      * @param account The address to check if it is a registered service.
      */
     modifier onlyService(address account) {
-        if (!registry.isService(account)) {
+        if (!REGISTRY.isService(account)) {
             revert ISLAYRegistryV2.ServiceNotFound(account);
         }
         _;
@@ -142,7 +142,7 @@ contract SLAYRouterV2 is
      * @custom:oz-upgrades-unsafe-allow constructor
      */
     constructor(ISLAYRegistryV2 registry_) {
-        registry = registry_;
+        REGISTRY = registry_;
         _disableInitializers();
     }
 
@@ -234,11 +234,11 @@ contract SLAYRouterV2 is
 
         address service = _msgSender();
         ISLAYRegistryV2.SlashParameter memory slashParameter =
-            registry.getSlashParameterAt(service, payload.operator, payload.timestamp);
+            REGISTRY.getSlashParameterAt(service, payload.operator, payload.timestamp);
 
         require(payload.mbips <= slashParameter.maxMbips, "mbips exceeds max allowed");
         require(
-            payload.timestamp > (block.timestamp - registry.getWithdrawalDelay(payload.operator)), "timestamp too old"
+            payload.timestamp > (block.timestamp - REGISTRY.getWithdrawalDelay(payload.operator)), "timestamp too old"
         );
 
         bytes32 slashId = _pendingSlashingRequestIds[service][payload.operator];
@@ -363,7 +363,7 @@ contract SLAYRouterV2 is
 
         // get slash parameters
         ISLAYRegistryV2.SlashParameter memory slashParameter =
-            registry.getSlashParameterAt(request.service, request.operator, request.timestamp);
+            REGISTRY.getSlashParameterAt(request.service, request.operator, request.timestamp);
 
         // move locked assets to the slashing param destination
         ISLAYRouterSlashingV2.LockedAssets[] storage lockedAssets = _lockedAssets[slashId];

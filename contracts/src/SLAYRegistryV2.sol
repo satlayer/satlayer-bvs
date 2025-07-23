@@ -37,7 +37,7 @@ contract SLAYRegistryV2 is
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-    ISLAYRouterV2 public immutable router;
+    ISLAYRouterV2 public immutable ROUTER;
 
     /// @dev mapping of registered services.
     mapping(address account => ServiceEntry) private _services;
@@ -101,7 +101,7 @@ contract SLAYRegistryV2 is
      * @custom:oz-upgrades-unsafe-allow constructor
      */
     constructor(ISLAYRouterV2 router_) {
-        router = router_;
+        ROUTER = router_;
         _disableInitializers();
     }
 

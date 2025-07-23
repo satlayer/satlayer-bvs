@@ -59,10 +59,16 @@ library RelationshipV2 {
      * @dev Hash the service and operator addresses to create a unique key for the `Relationship` mapping.
      * @param service The address of the service.
      * @param operator The address of the operator.
-     * @return bytes32 The unique key for the service-operator pair.
+     * @return key bytes32 The unique key for the service-operator pair.
      */
-    function getKey(address service, address operator) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(service, operator));
+    function getKey(address service, address operator) internal pure returns (bytes32 key) {
+        assembly {
+            // Use inline assembly to compute the keccak256 hash of the service and operator addresses
+            // This is more gas-efficient than using abi.encodePacked directly in Solidity
+            mstore(0x00, shl(96, service))
+            mstore(0x14, shl(96, operator))
+            key := keccak256(0, 0x28)
+        }
     }
 
     /**

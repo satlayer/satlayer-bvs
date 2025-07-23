@@ -123,11 +123,11 @@ contract SLAYVaultFactoryV2Test is Test, TestSuiteV2 {
 
     function test_immutable_beacon() public view {
         // The beacon address should not be zero
-        assertTrue(vaultFactory.beacon() != address(0));
+        assertTrue(vaultFactory.BEACON() != address(0));
     }
 
     function test_immutable_registry() public view {
-        assertEq(address(vaultFactory.registry()), address(registry));
+        assertEq(address(vaultFactory.REGISTRY()), address(registry));
     }
 
     function test_authorizeUpgrade_onlyOwner() public {
@@ -135,9 +135,15 @@ contract SLAYVaultFactoryV2Test is Test, TestSuiteV2 {
 
         address mockImpl = address(new SLAYVaultFactoryV2(address(0), registry));
 
-        vm.prank(vm.randomAddress());
-        vm.expectRevert();
-        // Call the upgradeTo function directly
-        address(vaultFactory).call(abi.encodeWithSelector(bytes4(keccak256("upgradeTo(address)")), mockImpl));
+        address sender = vm.randomAddress();
+        vm.prank(sender);
+        // Call to upgradeToAndCall and expect revert
+        (bool success, bytes memory returnData) = address(vaultFactory).call(
+            abi.encodeWithSelector(bytes4(keccak256("upgradeToAndCall(address,bytes)")), mockImpl, "")
+        );
+        assertFalse(success, "Expected upgradeToAndCall to fail");
+        assertEq(
+            returnData, abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, address(sender))
+        );
     }
 }

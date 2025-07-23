@@ -5,7 +5,6 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
-import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -37,14 +36,14 @@ contract SLAYVaultFactoryV2 is
      * This is used when creating new vault instances via BeaconProxy.
      * @custom:oz-upgrades-unsafe-allow state-variable-immutable
      */
-    address public immutable beacon;
+    address public immutable BEACON;
 
     /**
      * @dev Reference to the SLAYRegistryV2 contract used for operator verification.
      * This is used to check if an address is registered as an operator.
      * @custom:oz-upgrades-unsafe-allow state-variable-immutable
      */
-    ISLAYRegistryV2 public immutable registry;
+    ISLAYRegistryV2 public immutable REGISTRY;
 
     /**
      * @dev Modifier that restricts function access to operators only.
@@ -65,8 +64,8 @@ contract SLAYVaultFactoryV2 is
      * @custom:oz-upgrades-unsafe-allow constructor
      */
     constructor(address beacon_, ISLAYRegistryV2 registry_) {
-        beacon = beacon_;
-        registry = registry_;
+        BEACON = beacon_;
+        REGISTRY = registry_;
         _disableInitializers();
     }
 
@@ -77,7 +76,7 @@ contract SLAYVaultFactoryV2 is
      * @param account The address to check if it's an operator.
      */
     function _checkOperator(address account) internal view virtual {
-        if (!registry.isOperator(account)) {
+        if (!REGISTRY.isOperator(account)) {
             revert NotOperator(account);
         }
     }
@@ -89,7 +88,7 @@ contract SLAYVaultFactoryV2 is
         string memory symbol = string(abi.encodePacked("sat", asset.symbol()));
 
         bytes memory data = abi.encodeCall(SLAYVaultV2.initialize, (asset, operator, name, symbol));
-        BeaconProxy proxy = new BeaconProxy(beacon, data);
+        BeaconProxy proxy = new BeaconProxy(BEACON, data);
         return SLAYVaultV2(address(proxy));
     }
 
@@ -103,7 +102,7 @@ contract SLAYVaultFactoryV2 is
     {
         _checkOperator(operator);
         bytes memory data = abi.encodeCall(SLAYVaultV2.initialize, (asset, operator, name, symbol));
-        BeaconProxy proxy = new BeaconProxy(beacon, data);
+        BeaconProxy proxy = new BeaconProxy(BEACON, data);
         return SLAYVaultV2(address(proxy));
     }
 }

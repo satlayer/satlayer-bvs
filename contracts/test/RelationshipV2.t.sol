@@ -25,14 +25,22 @@ contract RelationshipV2Test is Test {
         assertEq(uint8(status), uint8(0));
     }
 
-    function test_getKey() public pure {
-        address service = address(0x1);
-        address operator = address(0x2);
+    function test_getKey() public {
+        address service = vm.randomAddress();
+        address operator = vm.randomAddress();
 
+        vm.startSnapshotGas("RelationshipV2", "getKey(service,operator)");
         bytes32 key = RelationshipV2.getKey(service, operator);
+        vm.stopSnapshotGas();
         bytes32 expectedKey = keccak256(abi.encodePacked(service, operator));
-
         assertEq(key, expectedKey);
+    }
+
+    function testFuzz_getKey(address service, address operator) public pure {
+        bytes32 key1 = RelationshipV2.getKey(service, operator);
+        bytes32 key2 = keccak256(abi.encodePacked(service, operator));
+
+        assertEq(key1, key2, "Keys should be consistent across multiple calls");
     }
 
     function test_encode() public pure {
