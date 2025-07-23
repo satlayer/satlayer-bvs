@@ -217,7 +217,6 @@ contract SLAYVaultV2 is
     function requestRedeem(uint256 shares, address controller, address owner)
         public
         override
-        whenNotPaused
         returns (uint256 requestId)
     {
         // only non-zero shares can be requested to redeem
@@ -319,7 +318,6 @@ contract SLAYVaultV2 is
         virtual
         override(IERC4626, ERC4626Upgradeable)
         onlyControllerOrOperator(controller)
-        whenNotPaused
         returns (uint256 shares)
     {
         if (assets == 0) {
@@ -361,7 +359,6 @@ contract SLAYVaultV2 is
         virtual
         override(IERC4626, ERC4626Upgradeable)
         onlyControllerOrOperator(controller)
-        whenNotPaused
         returns (uint256 assets)
     {
         if (shares == 0) {
