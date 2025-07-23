@@ -193,6 +193,10 @@ contract SLAYRewardsV2 is
     function _leafHash(address earner, uint256 amount) internal pure returns (bytes32) {
         string memory earnerStringBytes = Strings.toChecksumHexString(earner);
         string memory amountStringBytes = Strings.toString(amount);
+        /// We don't use inline assembly for keccak256 for this hashing function,
+        /// due to the minimal gas savings and it doesn't fit into scratch space.
+        /// It's is better to maintain readability and security of the code.
+        /// forge-lint: disable-start(asm-keccak256)
         return keccak256(abi.encodePacked(keccak256(abi.encodePacked(earnerStringBytes, amountStringBytes))));
     }
 }
