@@ -36,7 +36,7 @@ contract RelationshipV2Test is Test {
         assertEq(key, expectedKey);
     }
 
-    function testFuzz_getKey(address service, address operator) public {
+    function testFuzz_getKey(address service, address operator) public pure {
         bytes32 key1 = RelationshipV2.getKey(service, operator);
         bytes32 key2 = keccak256(abi.encodePacked(service, operator));
 
