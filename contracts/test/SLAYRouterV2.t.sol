@@ -1274,7 +1274,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
             requestExpiry: requestResolution + 7 days
         });
 
-        vm.startSnapshotGas("SlashingRequestId", "hash()");
+        vm.startSnapshotGas("SlashingRequestId", "hash(Request)");
         bytes32 id = SlashingRequestId.hash(request);
         vm.stopSnapshotGas();
         bytes32 expectedId = keccak256(
