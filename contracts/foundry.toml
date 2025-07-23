@@ -9,6 +9,9 @@ ast = true
 build_info = true
 extra_output = ["storageLayout"]
 
+[lint]
+ignore = ["test/**/*"]
+
 [rpc_endpoints]
 slaynet = "${TENDERLY_RPC_URL}"
 

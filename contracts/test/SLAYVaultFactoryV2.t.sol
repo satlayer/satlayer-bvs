@@ -123,11 +123,11 @@ contract SLAYVaultFactoryV2Test is Test, TestSuiteV2 {
 
     function test_immutable_beacon() public view {
         // The beacon address should not be zero
-        assertTrue(vaultFactory.beacon() != address(0));
+        assertTrue(vaultFactory.BEACON() != address(0));
     }
 
     function test_immutable_registry() public view {
-        assertEq(address(vaultFactory.registry()), address(registry));
+        assertEq(address(vaultFactory.REGISTRY()), address(registry));
     }
 
     function test_authorizeUpgrade_onlyOwner() public {

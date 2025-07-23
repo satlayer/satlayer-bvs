@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import {SLAYRegistryV2} from "../SLAYRegistryV2.sol";
-
 /**
  * @title Vaults Router Interface
  * @dev Interface for the SLAYRouterV2 contract, which serves as the central point for managing
