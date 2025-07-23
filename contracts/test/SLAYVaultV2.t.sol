@@ -918,50 +918,50 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         vm.stopPrank();
 
         address stalker = makeAddr("stalker!");
-        underlying.mint(stalker, 999_00000000);
+        underlying.mint(stalker, 99_900_000_000);
 
         vm.startPrank(stalker);
         underlying.approve(address(vault), type(uint256).max);
-        vault.deposit(888_00000000, stalker);
+        vault.deposit(88_800_000_000, stalker);
         vm.stopPrank();
 
-        assertEq(vault.totalActiveStaked(), 888_00000000);
-        assertEq(vault.totalSupply(), 888_00000000);
+        assertEq(vault.totalActiveStaked(), 88_800_000_000);
+        assertEq(vault.totalSupply(), 88_800_000_000);
 
         // Requests redemption 1
         vm.prank(stalker);
-        vault.requestRedeem(88_00000000, stalker, stalker);
-        assertEq(vault.totalActiveStaked(), 800_00000000);
-        assertEq(vault.totalSupply(), 888_00000000);
+        vault.requestRedeem(8_800_000_000, stalker, stalker);
+        assertEq(vault.totalActiveStaked(), 80_000_000_000);
+        assertEq(vault.totalSupply(), 88_800_000_000);
 
         // Requests redemption 2
         vm.prank(stalker);
-        vault.requestRedeem(88_00000000, stalker, stalker);
-        assertEq(vault.totalActiveStaked(), 712_00000000);
-        assertEq(vault.totalSupply(), 888_00000000);
+        vault.requestRedeem(8_800_000_000, stalker, stalker);
+        assertEq(vault.totalActiveStaked(), 71_200_000_000);
+        assertEq(vault.totalSupply(), 88_800_000_000);
 
         // Donation 1
         vm.prank(stalker);
-        vault.transfer(address(vault), 12_00000000);
-        assertEq(vault.totalActiveStaked(), 700_00000000);
-        assertEq(vault.totalSupply(), 888_00000000);
+        vault.transfer(address(vault), 1_200_000_000);
+        assertEq(vault.totalActiveStaked(), 70_000_000_000);
+        assertEq(vault.totalSupply(), 88_800_000_000);
 
         // Donation 2
         vm.prank(stalker);
-        vault.transfer(address(vault), 154_32456789);
-        assertEq(vault.totalActiveStaked(), 545_6754_3211);
-        assertEq(vault.totalSupply(), 888_00000000);
+        vault.transfer(address(vault), 15_432_456_789);
+        assertEq(vault.totalActiveStaked(), 54_567_543_211);
+        assertEq(vault.totalSupply(), 88_800_000_000);
 
         // Fast forward to after withdrawal delay
         skip(7 days);
         vm.prank(stalker);
-        vault.redeem(176_00000000, stalker, stalker);
-        assertEq(vault.totalSupply(), 712_00000000);
+        vault.redeem(17_600_000_000, stalker, stalker);
+        assertEq(vault.totalSupply(), 71_200_000_000);
 
         // Check total active staked same
-        assertEq(vault.totalActiveStaked(), 545_6754_3211);
-        assertEq(vault.balanceOf(address(vault)), 15432456789 + 12_00000000);
-        assertEq(vault.totalSupply(), 712_00000000);
+        assertEq(vault.totalActiveStaked(), 54_567_543_211);
+        assertEq(vault.balanceOf(address(vault)), 15_432_456_789 + 1_200_000_000);
+        assertEq(vault.totalSupply(), 71_200_000_000);
     }
 
     function test_pendingRedeemRequest() public {
