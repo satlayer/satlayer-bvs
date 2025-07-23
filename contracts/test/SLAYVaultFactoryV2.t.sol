@@ -8,7 +8,6 @@ import {Test, console} from "forge-std/Test.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {TestSuiteV2} from "./TestSuiteV2.sol";
 import {ISLAYVaultFactoryV2} from "../src/interface/ISLAYVaultFactoryV2.sol";
-import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 contract SLAYVaultFactoryV2Test is Test, TestSuiteV2 {
     MockERC20 public underlying = new MockERC20("Token", "TKN", 18);
