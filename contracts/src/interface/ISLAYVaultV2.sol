@@ -86,8 +86,8 @@ interface ISLAYVaultV2 is IERC20Metadata, IERC4626, IERC7540Operator, IERC7540Re
     function isWhitelisted() external view returns (bool);
 
     /**
-     * @notice Returns the amount of tokenized shares that is actively staked in the vault,
-     * this amount will exclude any tokens that are pending redeem or withdrawal and slashing.
+     * @notice Returns the amount of tokenized shares that are actively staked in the vault.
+     * This amount will exclude any tokens that are pending redeem or pending withdrawal and locked slashing.
      * @return Total tokens actively staked in the vault
      */
     function totalActiveStaked() external view returns (uint256);
