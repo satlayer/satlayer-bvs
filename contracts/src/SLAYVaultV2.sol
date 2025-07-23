@@ -219,7 +219,7 @@ contract SLAYVaultV2 is
         override
         returns (uint256 requestId)
     {
-        // Checks
+        // only non-zero shares can be requested to redeem
         if (shares == 0) {
             revert ZeroAmount();
         }
@@ -286,7 +286,7 @@ contract SLAYVaultV2 is
      *
      * @inheritdoc IERC7540Operator
      */
-    function setOperator(address operator, bool approved) external override returns (bool success) {
+    function setOperator(address operator, bool approved) external override whenNotPaused returns (bool success) {
         _isOperator[_msgSender()][operator] = approved;
         emit OperatorSet(_msgSender(), operator, approved);
         return true;
@@ -464,7 +464,7 @@ contract SLAYVaultV2 is
     }
 
     /// @inheritdoc ISLAYVaultV2
-    function lockSlashing(uint256 amount) external override {
+    function lockSlashing(uint256 amount) external override whenNotPaused {
         if (_msgSender() != address(ROUTER)) {
             revert NotRouter();
         }
