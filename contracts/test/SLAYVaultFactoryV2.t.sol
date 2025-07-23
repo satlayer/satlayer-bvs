@@ -8,6 +8,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {TestSuiteV2} from "./TestSuiteV2.sol";
 import {ISLAYVaultFactoryV2} from "../src/interface/ISLAYVaultFactoryV2.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 contract SLAYVaultFactoryV2Test is Test, TestSuiteV2 {
     MockERC20 public underlying = new MockERC20("Token", "TKN", 18);
@@ -135,9 +136,15 @@ contract SLAYVaultFactoryV2Test is Test, TestSuiteV2 {
 
         address mockImpl = address(new SLAYVaultFactoryV2(address(0), registry));
 
-        vm.prank(vm.randomAddress());
-        vm.expectRevert();
-        // Call the upgradeTo function directly
-        address(vaultFactory).call(abi.encodeWithSelector(bytes4(keccak256("upgradeTo(address)")), mockImpl));
+        address sender = vm.randomAddress();
+        vm.prank(sender);
+        // Call to upgradeToAndCall and expect revert
+        (bool success, bytes memory returnData) = address(vaultFactory).call(
+            abi.encodeWithSelector(bytes4(keccak256("upgradeToAndCall(address,bytes)")), mockImpl, "")
+        );
+        assertFalse(success, "Expected upgradeToAndCall to fail");
+        assertEq(
+            returnData, abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, address(sender))
+        );
     }
 }

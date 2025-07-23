@@ -35,6 +35,18 @@ contract RelationshipV2Test is Test {
         assertEq(key, expectedKey);
     }
 
+    function test_getKey_consistent() public {
+        for (uint256 i = 0; i < 100; i++) {
+            address service = vm.randomAddress();
+            address operator = vm.randomAddress();
+
+            bytes32 key1 = RelationshipV2.getKey(service, operator);
+            bytes32 key2 = keccak256(abi.encodePacked(service, operator));
+
+            assertEq(key1, key2, "Keys should be consistent across multiple calls");
+        }
+    }
+
     function test_encode() public pure {
         RelationshipV2.Status status = RelationshipV2.Status.Active;
         uint32 slashParameterId = 123;
