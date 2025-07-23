@@ -122,7 +122,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         uint256 sharesToRequest,
         uint256 ownerSharesBefore,
         uint256 vaultSharesBefore,
-        uint256 totalPendingBefore,
         string memory message
     ) internal {
         assertEq(
@@ -139,11 +138,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
             vault.pendingRedeemRequest(0, controller),
             sharesToRequest,
             string.concat(message, ": Pending redeem request not set for controller.")
-        );
-        assertEq(
-            vault.getTotalPendingRedemption(),
-            totalPendingBefore + sharesToRequest,
-            string.concat(message, ": Total pending not updated.")
         );
         console.log("%s: SUCCESS", message);
     }
@@ -163,16 +157,13 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
         uint256 a_shares_before = vault.balanceOf(a);
         uint256 vault_shares_before = vault.balanceOf(address(vault));
-        uint256 totalPending_before = vault.getTotalPendingRedemption();
 
         vm.prank(a);
         vm.startSnapshotGas("SLAYVaultV2", "requestRedeem()_sender_a_controller_a_owner_a");
         vault.requestRedeem(sharesToRequest, a, a);
         vm.stopSnapshotGas();
 
-        _assertRequestRedeemSuccess(
-            a, a, a, sharesToRequest, a_shares_before, vault_shares_before, totalPending_before, "Path 1 (A-A-A)"
-        );
+        _assertRequestRedeemSuccess(a, a, a, sharesToRequest, a_shares_before, vault_shares_before, "Path 1 (A-A-A)");
 
         skip(10 days);
     }
@@ -198,7 +189,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
         uint256 owner_shares_before = vault.balanceOf(owner_addr);
         uint256 vault_shares_before = vault.balanceOf(address(vault));
-        uint256 totalPending_before = vault.getTotalPendingRedemption();
 
         vm.startPrank(sender);
         vm.startSnapshotGas("SLAYVaultV2", "requestRedeem()_sender_a_controller_b_owner_a");
@@ -213,7 +203,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
             sharesToRequest,
             owner_shares_before,
             vault_shares_before,
-            totalPending_before,
             "Path 2 (A-B-A, A is op for B)"
         );
         skip(10 days);
@@ -238,7 +227,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
         uint256 owner_shares_before = vault.balanceOf(owner_addr);
         uint256 vault_shares_before = vault.balanceOf(address(vault));
-        uint256 totalPending_before = vault.getTotalPendingRedemption();
 
         vm.startPrank(sender);
         vm.startSnapshotGas("SLAYVaultV2", "requestRedeem()_sender_a_controller_a_owner_b_owner_approved_sender");
@@ -253,7 +241,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
             sharesToRequest,
             owner_shares_before,
             vault_shares_before,
-            totalPending_before,
             "Path 3 (A-A-B, B approved A)"
         );
         assertEq(vault.allowance(owner_addr, sender), 0, "Path 3: Allowance not consumed correctly.");
@@ -281,7 +268,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
         uint256 owner_shares_before = vault.balanceOf(owner_addr);
         uint256 vault_shares_before = vault.balanceOf(address(vault));
-        uint256 totalPending_before = vault.getTotalPendingRedemption();
 
         vm.prank(sender);
         vault.permit(owner_addr, sender, sharesToRequest, (block.timestamp + 3600), v, r, s); // A submits B's permit signature
@@ -299,7 +285,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
             sharesToRequest,
             owner_shares_before,
             vault_shares_before,
-            totalPending_before,
             "Path 4 (A-A-B, B permitted A)"
         );
         assertEq(vault.allowance(owner_addr, sender), 0, "Path 4: Allowance not consumed correctly after permit.");
@@ -324,7 +309,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
         uint256 owner_shares_before = vault.balanceOf(owner_addr);
         uint256 vault_shares_before = vault.balanceOf(address(vault));
-        uint256 totalPending_before = vault.getTotalPendingRedemption();
 
         vm.startPrank(sender);
         vm.startSnapshotGas("SLAYVaultV2", "requestRedeem()_sender_a_controller_a_owner_b_via_allowance");
@@ -339,7 +323,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
             sharesToRequest,
             owner_shares_before,
             vault_shares_before,
-            totalPending_before,
             "Path 5 (A-A-B, A is op for B)"
         );
         skip(10 days);
@@ -365,7 +348,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
         uint256 owner_shares_before = vault.balanceOf(owner_addr);
         uint256 vault_shares_before = vault.balanceOf(address(vault));
-        uint256 totalPending_before = vault.getTotalPendingRedemption();
 
         vm.startPrank(sender); // Sender is 'a'
         vm.startSnapshotGas("SLAYVaultV2", "requestRedeem()_sender_a_controller_c_owner_a");
@@ -380,7 +362,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
             sharesToRequest,
             owner_shares_before,
             vault_shares_before,
-            totalPending_before,
             "Path 6 (A-C-A, A is op for C)"
         );
         skip(10 days);
@@ -394,7 +375,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         uint256 expectedSharesBurned, // These shares are burned from the vault itself (they were moved there in requestRedeem)
         uint256 receiverAssetBalanceBefore,
         uint256 vaultSharesBalanceBefore,
-        uint256 totalPendingBefore,
         string memory message
     ) internal {
         assertEq(
@@ -406,11 +386,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
             vault.balanceOf(address(vault)),
             vaultSharesBalanceBefore - expectedSharesBurned,
             string.concat(message, ": Shares not burned from vault.")
-        );
-        assertEq(
-            vault.getTotalPendingRedemption(),
-            totalPendingBefore - expectedSharesBurned,
-            string.concat(message, ": Total pending not updated.")
         );
         console.log("%s: SUCCESS", message);
     }
@@ -439,7 +414,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         uint256 assetsToWithdraw = vault.maxWithdraw(a); // maxWithdraw for A (who is controller/owner)
         uint256 receiverAssetBalanceBefore = underlying.balanceOf(a);
         uint256 vaultSharesBalanceBefore = vault.balanceOf(address(vault));
-        uint256 totalPendingBefore = vault.getTotalPendingRedemption();
 
         vm.startPrank(a); // Sender is A
         vm.startSnapshotGas("SLAYVaultV2", "withdraw()_sender_a_controller_a_owner_a");
@@ -455,7 +429,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
             sharesToRequest,
             receiverAssetBalanceBefore,
             vaultSharesBalanceBefore,
-            totalPendingBefore,
             "Withdraw Path 1 (A-A-A)"
         );
     }
@@ -491,7 +464,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         uint256 assetsToWithdraw = vault.maxWithdraw(controller); // maxWithdraw for controller B
         uint256 receiverAssetBalanceBefore = underlying.balanceOf(owner_addr); // A is also the receiver
         uint256 vaultSharesBalanceBefore = vault.balanceOf(address(vault));
-        uint256 totalPendingBefore = vault.getTotalPendingRedemption();
 
         vm.startPrank(sender); // Sender is A (who is operator for controller B)
         vm.startSnapshotGas("SLAYVaultV2", "withdraw()_sender_a_controller_b_owner_a");
@@ -507,7 +479,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
             sharesToRequest,
             receiverAssetBalanceBefore,
             vaultSharesBalanceBefore,
-            totalPendingBefore,
             "Withdraw Path 2 (A-B-A, A is op for B)"
         );
     }
@@ -540,7 +511,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         uint256 assetsToWithdraw = vault.maxWithdraw(controller); // Max withdraw for Controller A
         uint256 receiverAssetBalanceBefore = underlying.balanceOf(sender); // A is also the receiver in this test
         uint256 vaultSharesBalanceBefore = vault.balanceOf(address(vault));
-        uint256 totalPendingBefore = vault.getTotalPendingRedemption();
 
         vm.startPrank(sender); // Sender is A (who is the controller)
         vm.startSnapshotGas("SLAYVaultV2", "withdraw()_sender_a_controller_a_owner_b_approved");
@@ -556,7 +526,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
             sharesToRequest,
             receiverAssetBalanceBefore,
             vaultSharesBalanceBefore,
-            totalPendingBefore,
             "Withdraw Path 3 (A-A-B, B approved A for shares)"
         );
     }
@@ -621,7 +590,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         uint256 assetsToWithdraw = vault.maxWithdraw(controller);
         uint256 receiverAssetBalanceBefore = underlying.balanceOf(sender);
         uint256 vaultSharesBalanceBefore = vault.balanceOf(address(vault));
-        uint256 totalPendingBefore = vault.getTotalPendingRedemption();
 
         vm.startPrank(sender); // Sender is A (who is the controller)
         vm.startSnapshotGas("SLAYVaultV2", "withdraw()_sender_a_controller_a_owner_b");
@@ -637,7 +605,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
             sharesToRequest,
             receiverAssetBalanceBefore,
             vaultSharesBalanceBefore,
-            totalPendingBefore,
             "Withdraw Path 5 (A-A-B, A is op for B (irrelevant for withdraw permission))"
         );
     }
@@ -672,7 +639,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         uint256 assetsToWithdraw = vault.maxWithdraw(controller);
         uint256 receiverAssetBalanceBefore = underlying.balanceOf(owner_addr);
         uint256 vaultSharesBalanceBefore = vault.balanceOf(address(vault));
-        uint256 totalPendingBefore = vault.getTotalPendingRedemption();
 
         vm.startPrank(sender);
         vm.startSnapshotGas("SLAYVaultV2", "withdraw()_sender_a_controller_c_owner_b");
@@ -688,7 +654,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
             sharesToRequest,
             receiverAssetBalanceBefore,
             vaultSharesBalanceBefore,
-            totalPendingBefore,
             "Withdraw Path 6 (A-C-B, A is op for C)"
         );
     }
