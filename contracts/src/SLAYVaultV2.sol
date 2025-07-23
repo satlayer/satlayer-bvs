@@ -34,6 +34,10 @@ import {ISLAYVaultV2} from "./interface/ISLAYVaultV2.sol";
  * - IERC7540Operator for request/claim with configurable controller-operator relationships
  * - Upgradeable via Beacon Proxy pattern
  * - Pausing and whitelisting enforced by SLAYRouter
+ *
+ * WARNING: This contract does not support non-standard ERC20 tokens. Assets that do not conform to the ERC20 standard,
+ * might lead to unexpected behavior or loss of funds. For example, tokens with fee-on-transfer mechanism are non-compliant.
+ * Thus, vault with non-standard asset will be blacklisted from the SLAYRouter.
  */
 contract SLAYVaultV2 is
     Initializable,
