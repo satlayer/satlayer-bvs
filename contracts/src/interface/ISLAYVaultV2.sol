@@ -87,7 +87,7 @@ interface ISLAYVaultV2 is IERC20Metadata, IERC4626, IERC7540Operator, IERC7540Re
 
     /**
      * @notice Returns the amount of tokenized shares that are actively staked in the vault.
-     * This amount will exclude any tokens that are pending redeem or pending withdrawal.
+     * This amount will exclude any tokens that are pending redeem, pending withdrawal or donation of shares token.
      * For slashed amount, they are underlying assets, not shares, so they are not included in this amount.
      * They will be reflected in the exchange rate of the vault.
      * @return Total tokens actively staked in the vault
