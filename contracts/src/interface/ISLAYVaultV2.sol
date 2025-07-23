@@ -86,11 +86,13 @@ interface ISLAYVaultV2 is IERC20Metadata, IERC4626, IERC7540Operator, IERC7540Re
     function isWhitelisted() external view returns (bool);
 
     /**
-     * @notice Returns the total amount of shares pending redemption across all controllers
-     * @dev This is the sum of all shares in pending and claimable redemption requests
-     * @return The total amount of shares pending redemption
+     * @notice Returns the amount of tokenized shares that are actively staked in the vault.
+     * This amount will exclude any tokens that are pending redeem, pending withdrawal or donation of shares token.
+     * For slashed amount, they are underlying assets, not shares, so they are not included in this amount.
+     * They will be reflected in the exchange rate of the vault.
+     * @return Total tokens actively staked in the vault
      */
-    function getTotalPendingRedemption() external view returns (uint256);
+    function totalActiveStaked() external view returns (uint256);
 
     /**
      * @notice Moves assets from the vault to the router contract as part of the slashing process
