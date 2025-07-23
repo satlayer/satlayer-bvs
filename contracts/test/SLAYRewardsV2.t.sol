@@ -301,4 +301,248 @@ contract SLAYRewardsV2Test is Test, TestSuiteV2 {
         );
         rewards.claimRewards(claimRewardsParams);
     }
+
+    // init struct to prevent stack too deep errors
+    struct TestLifecyleVars {
+        address earner1;
+        address earner2;
+        address earner3;
+        bytes32 firstMerkleRoot;
+        bytes32 secondMerkleRoot;
+    }
+
+    TestLifecyleVars public tl_vars;
+
+    /**
+     * Test the lifecycle of the SLAYRewardsV2 contract.
+     * This test will cover the following steps:
+     *  1. Service distribute rewards for the first time
+     *  2. Earner1 claims rewards
+     *  3. Service updates the rewards distribution with a new Merkle root
+     *  4. Earner2 should be able to claim rewards with the first merkle root
+     *  5. Earner3 claims rewards ( should receive amount from the new Merkle root )
+     *  6. Earner1 claims rewards again ( should receive the difference between the new and old Merkle root )
+     */
+    function test_lifecycle() public {
+        // mint some rewards tokens to the service
+        rewardToken.mint(service, 11_500_000_000 * rewardTokenMinorUnit); // 11.5 Billion WBTC
+
+        // first merkle root should correspond to
+        // {
+        //  "earners": [
+        //    {
+        //      "earner": "0x39a429c90c0033A102017bFAEb76527eBD9B3FEa",
+        //      "reward": "100000000000000000"
+        //    },
+        //    {
+        //      "earner": "0x911E794a6E79712B1d958821f70EE8882f714906",
+        //      "reward": "300000000000000000"
+        //    },
+        //    {
+        //      "earner": "0xd9322C1D287ef984dDF049caBABAB1a5b2E85cB3",
+        //      "reward": "500000000000000000"
+        //    }
+        //  ]
+        //}
+        tl_vars.firstMerkleRoot =
+            bytes32(abi.encodePacked(hex"b016f17df3c3aac2813e7c7c4bc749f38a68466cad1720aff1df0ff9ba6bfaab"));
+
+        tl_vars.earner1 = address(0x39a429c90c0033A102017bFAEb76527eBD9B3FEa);
+        tl_vars.earner2 = address(0x911E794a6E79712B1d958821f70EE8882f714906);
+        tl_vars.earner3 = address(0xd9322C1D287ef984dDF049caBABAB1a5b2E85cB3);
+
+        // service distributes rewards
+        vm.startPrank(service);
+        rewardToken.approve(address(rewards), 9_000_000_000 * rewardTokenMinorUnit);
+        vm.expectEmit();
+        emit ISLAYRewardsV2.RewardsDistributed(
+            service, address(rewardToken), 9_000_000_000 * rewardTokenMinorUnit, tl_vars.firstMerkleRoot
+        );
+        rewards.distributeRewards(address(rewardToken), 9_000_000_000 * rewardTokenMinorUnit, tl_vars.firstMerkleRoot);
+        vm.stopPrank();
+
+        // check that the rewards were distributed correctly
+        ISLAYRewardsV2.DistributionRoots memory roots = rewards.getDistributionRoots(service, address(rewardToken));
+        assertEq(roots.prevRoot, bytes32(0), "Previous root should be zero");
+        assertEq(roots.currentRoot, tl_vars.firstMerkleRoot, "Current root should match the distributed merkle root");
+
+        // earner1 claims rewards
+        bytes32[] memory proof1 = new bytes32[](2);
+        proof1[0] = bytes32(0xfcea6c7ebfa548d53603d8c1297ca2b50965faf289892fa72221569a59c64a22);
+        proof1[1] = bytes32(0x40da4a5e672f95c4271b7d47b118de0d9a524bae94c57489eaff4c4b27cd4e71);
+        ISLAYRewardsV2.ClaimableRewardProof memory claimRewardsParams1 = ISLAYRewardsV2.ClaimableRewardProof({
+            service: service,
+            token: address(rewardToken),
+            amount: 1_000_000_000 * rewardTokenMinorUnit, // 1 billion WBTC
+            recipient: tl_vars.earner1,
+            merkleRoot: tl_vars.firstMerkleRoot,
+            proof: proof1,
+            leafIndex: 0,
+            totalLeaves: 3
+        });
+        vm.prank(tl_vars.earner1);
+        vm.expectEmit();
+        emit ISLAYRewardsV2.RewardsClaimed(
+            service,
+            address(rewardToken),
+            tl_vars.earner1,
+            tl_vars.earner1,
+            1_000_000_000 * rewardTokenMinorUnit,
+            tl_vars.firstMerkleRoot
+        );
+        rewards.claimRewards(claimRewardsParams1);
+
+        // check that the claimed amount is correct
+        uint256 claimedAmount1 = rewards.getClaimedRewards(service, address(rewardToken), tl_vars.earner1);
+        assertEq(claimedAmount1, 1_000_000_000 * rewardTokenMinorUnit, "Claimed amount should match the claimed amount");
+        // check that the recipient's balance is increased
+        uint256 recipientBalance1 = rewardToken.balanceOf(tl_vars.earner1);
+        assertEq(
+            recipientBalance1, 1_000_000_000 * rewardTokenMinorUnit, "Recipient balance should match the claimed amount"
+        );
+
+        // service updates the rewards distribution with a new Merkle root which correspond with
+        // {
+        //  "earners": [
+        //    {
+        //      "earner": "0x39a429c90c0033A102017bFAEb76527eBD9B3FEa",
+        //      "reward": "150000000000000000"
+        //    },
+        //    {
+        //      "earner": "0x911E794a6E79712B1d958821f70EE8882f714906",
+        //      "reward": "400000000000000000"
+        //    },
+        //    {
+        //      "earner": "0xd9322C1D287ef984dDF049caBABAB1a5b2E85cB3",
+        //      "reward": "600000000000000000"
+        //    }
+        //  ]
+        //}
+        tl_vars.secondMerkleRoot =
+            bytes32(abi.encodePacked(hex"e01fed86b0ac968f2495c422c7057214263c6f0b775965fa611b39549394f27c"));
+
+        // service distributes second rewards
+        vm.startPrank(service);
+        rewardToken.approve(address(rewards), 2_500_000_000 * rewardTokenMinorUnit); // 2.5 Billion WBTC
+        vm.expectEmit();
+        emit ISLAYRewardsV2.RewardsDistributed(
+            service, address(rewardToken), 2_500_000_000 * rewardTokenMinorUnit, tl_vars.secondMerkleRoot
+        );
+        rewards.distributeRewards(address(rewardToken), 2_500_000_000 * rewardTokenMinorUnit, tl_vars.secondMerkleRoot);
+        vm.stopPrank();
+
+        // check that the rewards were distributed correctly
+        ISLAYRewardsV2.DistributionRoots memory roots2 = rewards.getDistributionRoots(service, address(rewardToken));
+        assertEq(roots2.prevRoot, tl_vars.firstMerkleRoot, "Previous root should match the first merkle root");
+        assertEq(roots2.currentRoot, tl_vars.secondMerkleRoot, "Current root should match the second merkle root");
+
+        // earner2 claims rewards using the first merkle root
+        bytes32[] memory proof2 = new bytes32[](2);
+        proof2[0] = bytes32(0x2ca7299d66e56c05cddd0e38699dc218b9e2ee1ea55d4f19837f8fb82dbd81cb);
+        proof2[1] = bytes32(0x40da4a5e672f95c4271b7d47b118de0d9a524bae94c57489eaff4c4b27cd4e71);
+        ISLAYRewardsV2.ClaimableRewardProof memory claimRewardsParams2 = ISLAYRewardsV2.ClaimableRewardProof({
+            service: service,
+            token: address(rewardToken),
+            amount: 3_000_000_000 * rewardTokenMinorUnit, // 3 billion WBTC
+            recipient: tl_vars.earner2,
+            merkleRoot: tl_vars.firstMerkleRoot,
+            proof: proof2,
+            leafIndex: 1,
+            totalLeaves: 3
+        });
+        vm.prank(tl_vars.earner2);
+        vm.expectEmit();
+        emit ISLAYRewardsV2.RewardsClaimed(
+            service,
+            address(rewardToken),
+            tl_vars.earner2,
+            tl_vars.earner2,
+            3_000_000_000 * rewardTokenMinorUnit,
+            tl_vars.firstMerkleRoot
+        );
+        rewards.claimRewards(claimRewardsParams2);
+        // check that the claimed amount is correct
+        uint256 claimedAmount2 = rewards.getClaimedRewards(service, address(rewardToken), tl_vars.earner2);
+        assertEq(claimedAmount2, 3_000_000_000 * rewardTokenMinorUnit, "Claimed amount should match the claimed amount");
+        // check that the recipient's balance is increased
+        uint256 recipientBalance2 = rewardToken.balanceOf(tl_vars.earner2);
+        assertEq(
+            recipientBalance2, 3_000_000_000 * rewardTokenMinorUnit, "Recipient balance should match the claimed amount"
+        );
+
+        // earner3 claims rewards using the second merkle root
+        bytes32[] memory proof3 = new bytes32[](2);
+        proof3[0] = bytes32(0x0000000000000000000000000000000000000000000000000000000000000000);
+        proof3[1] = bytes32(0xbb394d2efc15e45004f10f3c815fb5cf9870aabc0b064b4b23f8861ad2f3cfed);
+        ISLAYRewardsV2.ClaimableRewardProof memory claimRewardsParams3 = ISLAYRewardsV2.ClaimableRewardProof({
+            service: service,
+            token: address(rewardToken),
+            amount: 6_000_000_000 * rewardTokenMinorUnit, // 6 billion WBTC
+            recipient: tl_vars.earner3,
+            merkleRoot: tl_vars.secondMerkleRoot,
+            proof: proof3,
+            leafIndex: 2,
+            totalLeaves: 3
+        });
+        vm.prank(tl_vars.earner3);
+        vm.expectEmit();
+        emit ISLAYRewardsV2.RewardsClaimed(
+            service,
+            address(rewardToken),
+            tl_vars.earner3,
+            tl_vars.earner3,
+            6_000_000_000 * rewardTokenMinorUnit,
+            tl_vars.secondMerkleRoot
+        );
+        rewards.claimRewards(claimRewardsParams3);
+        // check that the claimed amount is correct
+        uint256 claimedAmount3 = rewards.getClaimedRewards(service, address(rewardToken), tl_vars.earner3);
+        assertEq(claimedAmount3, 6_000_000_000 * rewardTokenMinorUnit, "Claimed amount should match the claimed amount");
+        // check that the recipient's balance is increased
+        uint256 recipientBalance3 = rewardToken.balanceOf(tl_vars.earner3);
+        assertEq(
+            recipientBalance3, 6_000_000_000 * rewardTokenMinorUnit, "Recipient balance should match the claimed amount"
+        );
+
+        // earner1 claims rewards again ( should receive the difference between the new and old Merkle root )
+        bytes32[] memory proof4 = new bytes32[](2);
+        proof4[0] = bytes32(0x33e292a8b1a6b8db8f87780db5cbd57234f81daafa95077db68d6edef27cbfdc);
+        proof4[1] = bytes32(0x981a103b03f593ecae5fde2836141dc43becb1e7a758b2e0609e0f91b204d543);
+        ISLAYRewardsV2.ClaimableRewardProof memory claimRewardsParams4 = ISLAYRewardsV2.ClaimableRewardProof({
+            service: service,
+            token: address(rewardToken),
+            amount: 1_500_000_000 * rewardTokenMinorUnit, // 1.5 billion WBTC
+            recipient: tl_vars.earner1,
+            merkleRoot: tl_vars.secondMerkleRoot,
+            proof: proof4,
+            leafIndex: 0,
+            totalLeaves: 3
+        });
+        vm.prank(tl_vars.earner1);
+        vm.expectEmit();
+        emit ISLAYRewardsV2.RewardsClaimed(
+            service,
+            address(rewardToken),
+            tl_vars.earner1,
+            tl_vars.earner1,
+            500_000_000 * rewardTokenMinorUnit,
+            tl_vars.secondMerkleRoot
+        );
+        rewards.claimRewards(claimRewardsParams4);
+        // check that the claimed amount is correct
+        uint256 claimedAmount4 = rewards.getClaimedRewards(service, address(rewardToken), tl_vars.earner1);
+        assertEq(claimedAmount4, 1_500_000_000 * rewardTokenMinorUnit, "Claimed amount should match the claimed amount");
+        // check that the recipient's balance is increased
+        uint256 recipientBalance4 = rewardToken.balanceOf(tl_vars.earner1);
+        assertEq(
+            recipientBalance4, 1_500_000_000 * rewardTokenMinorUnit, "Recipient balance should match the claimed amount"
+        );
+        // check that the balance of the contract is reduced
+        uint256 contractBalance = rewardToken.balanceOf(address(rewards));
+        assertEq(
+            contractBalance,
+            1_500_000_000 * rewardTokenMinorUnit, // 11.5 - 9 - 3 - 6  + 1.5 Billion WBTC
+            "Contract balance should be reduced by the claimed amounts"
+        );
+    }
 }
