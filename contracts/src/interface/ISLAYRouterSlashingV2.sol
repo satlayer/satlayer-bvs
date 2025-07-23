@@ -328,7 +328,7 @@ library SlashingRequestId {
     function hash(ISLAYRouterSlashingV2.Request memory request) internal pure returns (bytes32) {
         /// We don't use inline assembly for keccak256 for this hashing function,
         /// due to the minimal gas savings and it doesn't fit into scratch space.
-        /// It's is better to maintain readability and security of the code.
+        /// It's better to maintain readability and security of the code.
         /// forge-lint: disable-start(asm-keccak256)
         return keccak256(
             abi.encode(
