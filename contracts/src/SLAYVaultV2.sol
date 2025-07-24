@@ -86,7 +86,8 @@ contract SLAYVaultV2 is
      * @param controller The address of the controller
      */
     modifier onlyControllerOrOperator(address controller) {
-        if (_msgSender() != controller && !_isOperator[controller][_msgSender()]) {
+        address sender = _msgSender();
+        if (sender != controller && !_isOperator[controller][sender]) {
             revert NotControllerOrOperator();
         }
         _;
@@ -215,18 +216,19 @@ contract SLAYVaultV2 is
         override
         returns (uint256 requestId)
     {
+        address sender = _msgSender();
         // only non-zero shares can be requested to redeem
         if (shares == 0) {
             revert ZeroAmount();
         }
 
         // spend allowance if caller is not the owner AND not an operator
-        if (owner != _msgSender() && !_isOperator[owner][_msgSender()]) {
-            _spendAllowance(owner, _msgSender(), shares);
+        if (owner != sender && !_isOperator[owner][sender]) {
+            _spendAllowance(owner, sender, shares);
         }
 
         // if the controller is not the sender, check that the controller has msg.sender set as the operator
-        if (controller != _msgSender() && !_isOperator[controller][_msgSender()]) {
+        if (controller != sender && !_isOperator[controller][sender]) {
             revert NotControllerOrOperator();
         }
 
@@ -241,7 +243,7 @@ contract SLAYVaultV2 is
 
         // transfer shares from owner to the contract
         _transfer(owner, address(this), shares);
-        emit RedeemRequest(controller, owner, REQUEST_ID, _msgSender(), shares);
+        emit RedeemRequest(controller, owner, REQUEST_ID, sender, shares);
         return REQUEST_ID;
     }
 
@@ -280,8 +282,9 @@ contract SLAYVaultV2 is
      * @inheritdoc IERC7540Operator
      */
     function setOperator(address operator, bool approved) external override whenNotPaused returns (bool success) {
-        _isOperator[_msgSender()][operator] = approved;
-        emit OperatorSet(_msgSender(), operator, approved);
+        address sender = _msgSender();
+        _isOperator[sender][operator] = approved;
+        emit OperatorSet(sender, operator, approved);
         return true;
     }
 
