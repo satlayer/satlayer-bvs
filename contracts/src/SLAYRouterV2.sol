@@ -34,15 +34,7 @@ import {ISLAYRouterSlashingV2, SlashingRequestId} from "./interface/ISLAYRouterS
  *
  * @custom:oz-upgrades-from src/SLAYBase.sol:SLAYBase
  */
-contract SLAYRouterV2 is
-    Initializable,
-    UUPSUpgradeable,
-    OwnableUpgradeable,
-    PausableUpgradeable,
-    SLAYBase,
-    ISLAYRouterV2,
-    ISLAYRouterSlashingV2
-{
+contract SLAYRouterV2 is SLAYBase, ISLAYRouterV2, ISLAYRouterSlashingV2 {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
 

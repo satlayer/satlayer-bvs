@@ -19,14 +19,7 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
  *
  * @custom:oz-upgrades-from src/SLAYBase.sol:SLAYBase
  */
-contract SLAYRewardsV2 is
-    Initializable,
-    UUPSUpgradeable,
-    OwnableUpgradeable,
-    PausableUpgradeable,
-    SLAYBase,
-    ISLAYRewardsV2
-{
+contract SLAYRewardsV2 is SLAYBase, ISLAYRewardsV2 {
     using SafeERC20 for IERC20;
 
     /**

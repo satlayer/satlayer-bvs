@@ -23,14 +23,7 @@ import {ISLAYVaultFactoryV2} from "./interface/ISLAYVaultFactoryV2.sol";
  * It inherits from SLAYBase which provides basic functionality like initialization,
  * upgradeability, ownership, and pause/unpause functions.
  */
-contract SLAYVaultFactoryV2 is
-    Initializable,
-    UUPSUpgradeable,
-    OwnableUpgradeable,
-    PausableUpgradeable,
-    SLAYBase,
-    ISLAYVaultFactoryV2
-{
+contract SLAYVaultFactoryV2 is SLAYBase, ISLAYVaultFactoryV2 {
     /**
      * @dev The address of the UpgradeableBeacon that points to the SLAYVaultV2 implementation.
      * This is used when creating new vault instances via BeaconProxy.
