@@ -5,6 +5,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
 import {SLAYBase} from "./SLAYBase.sol";
 
@@ -29,7 +30,7 @@ import {ISLAYRouterSlashingV2, SlashingRequestId} from "./interface/ISLAYRouterS
  *
  * @custom:oz-upgrades-from src/SLAYBase.sol:SLAYBase
  */
-contract SLAYRouterV2 is SLAYBase, ISLAYRouterV2, ISLAYRouterSlashingV2 {
+contract SLAYRouterV2 is SLAYBase, ReentrancyGuardUpgradeable, ISLAYRouterV2, ISLAYRouterSlashingV2 {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
 
@@ -134,6 +135,17 @@ contract SLAYRouterV2 is SLAYBase, ISLAYRouterV2, ISLAYRouterSlashingV2 {
     }
 
     /**
+     * @dev Allows initialization of the contract without having SLAYBase initially initialized.
+     * This will run initialize from SLAYBase and then initialize2.
+     *
+     * @custom:oz-upgrades-validate-as-initializer
+     */
+    function initializeAll(address initialOwner) public {
+        initialize(initialOwner);
+        initialize2();
+    }
+
+    /**
      * @dev This function is called during the upgrade from SLAYBase to SLAYRouterV2.
      * It sets the default maximum number of vaults per operator to 10.
      *
@@ -141,6 +153,7 @@ contract SLAYRouterV2 is SLAYBase, ISLAYRouterV2, ISLAYRouterSlashingV2 {
      * it is protected by the `reinitializer` modifier.
      */
     function initialize2() public reinitializer(2) {
+        __ReentrancyGuard_init();
         _maxVaultsPerOperator = 10;
     }
 
@@ -273,7 +286,7 @@ contract SLAYRouterV2 is SLAYBase, ISLAYRouterV2, ISLAYRouterSlashingV2 {
     }
 
     /// @inheritdoc ISLAYRouterSlashingV2
-    function lockSlashing(bytes32 slashId) external override whenNotPaused onlyService(_msgSender()) {
+    function lockSlashing(bytes32 slashId) external override whenNotPaused onlyService(_msgSender()) nonReentrant {
         ISLAYRouterSlashingV2.Request storage request = _slashingRequests[slashId];
         // Only service that initiated the slash request can call this function.
         if (request.service != _msgSender()) {
@@ -294,6 +307,9 @@ contract SLAYRouterV2 is SLAYBase, ISLAYRouterV2, ISLAYRouterSlashingV2 {
         if (request.requestResolution > uint32(block.timestamp)) {
             revert ISLAYRouterSlashingV2.SlashingResolutionNotReached();
         }
+
+        // Update the slashing request status to locked state first
+        request.status = ISLAYRouterSlashingV2.Status.Locked;
 
         // Iterate through the vaults and call lockSlashing on each of them
         EnumerableSet.AddressSet storage operatorVaults = _operatorVaults[request.operator];
@@ -317,9 +333,6 @@ contract SLAYRouterV2 is SLAYBase, ISLAYRouterV2, ISLAYRouterSlashingV2 {
             }
         }
 
-        // update the slashing request status to Locked
-        request.status = ISLAYRouterSlashingV2.Status.Locked;
-
         emit ISLAYRouterSlashingV2.SlashingLocked(request.service, request.operator, slashId);
     }
 
@@ -334,7 +347,7 @@ contract SLAYRouterV2 is SLAYBase, ISLAYRouterV2, ISLAYRouterSlashingV2 {
     }
 
     /// @inheritdoc ISLAYRouterSlashingV2
-    function finalizeSlashing(bytes32 slashId) external override whenNotPaused onlyService(_msgSender()) {
+    function finalizeSlashing(bytes32 slashId) external override whenNotPaused onlyService(_msgSender()) nonReentrant {
         ISLAYRouterSlashingV2.Request storage request = _slashingRequests[slashId];
         // Only service that initiated the slash request can call this function.
         if (request.service != _msgSender()) {
@@ -351,6 +364,9 @@ contract SLAYRouterV2 is SLAYBase, ISLAYRouterV2, ISLAYRouterSlashingV2 {
             revert ISLAYRouterSlashingV2.GuardrailHaveNotApproved();
         }
 
+        // Update slash request to the finalized state first
+        request.status = ISLAYRouterSlashingV2.Status.Finalized;
+
         // get slash parameters
         ISLAYRegistryV2.SlashParameter memory slashParameter =
             REGISTRY.getSlashParameterAt(request.service, request.operator, request.timestamp);
@@ -364,8 +380,9 @@ contract SLAYRouterV2 is SLAYBase, ISLAYRouterV2, ISLAYRouterSlashingV2 {
             // Transfer the locked assets to the slashing destination
             SafeERC20.safeTransfer(IERC20(vault.asset()), slashParameter.destination, lockedAsset.amount);
 
-            // This is not strictly necessary as it won't ever be used again.
-            // But we delete this entry for gas refund.
+            // Deleting this locked asset entry is not strictly necessary for correctness,
+            // as it won't be accessed again. However, we delete it to benefit from the gas refund
+            // mechanism, since the storage slot is already warm.
             delete _lockedAssets[slashId][i];
 
             // vaultsCount is bounded to _maxVaultsPerOperator
@@ -378,9 +395,6 @@ contract SLAYRouterV2 is SLAYBase, ISLAYRouterV2, ISLAYRouterSlashingV2 {
 
         // remove pending slashing request id for the service and operator pair
         delete _pendingSlashingRequestIds[request.service][request.operator];
-
-        // update slash request to the finalized state
-        request.status = ISLAYRouterSlashingV2.Status.Finalized;
 
         emit ISLAYRouterSlashingV2.SlashingFinalized(
             request.service, request.operator, slashId, slashParameter.destination

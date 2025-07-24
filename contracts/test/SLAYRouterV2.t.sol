@@ -9,6 +9,7 @@ import {TestSuiteV2} from "./TestSuiteV2.sol";
 import {ISLAYRouterV2} from "../src/interface/ISLAYRouterV2.sol";
 import {ISLAYRouterSlashingV2} from "../src/interface/ISLAYRouterSlashingV2.sol";
 import {ISLAYRegistryV2} from "../src/interface/ISLAYRegistryV2.sol";
+import {UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 
 contract SLAYRouterV2Test is Test, TestSuiteV2 {
     function test_defaults() public view {
@@ -16,6 +17,18 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         assertEq(router.paused(), false);
         assertEq(router.getMaxVaultsPerOperator(), 10, "default should be 10");
         assertEq(router.isVaultWhitelisted(address(0)), false);
+    }
+
+    function test_initializers() public {
+        SLAYRouterV2 v2Impl = new SLAYRouterV2(ISLAYRegistryV2(makeAddr("registry")));
+        SLAYRouterV2 v2Proxy = SLAYRouterV2(
+            UnsafeUpgrades.deployUUPSProxy(address(v2Impl), abi.encodeCall(SLAYRouterV2.initializeAll, (address(this))))
+        );
+
+        assertEq(v2Proxy.owner(), address(this));
+        assertEq(v2Proxy.paused(), false);
+        assertEq(v2Proxy.getMaxVaultsPerOperator(), 10, "default should be 10");
+        assertEq(v2Proxy.isVaultWhitelisted(address(0)), false);
     }
 
     function test_paused() public {
