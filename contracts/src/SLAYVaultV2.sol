@@ -458,6 +458,7 @@ contract SLAYVaultV2 is
 
     /// @inheritdoc ISLAYVaultV2
     function lockSlashing(uint256 amount) external override whenNotPaused {
+        // Only router can call this function
         if (_msgSender() != address(ROUTER)) {
             revert NotRouter();
         }

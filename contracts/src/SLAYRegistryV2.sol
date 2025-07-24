@@ -140,6 +140,7 @@ contract SLAYRegistryV2 is SLAYBase, ISLAYRegistryV2 {
     /// @inheritdoc ISLAYRegistryV2
     function updateMetadata(string calldata uri, string calldata name) external override whenNotPaused {
         address provider = _msgSender();
+        // Only registered service or operator can update metadata.
         require(_services[provider].registered || _operators[provider].registered, "Not registered");
 
         emit MetadataUpdated(provider, uri, name);
