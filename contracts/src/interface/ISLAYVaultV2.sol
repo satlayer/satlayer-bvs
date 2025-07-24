@@ -79,13 +79,6 @@ interface ISLAYVaultV2 is IERC20Metadata, IERC4626, IERC7540Operator, IERC7540Re
     function delegated() external view returns (address);
 
     /**
-     * @notice Returns whether the vault is whitelisted on SLAYRouter
-     * @dev This is used to check if the vault is allowed to interact with the SLAYRouter
-     * @return True if the vault is whitelisted, false otherwise
-     */
-    function isWhitelisted() external view returns (bool);
-
-    /**
      * @notice Returns the amount of tokenized shares that are actively staked in the vault.
      * This amount will exclude any tokens that are pending redeem, pending withdrawal or donation of shares token.
      * For slashed amount, they are underlying assets, not shares, so they are not included in this amount.

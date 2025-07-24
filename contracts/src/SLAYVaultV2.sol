@@ -181,14 +181,9 @@ contract SLAYVaultV2 is
      * @dev Checks if the SLAYVault is whitelisted in the SLAYRouter and reverts if it is not
      */
     function _requireWhitelisted() internal view virtual {
-        if (!isWhitelisted()) {
+        if (!ROUTER.isVaultWhitelisted(address(this))) {
             revert ExpectedWhitelisted();
         }
-    }
-
-    /// @inheritdoc ISLAYVaultV2
-    function isWhitelisted() public view override returns (bool) {
-        return ROUTER.isVaultWhitelisted(address(this));
     }
 
     /// @inheritdoc ISLAYVaultV2
@@ -375,12 +370,12 @@ contract SLAYVaultV2 is
         if (shares < request.shares) {
             revert MustClaimAll();
         }
-        // prevent withdrawal of more shares than requested
+        // prevent redemption of more shares than requested
         if (shares > request.shares) {
             revert ExceededMaxRedeemable();
         }
 
-        // have to calculate conversion before burning
+        // must calculate conversion before burning
         assets = convertToAssets(shares);
 
         // burn, transfer and emit Withdraw event
