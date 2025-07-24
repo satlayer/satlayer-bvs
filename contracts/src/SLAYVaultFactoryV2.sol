@@ -22,6 +22,8 @@ import {ISLAYVaultFactoryV2} from "./interface/ISLAYVaultFactoryV2.sol";
  * This contract is responsible for deploying new vaults and managing their creation.
  * It inherits from SLAYBase which provides basic functionality like initialization,
  * upgradeability, ownership, and pause/unpause functions.
+ *
+ * @custom:oz-upgrades-from src/SLAYBase.sol:SLAYBase
  */
 contract SLAYVaultFactoryV2 is
     Initializable,
