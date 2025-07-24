@@ -86,7 +86,8 @@ contract SLAYVaultV2 is
      * @param controller The address of the controller
      */
     modifier onlyControllerOrOperator(address controller) {
-        if (_msgSender() != controller && !_isOperator[controller][_msgSender()]) {
+        address sender = _msgSender();
+        if (sender != controller && !_isOperator[controller][sender]) {
             revert NotControllerOrOperator();
         }
         _;
@@ -281,8 +282,9 @@ contract SLAYVaultV2 is
      * @inheritdoc IERC7540Operator
      */
     function setOperator(address operator, bool approved) external override whenNotPaused returns (bool success) {
-        _isOperator[_msgSender()][operator] = approved;
-        emit OperatorSet(_msgSender(), operator, approved);
+        address sender = _msgSender();
+        _isOperator[sender][operator] = approved;
+        emit OperatorSet(sender, operator, approved);
         return true;
     }
 
