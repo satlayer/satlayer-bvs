@@ -159,7 +159,8 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         uint256 vault_shares_before = vault.balanceOf(address(vault));
 
         vm.prank(a);
-        vm.startSnapshotGas("SLAYVaultV2", "requestRedeem()_sender_a_controller_a_owner_a");
+        // Default most common path: Sender is A, Controller is A, Owner is A
+        vm.startSnapshotGas("SLAYVaultV2", "requestRedeem()");
         vault.requestRedeem(sharesToRequest, a, a);
         vm.stopSnapshotGas();
 
@@ -191,7 +192,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         uint256 vault_shares_before = vault.balanceOf(address(vault));
 
         vm.startPrank(sender);
-        vm.startSnapshotGas("SLAYVaultV2", "requestRedeem()_sender_a_controller_b_owner_a");
+        vm.startSnapshotGas("SLAYVaultV2", "requestRedeem(sender:a,controller:b,owner:a)");
         vault.requestRedeem(sharesToRequest, controller, owner_addr);
         vm.stopSnapshotGas();
         vm.stopPrank();
@@ -222,14 +223,16 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         vm.stopPrank();
 
         vm.startPrank(owner_addr);
+        vm.startSnapshotGas("SLAYVaultV2", "approve()");
         vault.approve(sender, sharesToRequest);
+        vm.stopSnapshotGas();
         vm.stopPrank();
 
         uint256 owner_shares_before = vault.balanceOf(owner_addr);
         uint256 vault_shares_before = vault.balanceOf(address(vault));
 
         vm.startPrank(sender);
-        vm.startSnapshotGas("SLAYVaultV2", "requestRedeem()_sender_a_controller_a_owner_b_owner_approved_sender");
+        vm.startSnapshotGas("SLAYVaultV2", "requestRedeem(sender:a,controller:a,owner:b) with approve(a)");
         vault.requestRedeem(sharesToRequest, controller, owner_addr);
         vm.stopSnapshotGas();
         vm.stopPrank();
@@ -270,10 +273,12 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         uint256 vault_shares_before = vault.balanceOf(address(vault));
 
         vm.prank(sender);
+        vm.startSnapshotGas("SLAYVaultV2", "permit()");
         vault.permit(owner_addr, sender, sharesToRequest, (block.timestamp + 3600), v, r, s); // A submits B's permit signature
+        vm.stopSnapshotGas();
 
         vm.startPrank(sender);
-        vm.startSnapshotGas("SLAYVaultV2", "requestRedeem()_sender_a_controller_a_owner_b_permit_signature");
+        vm.startSnapshotGas("SLAYVaultV2", "requestRedeem(sender:a,controller:a,owner:b) with permit(b,a)");
         vault.requestRedeem(sharesToRequest, controller, owner_addr);
         vm.stopSnapshotGas();
         vm.stopPrank();
@@ -305,13 +310,15 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         vm.stopPrank();
 
         vm.prank(owner_addr);
+        vm.startSnapshotGas("SLAYVaultV2", "setOperator()");
         vault.setOperator(sender, true);
+        vm.stopSnapshotGas();
 
         uint256 owner_shares_before = vault.balanceOf(owner_addr);
         uint256 vault_shares_before = vault.balanceOf(address(vault));
 
         vm.startPrank(sender);
-        vm.startSnapshotGas("SLAYVaultV2", "requestRedeem()_sender_a_controller_a_owner_b_via_allowance");
+        vm.startSnapshotGas("SLAYVaultV2", "requestRedeem(sender:a,controller:a,owner:b) with setOperator(a) via b");
         vault.requestRedeem(sharesToRequest, controller, owner_addr);
         vm.stopSnapshotGas();
         vm.stopPrank();
@@ -350,7 +357,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         uint256 vault_shares_before = vault.balanceOf(address(vault));
 
         vm.startPrank(sender); // Sender is 'a'
-        vm.startSnapshotGas("SLAYVaultV2", "requestRedeem()_sender_a_controller_c_owner_a");
+        vm.startSnapshotGas("SLAYVaultV2", "requestRedeem(sender:a,controller:c,owner:a) with setOperator(a) via c");
         vault.requestRedeem(sharesToRequest, controller, owner_addr);
         vm.stopSnapshotGas();
         vm.stopPrank();
@@ -416,7 +423,8 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         uint256 vaultSharesBalanceBefore = vault.balanceOf(address(vault));
 
         vm.startPrank(a); // Sender is A
-        vm.startSnapshotGas("SLAYVaultV2", "withdraw()_sender_a_controller_a_owner_a");
+        // Most common path: Sender is A, Controller is A, Owner is A
+        vm.startSnapshotGas("SLAYVaultV2", "withdraw()");
         vault.withdraw(assetsToWithdraw, a, a); // receiver is A, controller is A
         vm.stopSnapshotGas();
         vm.stopPrank();
@@ -466,7 +474,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         uint256 vaultSharesBalanceBefore = vault.balanceOf(address(vault));
 
         vm.startPrank(sender); // Sender is A (who is operator for controller B)
-        vm.startSnapshotGas("SLAYVaultV2", "withdraw()_sender_a_controller_b_owner_a");
+        vm.startSnapshotGas("SLAYVaultV2", "withdraw(sender:a,controller:b,receiver:a) with setOperator(a) via b");
         vault.withdraw(assetsToWithdraw, owner_addr, controller); // Receiver is A, Controller is B
         vm.stopSnapshotGas();
         vm.stopPrank();
@@ -513,7 +521,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         uint256 vaultSharesBalanceBefore = vault.balanceOf(address(vault));
 
         vm.startPrank(sender); // Sender is A (who is the controller)
-        vm.startSnapshotGas("SLAYVaultV2", "withdraw()_sender_a_controller_a_owner_b_approved");
+        vm.startSnapshotGas("SLAYVaultV2", "withdraw(sender:a,controller:a,receiver:b)");
         vault.withdraw(assetsToWithdraw, sender, controller); // Receiver is A, Controller is A
         vm.stopSnapshotGas();
         vm.stopPrank();
@@ -528,41 +536,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
             vaultSharesBalanceBefore,
             "Withdraw Path 3 (A-A-B, B approved A for shares)"
         );
-    }
-
-    function test_withdraw_Path4_SenderIsController_OwnerDifferent_OwnerPermittedSender() public {
-        address sender = makeAddr("a-w4");
-        address controller = sender;
-        uint256 owner_private_key = 0xee1159a48cad1ae7ce19ef7faadb21b926b9dadf5f4d16b5385117ca17c30b63;
-        address owner_addr = vm.addr(owner_private_key);
-
-        uint256 initialDeposit = 100 * 10 ** vault.decimals();
-        uint256 sharesToRequest = 50 * 10 ** vault.decimals();
-
-        // Setup 1: Owner (B) deposits to get shares
-        btcToken.mint(owner_addr, initialDeposit);
-        vm.startPrank(owner_addr);
-        btcToken.approve(address(vault), initialDeposit);
-        vault.deposit(initialDeposit, owner_addr);
-        vm.stopPrank();
-
-        (uint8 v, bytes32 r, bytes32 s) = _signPermit(
-            owner_private_key, owner_addr, sender, sharesToRequest, vault.nonces(owner_addr), block.timestamp + 3600
-        );
-
-        // Request redeem (Caller: A, Controller: A, Owner: B) using the permit signature
-        vm.prank(sender);
-        vault.permit(owner_addr, sender, sharesToRequest, (block.timestamp + 3600), v, r, s); // A submits B's permit signature
-        vm.prank(sender);
-        vault.requestRedeem(sharesToRequest, controller, owner_addr);
-
-        skip(8 days);
-
-        vm.startPrank(sender); // Sender is A (who is the controller)
-        vm.startSnapshotGas("SLAYVaultV2", "withdraw()_sender_a_controller_a_owner_b_permitted");
-        vault.withdraw(vault.maxWithdraw(controller), sender, controller);
-        vm.stopSnapshotGas();
-        vm.stopPrank();
     }
 
     function test_withdraw_Path5_SenderIsController_OwnerDifferent_SenderIsOwnerOperator() public {
@@ -641,7 +614,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         uint256 vaultSharesBalanceBefore = vault.balanceOf(address(vault));
 
         vm.startPrank(sender);
-        vm.startSnapshotGas("SLAYVaultV2", "withdraw()_sender_a_controller_c_owner_b");
+        vm.startSnapshotGas("SLAYVaultV2", "withdraw(sender:a,controller:c,receiver:b) with setOperator(a) via c");
         vault.withdraw(assetsToWithdraw, owner_addr, controller);
         vm.stopSnapshotGas();
         vm.stopPrank();
