@@ -2,11 +2,6 @@
 pragma solidity ^0.8.0;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -34,15 +29,7 @@ import {ISLAYRouterSlashingV2, SlashingRequestId} from "./interface/ISLAYRouterS
  *
  * @custom:oz-upgrades-from src/SLAYBase.sol:SLAYBase
  */
-contract SLAYRouterV2 is
-    Initializable,
-    UUPSUpgradeable,
-    OwnableUpgradeable,
-    PausableUpgradeable,
-    SLAYBase,
-    ISLAYRouterV2,
-    ISLAYRouterSlashingV2
-{
+contract SLAYRouterV2 is SLAYBase, ISLAYRouterV2, ISLAYRouterSlashingV2 {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
 

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
@@ -22,7 +22,7 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
  * - SLAYRouter
  * - SLAYVaultFactory
  */
-contract SLAYBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
+contract SLAYBase is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable, PausableUpgradeable {
     /**
      * @dev Constructor that disables initializers to prevent the implementation contract from being initialized.
      * This is a security measure to ensure that the implementation contract itself cannot be used directly.
@@ -41,6 +41,7 @@ contract SLAYBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pausabl
      */
     function initialize(address initialOwner) public initializer {
         __Ownable_init(initialOwner);
+        __Ownable2Step_init();
         __UUPSUpgradeable_init();
         __Pausable_init();
     }

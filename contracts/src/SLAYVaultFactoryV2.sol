@@ -1,12 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
-
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
@@ -25,14 +20,7 @@ import {ISLAYVaultFactoryV2} from "./interface/ISLAYVaultFactoryV2.sol";
  *
  * @custom:oz-upgrades-from src/SLAYBase.sol:SLAYBase
  */
-contract SLAYVaultFactoryV2 is
-    Initializable,
-    UUPSUpgradeable,
-    OwnableUpgradeable,
-    PausableUpgradeable,
-    SLAYBase,
-    ISLAYVaultFactoryV2
-{
+contract SLAYVaultFactoryV2 is SLAYBase, ISLAYVaultFactoryV2 {
     /**
      * @dev The address of the UpgradeableBeacon that points to the SLAYVaultV2 implementation.
      * This is used when creating new vault instances via BeaconProxy.
