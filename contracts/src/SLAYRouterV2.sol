@@ -136,6 +136,9 @@ contract SLAYRouterV2 is SLAYBase, ISLAYRouterV2, ISLAYRouterSlashingV2 {
     /**
      * @dev This function is called during the upgrade from SLAYBase to SLAYRouterV2.
      * It sets the default maximum number of vaults per operator to 10.
+     *
+     * This function can only be called once (and MUST BE CALLED during upgrade),
+     * it is protected by the `reinitializer` modifier.
      */
     function initialize2() public reinitializer(2) {
         _maxVaultsPerOperator = 10;
