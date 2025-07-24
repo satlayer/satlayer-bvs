@@ -6,6 +6,7 @@ import "../src/SLAYVaultV2.sol";
 import "../src/SLAYVaultFactoryV2.sol";
 import {Test, console} from "forge-std/Test.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {TestSuiteV2} from "./TestSuiteV2.sol";
 import {ISLAYVaultFactoryV2} from "../src/interface/ISLAYVaultFactoryV2.sol";
 
