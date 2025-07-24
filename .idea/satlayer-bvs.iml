@@ -4,15 +4,15 @@
   <component name="NewModuleRootManager" inherit-compiler-output="true">
     <exclude-output />
     <content url="file://$MODULE_DIR$">
-      <sourceFolder url="file://$MODULE_DIR$/examples/squaring/contract/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/examples/squaring/contract/tests" isTestSource="true" />
-      <sourceFolder url="file://$MODULE_DIR$/examples/insurance/service/contract/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/examples/layerzero-dvn/src/bvs-contract/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/cw/insurance/service/contract/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/cw/layerzero-dvn/src/bvs-contract/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/cw/squaring/contract/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/cw/squaring/contract/tests" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/.turbo" />
-      <excludeFolder url="file://$MODULE_DIR$/examples/squaring/contract/target" />
-      <excludeFolder url="file://$MODULE_DIR$/examples/insurance/service/contract/target" />
-      <excludeFolder url="file://$MODULE_DIR$/examples/layerzero-dvn/src/bvs-contract/target" />
-      <excludeFolder url="file://$MODULE_DIR$/examples/layerzero-dvn/src/evm/out" />
+      <excludeFolder url="file://$MODULE_DIR$/examples/cw/insurance/service/contract/target" />
+      <excludeFolder url="file://$MODULE_DIR$/examples/cw/layerzero-dvn/src/bvs-contract/target" />
+      <excludeFolder url="file://$MODULE_DIR$/examples/cw/layerzero-dvn/src/evm/out" />
+      <excludeFolder url="file://$MODULE_DIR$/examples/cw/squaring/contract/target" />
       <excludePattern pattern=".turbo" />
       <excludePattern pattern="dist" />
       <excludePattern pattern="Cargo.lock" />
