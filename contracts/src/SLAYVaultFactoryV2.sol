@@ -86,7 +86,6 @@ contract SLAYVaultFactoryV2 is SLAYBase, ISLAYVaultFactoryV2 {
     function create(IERC20 asset, address operator, string memory name, string memory symbol)
         external
         override
-        whenNotPaused
         onlyOwner
         returns (SLAYVaultV2)
     {

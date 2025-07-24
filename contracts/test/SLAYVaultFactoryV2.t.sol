@@ -88,16 +88,18 @@ contract SLAYVaultFactoryV2Test is Test, TestSuiteV2 {
         vaultFactory.pause();
 
         // Try to create a vault when paused
-        vm.startPrank(operator);
+        vm.prank(operator);
         vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
         vaultFactory.create(underlying);
-        vm.stopPrank();
 
         // Try to create a vault with custom params when paused
-        vm.startPrank(owner);
+        vm.prank(operator);
         vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+        vaultFactory.create(underlying);
+
+        // You can still create a vault when owner
+        vm.prank(owner);
         vaultFactory.create(underlying, operator, "Custom Name", "Custom Symbol");
-        vm.stopPrank();
     }
 
     function test_create_whenPausedAndUnpaused() public {
