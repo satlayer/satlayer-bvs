@@ -181,14 +181,9 @@ contract SLAYVaultV2 is
      * @dev Checks if the SLAYVault is whitelisted in the SLAYRouter and reverts if it is not
      */
     function _requireWhitelisted() internal view virtual {
-        if (!isWhitelisted()) {
+        if (!ROUTER.isVaultWhitelisted(address(this))) {
             revert ExpectedWhitelisted();
         }
-    }
-
-    /// @inheritdoc ISLAYVaultV2
-    function isWhitelisted() public view override returns (bool) {
-        return ROUTER.isVaultWhitelisted(address(this));
     }
 
     /// @inheritdoc ISLAYVaultV2
