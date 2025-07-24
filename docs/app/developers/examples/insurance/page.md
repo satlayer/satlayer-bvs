@@ -1,1 +1,1 @@
-../../../../../examples/insurance/README.md
+../../../../../examples/cw/insurance/README.md
