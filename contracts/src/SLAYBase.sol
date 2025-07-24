@@ -14,13 +14,15 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
  * The reserved address (via proxies with this empty implementation) is later used to deploy
  * actual SLAY contracts with immutable references—enabling deployment of cyclically dependent contracts.
  *
- * IMPORTANT: Only ERC7201 storage layout is used in this contract.
+ * IMPORTANT: Only ERC7201 storage layout must be used in this contract.
  * DO NOT add any state variables as this is an empty implementation.
+ * NO COLLISIONS, NO GAPS HERE.
  *
  * Extended by:
  * - SLAYRegistry
  * - SLAYRouter
  * - SLAYVaultFactory
+ * - SLAYRewards
  */
 contract SLAYBase is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable, PausableUpgradeable {
     /**

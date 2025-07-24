@@ -21,6 +21,10 @@ import {Core} from "@openzeppelin/foundry-upgrades/internal/Core.sol";
 /// After which we can upgrade the proxies to the actual implementations.
 /// However, to ensure the safety of the deployment, we validate each implementation (just as the "safe" version does)
 /// to ensure the implementation is valid and does not contain any unsafe code.
+///
+/// IMPORTANT: The only difference between `UnsafeUpgrades.upgradeProxy` and `Upgrades.upgradeProxy` is
+/// that the former does not run `Core.validateUpgrade` before running deploy or upgrade.
+/// Hence `Core.validateUpgrade` is called manually in this script before each upgrade.
 contract SLAYDeployment is Script {
     Options public opts;
 

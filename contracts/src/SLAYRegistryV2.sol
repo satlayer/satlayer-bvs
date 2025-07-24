@@ -102,6 +102,9 @@ contract SLAYRegistryV2 is SLAYBase, ISLAYRegistryV2 {
      * This approach is cleaner and less prone to errors than using an offset.
      *
      * Also sets the default maximum active relationships to 5.
+     *
+     * This function can only be called once (and MUST BE CALLED during upgrade),
+     * it is protected by the `reinitializer` modifier.
      */
     function initialize2() public reinitializer(2) {
         // Push an empty slash parameter to the array to ensure that the first service can register with a valid ID.
