@@ -6,6 +6,7 @@ import {SLAYVaultV2} from "../src/SLAYVaultV2.sol";
 import {SLAYVaultFactoryV2} from "../src/SLAYVaultFactoryV2.sol";
 import {SLAYRouterV2} from "../src/SLAYRouterV2.sol";
 import {SLAYRegistryV2} from "../src/SLAYRegistryV2.sol";
+import {SLAYRewardsV2} from "../src/SLAYRewardsV2.sol";
 
 import {Script, console} from "forge-std/Script.sol";
 import {UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
@@ -24,31 +25,32 @@ contract SLAYDeployment is Script {
     Options public opts;
 
     function run() public virtual {
-        address owner = vm.getWallets()[0];
-        vm.startBroadcast(owner);
-        deploy(owner);
+        vm.startBroadcast();
+        deploy(msg.sender);
     }
 
     /// @dev Deploys the SatLayer Protocol core contracts.
     /// forge script SLAYDeployment --slow --broadcast --verify
-    /// forge script SLAYDeployment --rpc-url slaynet --slow --broadcast --verify
-    function deploy(address owner) public {
-        console.log("Owner:", owner);
+    function deploy(address initialOwner)
+        public
+        returns (SLAYRouterV2 router, SLAYRegistryV2 registry, SLAYVaultFactoryV2 vaultFactory, SLAYRewardsV2 rewards)
+    {
+        console.log("Initial Owner:", initialOwner);
 
         // Create the initial implementation contract and deploy the proxies for router and registry
         Core.validateImplementation("SLAYBase.sol:SLAYBase", opts);
         address baseImpl = address(new SLAYBase());
 
-        SLAYRouterV2 router =
-            SLAYRouterV2(UnsafeUpgrades.deployUUPSProxy(baseImpl, abi.encodeCall(SLAYBase.initialize, (owner))));
-        SLAYRegistryV2 registry =
-            SLAYRegistryV2(UnsafeUpgrades.deployUUPSProxy(baseImpl, abi.encodeCall(SLAYBase.initialize, (owner))));
-        SLAYVaultFactoryV2 vaultFactory =
-            SLAYVaultFactoryV2(UnsafeUpgrades.deployUUPSProxy(baseImpl, abi.encodeCall(SLAYBase.initialize, (owner))));
+        // We use the same SLAYBase for all contracts here.
+        bytes memory baseInit = abi.encodeCall(SLAYBase.initialize, (initialOwner));
+        router = SLAYRouterV2(UnsafeUpgrades.deployUUPSProxy(baseImpl, baseInit));
+        registry = SLAYRegistryV2(UnsafeUpgrades.deployUUPSProxy(baseImpl, baseInit));
+        vaultFactory = SLAYVaultFactoryV2(UnsafeUpgrades.deployUUPSProxy(baseImpl, baseInit));
+        rewards = SLAYRewardsV2(UnsafeUpgrades.deployUUPSProxy(baseImpl, baseInit));
 
         Core.validateImplementation("SLAYVaultV2.sol:SLAYVaultV2", opts);
         address vaultImpl = address(new SLAYVaultV2(router, registry));
-        address beacon = UnsafeUpgrades.deployBeacon(vaultImpl, owner);
+        address beacon = UnsafeUpgrades.deployBeacon(vaultImpl, initialOwner);
 
         Core.validateUpgrade("SLAYRouterV2.sol:SLAYRouterV2", opts);
         address routerImpl = address(new SLAYRouterV2(registry));
@@ -58,8 +60,12 @@ contract SLAYDeployment is Script {
         address registryImpl = address(new SLAYRegistryV2(router));
         UnsafeUpgrades.upgradeProxy(address(registry), registryImpl, abi.encodeCall(SLAYRegistryV2.initialize2, ()));
 
-        Core.validateImplementation("SLAYVaultFactoryV2.sol:SLAYVaultFactoryV2", opts);
+        Core.validateUpgrade("SLAYVaultFactoryV2.sol:SLAYVaultFactoryV2", opts);
         address vaultFactoryImpl = address(new SLAYVaultFactoryV2(beacon, registry));
         UnsafeUpgrades.upgradeProxy(address(vaultFactory), vaultFactoryImpl, "");
+
+        Core.validateUpgrade("SLAYRewardsV2.sol:SLAYRewardsV2", opts);
+        address rewardsImpl = address(new SLAYRewardsV2());
+        UnsafeUpgrades.upgradeProxy(address(rewards), rewardsImpl, "");
     }
 }
