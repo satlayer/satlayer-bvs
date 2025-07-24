@@ -164,3 +164,16 @@ jobs:
           if ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'skipped') || contains(needs.*.result, 'cancelled') }} ; then          
             exit 1
           fi
+
+  contracts_dry_run:
+    name: Contracts [dry-run]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      # Install OpenZeppelin Upgrades Core for Forge. This is missing if we use pnpm.
+      - run: npm install -g @openzeppelin/upgrades-core
+
+      - run: forge script SLAYDeployment
+        working-directory: ./contracts

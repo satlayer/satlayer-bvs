@@ -16,4 +16,4 @@ ignore = ["test/**/*"]
 slaynet = "${TENDERLY_RPC_URL}"
 
 [etherscan]
-slaynet = { key = "${TENDERLY_ACCESS_KEY}", chain = 83766589, url = "${TENDERLY_RPC_URL}/verify/etherscan" }
+slaynet = { chain = 83766589, key = "${TENDERLY_ACCESS_KEY}", url = "${TENDERLY_RPC_URL}/verify/etherscan" }
