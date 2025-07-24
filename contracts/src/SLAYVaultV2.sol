@@ -370,12 +370,12 @@ contract SLAYVaultV2 is
         if (shares < request.shares) {
             revert MustClaimAll();
         }
-        // prevent withdrawal of more shares than requested
+        // prevent redemption of more shares than requested
         if (shares > request.shares) {
             revert ExceededMaxRedeemable();
         }
 
-        // have to calculate conversion before burning
+        // must calculate conversion before burning
         assets = convertToAssets(shares);
 
         // burn, transfer and emit Withdraw event
