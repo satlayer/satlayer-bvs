@@ -122,9 +122,12 @@ interface ISLAYRewardsV2 {
 
     /**
      * @notice Distributes rewards from a service to earners using a Merkle tree.
+     * Although rewards are usually distributed by service, anybody can distribute rewards.
+     * This is not limited to the service itself to allow for flexibility in reward distribution.
+     *
      * @dev Service needs to ensure proper allowance is made for the contract to transfer tokens.
      * When the {amount} is 0, the function will essentially only update the Merkle root without any token transfer.
-     * Anybody can distribute rewards, this is not limited to the service itself to allow for flexibility in reward distribution.
+     * This allows for patching of existing distributions.
      *
      * @param token The address of the token to distribute.
      * @param amount The amount of tokens to distribute.
