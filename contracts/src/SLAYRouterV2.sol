@@ -403,7 +403,7 @@ contract SLAYRouterV2 is SLAYBase, ISLAYRouterV2, ISLAYRouterSlashingV2 {
 
     /// @inheritdoc ISLAYRouterSlashingV2
     function guardrailApprove(bytes32 slashId, bool approve) external override whenNotPaused {
-        // Only the guardrail can call this function
+        // Only guardrail can call this function
         if (_guardrail == address(0)) {
             revert ISLAYRouterSlashingV2.Unauthorized();
         }
