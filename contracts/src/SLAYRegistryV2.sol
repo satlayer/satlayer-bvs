@@ -146,7 +146,6 @@ contract SLAYRegistryV2 is SLAYBase, ISLAYRegistryV2 {
     function registerOperatorToService(address operator)
         external
         override
-        whenNotPaused
         onlyService(_msgSender())
         onlyOperator(operator)
     {
