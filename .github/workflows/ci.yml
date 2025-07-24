@@ -166,7 +166,7 @@ jobs:
           fi
 
   contracts_dry_run:
-    name: Contracts [dry-run]
+    name: SLAYDeployment [dry-run]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
