@@ -1,1 +1,1 @@
-../../../../../examples/layerzero-dvn/README.md
+../../../../../examples/cw/layerzero-dvn/README.md
