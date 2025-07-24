@@ -19,20 +19,20 @@ contract SLAYRewardsV2 is SLAYBase, ISLAYRewardsV2 {
     using SafeERC20 for IERC20;
 
     /**
-     * @dev Stores the merkle roots (previous and current) for each (service,token)'s distribution.
+     * @dev Stores the merkle roots (previous and current) for each (provider,token)'s distribution.
      * This is to prevent race conditions in the case of concurrent calls to distributeRewards and claimRewards.
      */
-    mapping(address service => mapping(address token => DistributionRoots merkleRoots)) private _distributionRoots;
+    mapping(address provider => mapping(address token => DistributionRoots merkleRoots)) private _distributionRoots;
 
     /**
-     * @dev Stores the rewards balances for each service and token received from {distributeRewards} function.
+     * @dev Stores the rewards balances for each provider and token received from {distributeRewards} function.
      */
-    mapping(address service => mapping(address token => uint256 balance)) private _balances;
+    mapping(address provider => mapping(address token => uint256 balance)) private _balances;
 
     /**
-     * @dev Stores the total claimed rewards for each earner for a specific service and token.
+     * @dev Stores the total claimed rewards for each earner for a specific provider and token.
      */
-    mapping(address service => mapping(address token => mapping(address earner => uint256 totalClaimed))) private
+    mapping(address provider => mapping(address token => mapping(address earner => uint256 totalClaimed))) private
         _claimedRewards;
 
     /**
@@ -50,18 +50,18 @@ contract SLAYRewardsV2 is SLAYBase, ISLAYRewardsV2 {
     }
 
     /// @inheritdoc ISLAYRewardsV2
-    function getDistributionRoots(address service, address token) external view returns (DistributionRoots memory) {
-        return _distributionRoots[service][token];
+    function getDistributionRoots(address provider, address token) external view returns (DistributionRoots memory) {
+        return _distributionRoots[provider][token];
     }
 
     /// @inheritdoc ISLAYRewardsV2
-    function getBalance(address service, address token) external view returns (uint256) {
-        return _balances[service][token];
+    function getBalance(address provider, address token) external view returns (uint256) {
+        return _balances[provider][token];
     }
 
     /// @inheritdoc ISLAYRewardsV2
-    function getClaimedRewards(address service, address token, address earner) external view returns (uint256) {
-        return _claimedRewards[service][token][earner];
+    function getClaimedRewards(address provider, address token, address earner) external view returns (uint256) {
+        return _claimedRewards[provider][token][earner];
     }
 
     /// @inheritdoc ISLAYRewardsV2
@@ -69,20 +69,21 @@ contract SLAYRewardsV2 is SLAYBase, ISLAYRewardsV2 {
         require(merkleRoot != bytes32(0), "Merkle root cannot be empty");
         require(token != address(0), "Token address cannot be zero");
 
+        address provider = _msgSender();
         // transfer the tokens from the caller to this contract if amount is greater than zero
         if (amount > 0) {
-            SafeERC20.safeTransferFrom(IERC20(token), _msgSender(), address(this), amount);
+            SafeERC20.safeTransferFrom(IERC20(token), provider, address(this), amount);
 
             // update internal state
-            _balances[_msgSender()][token] += amount;
+            _balances[provider][token] += amount;
         }
 
         // save distribution roots
-        DistributionRoots storage roots = _distributionRoots[_msgSender()][token];
+        DistributionRoots storage roots = _distributionRoots[provider][token];
         roots.prevRoot = roots.currentRoot;
         roots.currentRoot = merkleRoot;
 
-        emit RewardsDistributed(_msgSender(), token, amount, merkleRoot);
+        emit RewardsDistributed(provider, token, amount, merkleRoot);
     }
 
     /// @inheritdoc ISLAYRewardsV2
@@ -91,19 +92,19 @@ contract SLAYRewardsV2 is SLAYBase, ISLAYRewardsV2 {
         require(params.amount > 0, "Amount must be greater than zero");
         require(params.merkleRoot != bytes32(0), "Merkle root cannot be empty");
 
-        // check if merkle root either matches the current or previous root for the service
-        DistributionRoots storage roots = _distributionRoots[params.service][params.token];
+        // check if merkle root either matches the current or previous root for the provider
+        DistributionRoots storage roots = _distributionRoots[params.provider][params.token];
         if (params.merkleRoot != roots.currentRoot && params.merkleRoot != roots.prevRoot) {
-            revert InvalidMerkleRoot(params.service, params.token, params.merkleRoot);
+            revert InvalidMerkleRoot(params.provider, params.token, params.merkleRoot);
         }
 
         address earner = _msgSender();
 
-        uint256 claimedAmount = _claimedRewards[params.service][params.token][earner];
+        uint256 claimedAmount = _claimedRewards[params.provider][params.token][earner];
 
         // check that amount is more than claimed amount
         if (params.amount <= claimedAmount) {
-            revert AmountAlreadyClaimed(params.service, params.token, earner, params.amount);
+            revert AmountAlreadyClaimed(params.provider, params.token, earner, params.amount);
         }
 
         uint256 amountToClaim;
@@ -113,10 +114,10 @@ contract SLAYRewardsV2 is SLAYBase, ISLAYRewardsV2 {
             amountToClaim = params.amount - claimedAmount;
         }
 
-        // check if the service has enough balance to cover the claim
-        uint256 serviceBalance = _balances[params.service][params.token];
-        if (serviceBalance < amountToClaim) {
-            revert InsufficientBalance({service: params.service, token: params.token});
+        // check if the provider has enough balance to cover the claim
+        uint256 providerBalance = _balances[params.provider][params.token];
+        if (providerBalance < amountToClaim) {
+            revert InsufficientBalance({provider: params.provider, token: params.token});
         }
 
         // verify the Merkle proof
@@ -128,19 +129,19 @@ contract SLAYRewardsV2 is SLAYBase, ISLAYRewardsV2 {
             revert InvalidMerkleProof();
         }
 
-        // serviceBalance >= amountToClaim is asserted above
+        // providerBalance >= amountToClaim is asserted above
         unchecked {
-            // reduce (service,token) balance.
-            _balances[params.service][params.token] = serviceBalance - amountToClaim;
+            // reduce (provider,token) balance.
+            _balances[params.provider][params.token] = providerBalance - amountToClaim;
         }
 
-        // set the claimed rewards for the (service, token, earner) mapping to params.amount
-        _claimedRewards[params.service][params.token][earner] = params.amount;
+        // set the claimed rewards for the (provider, token, earner) mapping to params.amount
+        _claimedRewards[params.provider][params.token][earner] = params.amount;
 
         // transfer the tokens to the recipient
         SafeERC20.safeTransfer(IERC20(params.token), params.recipient, amountToClaim);
 
-        emit RewardsClaimed(params.service, params.token, earner, params.recipient, amountToClaim, params.merkleRoot);
+        emit RewardsClaimed(params.provider, params.token, earner, params.recipient, amountToClaim, params.merkleRoot);
     }
 
     /**
@@ -173,7 +174,7 @@ contract SLAYRewardsV2 is SLAYBase, ISLAYRewardsV2 {
      *
      * The earner and amount are converted to strings and then hashed to ensure that it conform with the tree generation code that is chain-agnostic.
      * This will also allow future expansion into multi control plane claiming, where the earner might not be an evm address.
-     * The earner is represented as a checksum hex string to ensure that the address is in a consistent format with the rewards distribution file submitted by the service.
+     * The earner is represented as a checksum hex string to ensure that the address is in a consistent format with the rewards distribution file submitted by the provider.
      *
      * @param earner The address of the earner.
      * @param amount The amount associated with the earner.
