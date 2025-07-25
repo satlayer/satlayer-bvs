@@ -37,7 +37,7 @@ import {ISLAYVaultV2} from "./interface/ISLAYVaultV2.sol";
  *
  * WARNING: This contract does not support non-standard ERC20 tokens. Assets that do not conform to the ERC20 standard,
  * might lead to unexpected behavior or loss of funds. For example, tokens with fee-on-transfer mechanism are non-compliant.
- * Thus, vault with non-standard asset will be blacklisted from the SLAYRouter.
+ * Thus, vault with non-standard asset will NOT be whitelisted in the SLAYRouter.
  */
 contract SLAYVaultV2 is
     Initializable,
@@ -399,10 +399,10 @@ contract SLAYVaultV2 is
         // remove the request from pending redemption
         delete _pendingRedemption[controller];
 
-        // burn shares stored in the contract
+        // Burn shares stored in the contract first
         _burn(address(this), shares);
 
-        // transfer the assets to the receiver
+        // Transfer the assets to the receiver after
         SafeERC20.safeTransfer(IERC20(asset()), receiver, assets);
 
         emit Withdraw(caller, receiver, controller, assets, shares);
