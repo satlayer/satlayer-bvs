@@ -376,14 +376,11 @@ contract SLAYRouterV2 is SLAYBase, ReentrancyGuardUpgradeable, ISLAYRouterV2, IS
         for (uint256 i = 0; i < lockedAssets.length;) {
             ISLAYRouterSlashingV2.LockedAssets storage lockedAsset = lockedAssets[i];
             ISLAYVaultV2 vault = ISLAYVaultV2(lockedAsset.vault);
+            uint256 amount = lockedAsset.amount;
+            delete lockedAssets[i];
 
             // Transfer the locked assets to the slashing destination
-            SafeERC20.safeTransfer(IERC20(vault.asset()), slashParameter.destination, lockedAsset.amount);
-
-            // Deleting this locked asset entry is not strictly necessary for correctness,
-            // as it won't be accessed again. However, we delete it to benefit from the gas refund
-            // mechanism, since the storage slot is already warm.
-            delete lockedAssets[i];
+            SafeERC20.safeTransfer(IERC20(vault.asset()), slashParameter.destination, amount);
 
             // vaultsCount is bounded to _maxVaultsPerOperator
             unchecked {
