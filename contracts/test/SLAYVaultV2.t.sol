@@ -1451,4 +1451,31 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         vault.redeem(depositAmount + 1, staker, staker);
         vm.stopPrank();
     }
+
+    function test_redeem_NotControllerOrOperator() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        vm.startPrank(owner);
+        router.setVaultWhitelist(address(vault), true);
+        vm.stopPrank();
+
+        address staker = makeAddr("Staker");
+        uint256 depositAmount = 100 * 10 ** underlying.decimals();
+
+        underlying.mint(staker, depositAmount);
+
+        vm.startPrank(staker);
+        underlying.approve(address(vault), type(uint256).max);
+        vault.deposit(depositAmount, staker);
+
+        // Request redeem
+        vault.requestRedeem(depositAmount, staker, staker);
+
+        // Fast forward to after withdrawal delay
+        skip(7 days);
+
+        vm.expectRevert(ISLAYVaultV2.NotControllerOrOperator.selector);
+        vault.redeem(depositAmount, makeAddr("receiver"), vm.randomAddress());
+    }
 }
