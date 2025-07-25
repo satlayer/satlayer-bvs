@@ -21,14 +21,14 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
     function test_initializers() public {
         SLAYRouterV2 v2Impl = new SLAYRouterV2(ISLAYRegistryV2(makeAddr("registry")));
-        SLAYRouterV2 v2Proxy = SLAYRouterV2(
+        SLAYRouterV2 v2Router = SLAYRouterV2(
             UnsafeUpgrades.deployUUPSProxy(address(v2Impl), abi.encodeCall(SLAYRouterV2.initializeAll, (address(this))))
         );
 
-        assertEq(v2Proxy.owner(), address(this));
-        assertEq(v2Proxy.paused(), false);
-        assertEq(v2Proxy.getMaxVaultsPerOperator(), 10, "default should be 10");
-        assertEq(v2Proxy.isVaultWhitelisted(address(0)), false);
+        assertEq(v2Router.owner(), address(this));
+        assertEq(v2Router.paused(), false);
+        assertEq(v2Router.getMaxVaultsPerOperator(), 10, "default should be 10");
+        assertEq(v2Router.isVaultWhitelisted(address(0)), false);
     }
 
     function test_paused() public {

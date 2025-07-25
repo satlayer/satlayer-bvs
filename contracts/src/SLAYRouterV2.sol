@@ -383,7 +383,7 @@ contract SLAYRouterV2 is SLAYBase, ReentrancyGuardUpgradeable, ISLAYRouterV2, IS
             // Deleting this locked asset entry is not strictly necessary for correctness,
             // as it won't be accessed again. However, we delete it to benefit from the gas refund
             // mechanism, since the storage slot is already warm.
-            delete _lockedAssets[slashId][i];
+            delete lockedAssets[i];
 
             // vaultsCount is bounded to _maxVaultsPerOperator
             unchecked {
