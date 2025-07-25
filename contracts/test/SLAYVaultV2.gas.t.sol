@@ -123,7 +123,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         uint256 ownerSharesBefore,
         uint256 vaultSharesBefore,
         string memory message
-    ) internal {
+    ) internal view {
         assertEq(
             vault.balanceOf(owner_addr),
             ownerSharesBefore - sharesToRequest,
@@ -383,7 +383,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         uint256 receiverAssetBalanceBefore,
         uint256 vaultSharesBalanceBefore,
         string memory message
-    ) internal {
+    ) internal view {
         assertEq(
             underlying.balanceOf(receiver),
             receiverAssetBalanceBefore + expectedAssetsReceived,
