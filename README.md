@@ -60,11 +60,15 @@ pnpm install
 ### Project Layout
 
 ```txt
+├── contracts/                Solidity
+│   └── src/                  <- SatLayer EVM contracts
 ├── crates/                   Rust
 │   ├── bvs-*                 <- SatLayer CosmWasm contracts
 │   └── *                     <- Other rust crates
-├── modules/                  Go
-├── packages/                 <- JavaScript, Solidity, etc.
+├── docs/                     Project docs at build.satlayer.xyz
+├── examples/                 Example and kitchen sink projects
+├── modules/                  Go SDK
+├── packages/                 JavaScript SDK
 ├── README.md
 └── turbo.json                <- Turbo configuration (monorepo task runner)
 ```
@@ -82,7 +86,7 @@ In practice, this means organizing functionality by features or responsibilities
 For instance, a feature that touches multiple languages or modules should be treated as a single “concern,”
 so that related logic is in one place and not scattered across repos.
 
-### Why use Turbo, PNPM for a Rust/Go project?
+### Why use Turbo, PNPM for a Rust/Go/Solidity project?
 
 Although the core of this monorepo is Rust and Go, we’re ultimately exporting libraries,
 SDKs, and user-facing code that often revolves around JavaScript.
