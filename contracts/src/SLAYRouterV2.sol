@@ -304,12 +304,15 @@ contract SLAYRouterV2 is SLAYBase, ISLAYRouterV2, ISLAYRouterSlashingV2 {
 
             // calculate the slash amount from mbips
             uint256 slashAmount = Math.mulDiv(vault.totalAssets(), request.mbips, 10_000_000);
+            if (slashAmount != 0) {
+                // Call the lockSlashing function on the vault
+                vault.lockSlashing(slashAmount);
 
-            // Call the lockSlashing function on the vault
-            vault.lockSlashing(slashAmount);
-
-            // Store the locked assets in the router for further processing
-            _lockedAssets[slashId].push(ISLAYRouterSlashingV2.LockedAssets({amount: slashAmount, vault: vaultAddress}));
+                // Store the locked assets in the router for further processing
+                _lockedAssets[slashId].push(
+                    ISLAYRouterSlashingV2.LockedAssets({amount: slashAmount, vault: vaultAddress})
+                );
+            }
 
             // vaultsCount is bounded to _maxVaultsPerOperator
             unchecked {

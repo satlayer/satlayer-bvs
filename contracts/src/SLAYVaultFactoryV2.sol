@@ -90,6 +90,7 @@ contract SLAYVaultFactoryV2 is SLAYBase, ISLAYVaultFactoryV2 {
         returns (SLAYVaultV2)
     {
         _checkOperator(operator);
+        // asset, operator, name, symbol will be checked by SLAYVaultV2.initialize
         bytes memory data = abi.encodeCall(SLAYVaultV2.initialize, (asset, operator, name, symbol));
         BeaconProxy proxy = new BeaconProxy(BEACON, data);
         return SLAYVaultV2(address(proxy));

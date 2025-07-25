@@ -158,6 +158,7 @@ interface ISLAYRegistryV2 {
      * @dev This function can be called by both services and operators.
      * Emits a `MetadataUpdated` event with the new URI and name.
      * Name and URI are not validated or stored on-chain.
+     * Non-compliant uri or name will not affect the REGISTRY, given its offchain uses.
      *
      * @param uri URI of the provider's project to display in the UI
      * @param name Name of the provider's project to display in the UI

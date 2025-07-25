@@ -333,6 +333,7 @@ contract SLAYRegistryV2 is SLAYBase, ISLAYRegistryV2 {
     function approveSlashingFor(address service) external override onlyOperator(_msgSender()) whenNotPaused {
         address operator = _msgSender();
         RelationshipV2.Object memory obj = _getRelationshipObject(service, operator);
+        // don't need onlyService(service) above since it can only be Active if it's registered.
         require(obj.status == RelationshipV2.Status.Active, "Relationship not active");
 
         uint32 slashParameterId = _services[service].slashParameterId;

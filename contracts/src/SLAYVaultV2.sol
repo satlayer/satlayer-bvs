@@ -138,6 +138,8 @@ contract SLAYVaultV2 is
         public
         initializer
     {
+        require(delegated_ != address(0x0), "Delegated is not a valid account");
+
         __ERC20_init(name_, symbol_);
         __ERC4626_init(asset_);
         __ERC20Permit_init(name_);
@@ -211,6 +213,10 @@ contract SLAYVaultV2 is
     //////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IERC7540Redeem
+    /// @notice The controller is the address that will be able to claim the redemption request.
+    /// They take ownership of the shares and can transfer to any address during withdrawal.
+    /// Only give access to controller that are trusted by the msg.sender (or set it to msg.sender).
+    /// Likewise, setting it to a random address or (0x0) is equivalent to "burning" it.
     function requestRedeem(uint256 shares, address controller, address owner)
         public
         override
@@ -282,6 +288,8 @@ contract SLAYVaultV2 is
      * @inheritdoc IERC7540Operator
      */
     function setOperator(address operator, bool approved) external override whenNotPaused returns (bool success) {
+        require(operator != address(0x0), "Operator is not a valid account");
+
         address sender = _msgSender();
         _isOperator[sender][operator] = approved;
         emit OperatorSet(sender, operator, approved);
