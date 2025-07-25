@@ -72,9 +72,14 @@ contract SLAYRewardsV2 is SLAYBase, ISLAYRewardsV2 {
         address provider = _msgSender();
         // transfer the tokens from the caller to this contract if amount is greater than zero
         if (amount > 0) {
+            // Similar to ERC4626 implementation:
+            // If asset() is ERC-777, `transferFrom` can trigger a reentrancy BEFORE the transfer happens through the
+            // `tokensToSend` hook. On the other hand, the `tokenReceived` hook, that is triggered after the transfer,
+            // which is assumed not malicious.
             SafeERC20.safeTransferFrom(IERC20(token), provider, address(this), amount);
 
-            // update internal state
+            // Hence, we need to do the transfer before we += so that any reentrancy would happen before the
+            // assets are transferred and before the shares are added.
             _balances[provider][token] += amount;
         }
 
@@ -138,7 +143,8 @@ contract SLAYRewardsV2 is SLAYBase, ISLAYRewardsV2 {
         // set the claimed rewards for the (provider, token, earner) mapping to params.amount
         _claimedRewards[params.provider][params.token][earner] = params.amount;
 
-        // transfer the tokens to the recipient
+        // Transfer after the burn so that any reentrancy would happen after the
+        // shares are burned and after the assets are transferred.
         SafeERC20.safeTransfer(IERC20(params.token), params.recipient, amountToClaim);
 
         emit RewardsClaimed(params.provider, params.token, earner, params.recipient, amountToClaim, params.merkleRoot);

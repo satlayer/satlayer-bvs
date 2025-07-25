@@ -7,7 +7,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {MerkleProof} from "../src/MerkleProof.sol";
 
 contract MerkleProofTest is Test {
-    function test_verify_bbn() public {
+    function test_verify_bbn() public pure {
         bytes32 leaf = keccak256(
             abi.encodePacked(
                 keccak256(abi.encodePacked("bbn1eywhap4hwzd3lpwee4hgt2rh0rjlsq6dqck894100000000000000000"))
@@ -22,7 +22,7 @@ contract MerkleProofTest is Test {
         assertEq(MerkleProof.verify(proof, root, leaf, 1, 2), true);
     }
 
-    function test_verify_evm() public {
+    function test_verify_evm() public pure {
         bytes32 leaf = keccak256(
             abi.encodePacked(
                 keccak256(abi.encodePacked("0x86d6Fda2f439537da03a5b76D5aE26412F4c4235200000000000000000"))
@@ -39,7 +39,7 @@ contract MerkleProofTest is Test {
         assertEq(MerkleProof.verify(proof, root, leaf, 3, 5), true);
     }
 
-    function test_verify_complex() public {
+    function test_verify_complex() public pure {
         bytes32 leaf = keccak256(
             abi.encodePacked(keccak256(abi.encodePacked("bbn1j8k7l6m5n4o3p2q1r0s9t8u7v6w5x4y3z2a1b600000000000000000")))
         );
