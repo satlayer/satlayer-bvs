@@ -2,18 +2,12 @@
 pragma solidity ^0.8.0;
 
 import {SLAYDeployment} from "./Deployment.s.sol";
-import {Core} from "@openzeppelin/foundry-upgrades/internal/Core.sol";
-import {Options} from "@openzeppelin/foundry-upgrades/Options.sol";
 import {ISLAYRegistryV2} from "../src/interface/ISLAYRegistryV2.sol";
-import {SLAYBase} from "../src/SLAYBase.sol";
 import {SLAYRegistryV2} from "../src/SLAYRegistryV2.sol";
 import {SLAYRewardsV2} from "../src/SLAYRewardsV2.sol";
 
 import {SLAYRouterV2} from "../src/SLAYRouterV2.sol";
 import {SLAYVaultFactoryV2} from "../src/SLAYVaultFactoryV2.sol";
-import {SLAYVaultV2} from "../src/SLAYVaultV2.sol";
-import {Script, console} from "forge-std/Script.sol";
-import {UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";

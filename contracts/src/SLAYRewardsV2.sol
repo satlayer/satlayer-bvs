@@ -8,7 +8,6 @@ import {SLAYBase} from "./SLAYBase.sol";
 import {MerkleProof} from "./MerkleProof.sol";
 import {ISLAYRewardsV2} from "./interface/ISLAYRewardsV2.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 
 /**
  * @title Rewards contract
