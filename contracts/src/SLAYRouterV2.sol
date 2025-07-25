@@ -136,12 +136,13 @@ contract SLAYRouterV2 is SLAYBase, ReentrancyGuardUpgradeable, ISLAYRouterV2, IS
 
     /**
      * @dev Allows initialization of the contract without having SLAYBase initially initialized.
-     * This will run initialize from SLAYBase and then initialize2.
+     * This will run initialize from SLAYBase and then initialize2, if any initialization were previously done,
+     * it will revert with an error using the `initializer` modifier/protection.
      *
      * @custom:oz-upgrades-validate-as-initializer
      */
     function initializeAll(address initialOwner) public {
-        initialize(initialOwner);
+        SLAYBase.initialize(initialOwner);
         initialize2();
     }
 
