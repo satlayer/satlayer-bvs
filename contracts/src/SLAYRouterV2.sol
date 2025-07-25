@@ -364,6 +364,8 @@ contract SLAYRouterV2 is SLAYBase, ISLAYRouterV2, ISLAYRouterSlashingV2 {
             // Transfer the locked assets to the slashing destination
             SafeERC20.safeTransfer(IERC20(vault.asset()), slashParameter.destination, lockedAsset.amount);
 
+            // This is not strictly necessary as it won't ever be used again.
+            // But we delete this entry for gas refund.
             delete _lockedAssets[slashId][i];
 
             // vaultsCount is bounded to _maxVaultsPerOperator

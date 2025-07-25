@@ -156,7 +156,7 @@ contract SLAYRewardsV2Test is Test, TestSuiteV2 {
 
         // create a claimable proof for the first earner
         ISLAYRewardsV2.ClaimableRewardProof memory claimRewardsParams = ISLAYRewardsV2.ClaimableRewardProof({
-            service: service,
+            provider: service,
             token: address(rewardToken),
             amount: 2_000_000_000 * rewardTokenMinorUnit, // 2 billion WBTC,
             recipient: earner,
@@ -214,7 +214,7 @@ contract SLAYRewardsV2Test is Test, TestSuiteV2 {
 
         // create a claimable proof for the first earner with an empty merkle root
         ISLAYRewardsV2.ClaimableRewardProof memory claimRewardsParams = ISLAYRewardsV2.ClaimableRewardProof({
-            service: service,
+            provider: service,
             token: address(rewardToken),
             amount: 2_000_000_000 * rewardTokenMinorUnit, // 2 billion WBTC,
             recipient: earner,
@@ -262,7 +262,7 @@ contract SLAYRewardsV2Test is Test, TestSuiteV2 {
 
         // create a claimable proof for the earner
         ISLAYRewardsV2.ClaimableRewardProof memory claimRewardsParams = ISLAYRewardsV2.ClaimableRewardProof({
-            service: service,
+            provider: service,
             token: address(rewardToken),
             amount: 2_000_000_000 * rewardTokenMinorUnit, // 2 billion WBTC,
             recipient: earner,
@@ -371,7 +371,7 @@ contract SLAYRewardsV2Test is Test, TestSuiteV2 {
         proof1[0] = bytes32(0xfcea6c7ebfa548d53603d8c1297ca2b50965faf289892fa72221569a59c64a22);
         proof1[1] = bytes32(0x40da4a5e672f95c4271b7d47b118de0d9a524bae94c57489eaff4c4b27cd4e71);
         ISLAYRewardsV2.ClaimableRewardProof memory claimRewardsParams1 = ISLAYRewardsV2.ClaimableRewardProof({
-            service: service,
+            provider: service,
             token: address(rewardToken),
             amount: 1_000_000_000 * rewardTokenMinorUnit, // 1 billion WBTC
             recipient: tl_vars.earner1,
@@ -441,7 +441,7 @@ contract SLAYRewardsV2Test is Test, TestSuiteV2 {
         proof2[0] = bytes32(0x2ca7299d66e56c05cddd0e38699dc218b9e2ee1ea55d4f19837f8fb82dbd81cb);
         proof2[1] = bytes32(0x40da4a5e672f95c4271b7d47b118de0d9a524bae94c57489eaff4c4b27cd4e71);
         ISLAYRewardsV2.ClaimableRewardProof memory claimRewardsParams2 = ISLAYRewardsV2.ClaimableRewardProof({
-            service: service,
+            provider: service,
             token: address(rewardToken),
             amount: 3_000_000_000 * rewardTokenMinorUnit, // 3 billion WBTC
             recipient: tl_vars.earner2,
@@ -475,7 +475,7 @@ contract SLAYRewardsV2Test is Test, TestSuiteV2 {
         proof3[0] = bytes32(0x0000000000000000000000000000000000000000000000000000000000000000);
         proof3[1] = bytes32(0xbb394d2efc15e45004f10f3c815fb5cf9870aabc0b064b4b23f8861ad2f3cfed);
         ISLAYRewardsV2.ClaimableRewardProof memory claimRewardsParams3 = ISLAYRewardsV2.ClaimableRewardProof({
-            service: service,
+            provider: service,
             token: address(rewardToken),
             amount: 6_000_000_000 * rewardTokenMinorUnit, // 6 billion WBTC
             recipient: tl_vars.earner3,
@@ -509,7 +509,7 @@ contract SLAYRewardsV2Test is Test, TestSuiteV2 {
         proof4[0] = bytes32(0x33e292a8b1a6b8db8f87780db5cbd57234f81daafa95077db68d6edef27cbfdc);
         proof4[1] = bytes32(0x981a103b03f593ecae5fde2836141dc43becb1e7a758b2e0609e0f91b204d543);
         ISLAYRewardsV2.ClaimableRewardProof memory claimRewardsParams4 = ISLAYRewardsV2.ClaimableRewardProof({
-            service: service,
+            provider: service,
             token: address(rewardToken),
             amount: 1_500_000_000 * rewardTokenMinorUnit, // 1.5 billion WBTC
             recipient: tl_vars.earner1,
