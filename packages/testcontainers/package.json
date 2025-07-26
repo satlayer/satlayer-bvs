@@ -42,6 +42,6 @@
     "@satlayer/bvs-vault-router": "workspace:*",
     "@satlayer/cosmwasm-schema": "workspace:*",
     "testcontainers": "^11.4.0",
-    "viem": "^2.33.0"
+    "viem": "^2.33.1"
   }
 }
