@@ -443,9 +443,10 @@ contract SLAYRegistryV2 is SLAYBase, ISLAYRegistryV2 {
     /// @inheritdoc ISLAYRegistryV2
     function setMaxActiveRelationships(uint8 max) external override onlyOwner {
         require(max > 0, "Max active relationships must be greater than 0");
-        require(max > _maxActiveRelationships, "Max active relationships must be greater than current");
+        uint8 oldMax = _maxActiveRelationships;
+        require(max > oldMax, "Max active relationships must be greater than current");
         _maxActiveRelationships = max;
-        emit MaxActiveRelationshipsUpdated(max);
+        emit MaxActiveRelationshipsUpdated(oldMax, max);
     }
 
     /// @inheritdoc ISLAYRegistryV2

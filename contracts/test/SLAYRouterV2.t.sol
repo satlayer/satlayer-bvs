@@ -174,6 +174,8 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
     function test_setMaxVaultsPerOperator() public {
         vm.prank(owner);
+        vm.expectEmit();
+        emit ISLAYRouterV2.MaxVaultsPerOperatorUpdated(10, 20);
         router.setMaxVaultsPerOperator(20);
         assertEq(router.getMaxVaultsPerOperator(), 20);
 
@@ -756,6 +758,8 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         // Guardrail votes on the slashing request
         address guardrail = makeAddr("Guardrail");
         vm.prank(owner);
+        vm.expectEmit();
+        emit ISLAYRouterV2.GuardrailUpdated(address(0), guardrail);
         router.setGuardrail(guardrail);
         vm.prank(guardrail);
         vm.expectEmit();
@@ -1013,6 +1017,8 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         // owner sets the guardrail
         vm.prank(owner);
+        vm.expectEmit();
+        emit ISLAYRouterV2.GuardrailUpdated(address(0), guardrail);
         router.setGuardrail(guardrail);
 
         // Revert when non-guardrail tries to confirm slashing
