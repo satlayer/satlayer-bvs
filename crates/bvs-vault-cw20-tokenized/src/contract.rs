@@ -97,10 +97,9 @@ pub fn execute(
     }
 }
 
-/// cw20 compliant messages are passed to the `cw20-base` contract.
-/// Except for the `Mint`, `Burn` and `BurnFrom` messages.
-/// The only time receipt token total supply should be changed is through staking and unstaking
-/// More precisely, only through - deposit_for and withdraw_to and redeem_withdrawal_to
+/// CW20 messages (except for `Mint`, `Burn` and `BurnFrom`) are passed to the `cw20-base` contract.
+/// The token total supply should be changed is through staking and unstaking.
+/// and only through `deposit_for` and `redeem_withdrawal_to` messages.
 mod receipt_cw20_execute {
     use cosmwasm_std::{Addr, StdError, StdResult, Uint128};
     use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
