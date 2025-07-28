@@ -165,8 +165,8 @@ contract SLAYRouterV2 is SLAYBase, ReentrancyGuardUpgradeable, ISLAYRouterV2, IS
 
     /// @inheritdoc ISLAYRouterV2
     function setMaxVaultsPerOperator(uint8 count) external override onlyOwner {
-        require(count > _maxVaultsPerOperator, "Must be greater than current");
         uint8 oldCount = _maxVaultsPerOperator;
+        require(count > oldCount, "Must be greater than current");
         _maxVaultsPerOperator = count;
         emit MaxVaultsPerOperatorUpdated(oldCount, count);
     }
