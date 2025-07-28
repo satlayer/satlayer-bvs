@@ -785,7 +785,7 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         // update the max active relationships to 6
         vm.prank(owner);
         vm.expectEmit();
-        emit ISLAYRegistryV2.MaxActiveRelationshipsUpdated(6);
+        emit ISLAYRegistryV2.MaxActiveRelationshipsUpdated(5, 6);
         registry.setMaxActiveRelationships(6);
 
         assertEq(registry.getMaxActiveRelationships(), 6, "Max active relationships should be updated");

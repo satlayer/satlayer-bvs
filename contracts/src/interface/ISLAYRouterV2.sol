@@ -19,6 +19,20 @@ interface ISLAYRouterV2 {
      */
     event VaultWhitelisted(address indexed operator, address vault, bool whitelisted);
 
+    /**
+     * @dev Emitted when the maximum number of vaults per operator is updated.
+     * @param oldCount The previous maximum number of vaults allowed per operator.
+     * @param count The new maximum number of vaults allowed per operator.
+     */
+    event MaxVaultsPerOperatorUpdated(uint8 oldCount, uint8 count);
+
+    /**
+     * @dev Emitted when the guardrail address is updated.
+     * @param oldGuardrail The address of the previous guardrail contract.
+     * @param guardrail The address of the new guardrail contract.
+     */
+    event GuardrailUpdated(address indexed oldGuardrail, address indexed guardrail);
+
     /*//////////////////////////////////////////////////////////////
                                 FUNCTIONS
     //////////////////////////////////////////////////////////////*/

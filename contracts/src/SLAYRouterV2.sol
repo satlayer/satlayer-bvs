@@ -166,7 +166,9 @@ contract SLAYRouterV2 is SLAYBase, ReentrancyGuardUpgradeable, ISLAYRouterV2, IS
     /// @inheritdoc ISLAYRouterV2
     function setMaxVaultsPerOperator(uint8 count) external override onlyOwner {
         require(count > _maxVaultsPerOperator, "Must be greater than current");
+        uint8 oldCount = _maxVaultsPerOperator;
         _maxVaultsPerOperator = count;
+        emit MaxVaultsPerOperatorUpdated(oldCount, count);
     }
 
     /// @inheritdoc ISLAYRouterV2
@@ -197,7 +199,9 @@ contract SLAYRouterV2 is SLAYBase, ReentrancyGuardUpgradeable, ISLAYRouterV2, IS
     /// @inheritdoc ISLAYRouterV2
     function setGuardrail(address guardrail) external override onlyOwner {
         require(guardrail != address(0), "Guardrail address cannot be empty");
+        address oldGuardrail = _guardrail;
         _guardrail = guardrail;
+        emit GuardrailUpdated(oldGuardrail, guardrail);
     }
 
     /// @inheritdoc ISLAYRouterSlashingV2
