@@ -13,6 +13,8 @@ generalizes to more complex use cases involving cryptographic proofs, simulation
 The key idea is to offload heavy computation from the blockchain, while still enabling trustless, verifiable
 results that can trigger slashing if misbehavior occurs.
 
+The example below is for our CosmWasm contracts, but the principles apply to our EVM contracts as well.
+
 ## Lifecycle Overview
 
 The example follows a simple lifecycle:
@@ -46,7 +48,7 @@ squaring/
 
 ### How to run
 
-Clone and copy contents of `./examples/squaring` [from GitHub](https://github.com/satlayer/satlayer-bvs/tree/main/examples/squaring) to your local machine.
+Clone and copy contents of `./examples/squaring` [from GitHub](https://github.com/satlayer/satlayer-bvs/tree/main/examples/cw/squaring) to your local machine.
 Install with `pnpm install` and `pnpm run test` to set up the environment.
 
 ```sh filename="run.sh"
@@ -81,11 +83,11 @@ The general request-response lifecycle is as follows:
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant C as Smart Contract
+    participant S as Bitcoin Validated Service (BVS)
+    participant C as Smart Contract (On-chain)
     participant O as Operator (Off-chain)
 
-    U->>C: Submit computation request (e.g. square n)
+    S->>C: Submit computation request (e.g. square n)
     Note right of C: Request stored on-chain
 
     O->>C: Polls for new requests
