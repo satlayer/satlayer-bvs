@@ -9,9 +9,9 @@
     "test": "vitest run --reporter verbose"
   },
   "dependencies": {
-    "@cosmjs/cosmwasm-stargate": "^0.33.1",
-    "@cosmjs/crypto": "^0.33.1",
-    "@cosmjs/proto-signing": "^0.33.1",
+    "@cosmjs/cosmwasm-stargate": "^0.34.0",
+    "@cosmjs/crypto": "^0.34.0",
+    "@cosmjs/proto-signing": "^0.34.0",
     "@ethersproject/bytes": "^5.8.0",
     "@ethersproject/solidity": "^5.8.0",
     "@layerzerolabs/devtools-evm-hardhat": "^3.1.0",
@@ -21,20 +21,20 @@
     "@layerzerolabs/lz-v2-utilities": "^3.0.110",
     "@layerzerolabs/oapp-evm": "^0.3.2",
     "@layerzerolabs/test-devtools-evm-foundry": "^6.0.3",
-    "@openzeppelin/contracts": "^5.0.2",
-    "@openzeppelin/contracts-upgradeable": "^5.0.2",
+    "@openzeppelin/contracts": "^5.4.0",
+    "@openzeppelin/contracts-upgradeable": "^5.4.0",
     "@openzeppelin/foundry-upgrades": "^0.4.0",
     "forge-std": "https://github.com/foundry-rs/forge-std/tarball/v1.9.6",
     "solidity-bytes-utils": "^0.8.0",
     "typescript": "latest",
-    "viem": "^2.31.7"
+    "viem": "^2.33.1"
   },
   "devDependencies": {
     "@satlayer/cosmwasm-optimizer": "workspace:*",
     "@satlayer/cosmwasm-schema-cli": "workspace:*",
     "@satlayer/testcontainers": "workspace:*",
     "@types/node": "^20",
-    "@wagmi/cli": "^2.3.1",
+    "@wagmi/cli": "^2.3.2",
     "vitest": "^3.1.4"
   },
   "peerDependencies": {

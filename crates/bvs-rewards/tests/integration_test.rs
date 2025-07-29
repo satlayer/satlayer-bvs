@@ -1,5 +1,5 @@
 use bvs_library::testing::{Cw20TokenContract, TestingContract};
-use bvs_rewards::merkle::{Leaf, Sha3_256Algorithm};
+use bvs_rewards::merkle::{Keccak256Algorithm, Leaf};
 use bvs_rewards::msg::ExecuteMsg::{ClaimRewards, DistributeRewards};
 use bvs_rewards::msg::{
     ClaimRewardsProof, DistributionRootResponse, QueryMsg, RewardDistribution, RewardsType,
@@ -34,7 +34,7 @@ fn instantiate() -> (App, RewardsContract, Cw20TokenContract) {
 }
 
 // prep_merkle_tree_equalised generates n leaves for n different earners with equalised amount (1:1 ratio).
-fn prep_merkle_tree_equalised(app: &App, n: u8, amount: Uint128) -> MerkleTree<Sha3_256Algorithm> {
+fn prep_merkle_tree_equalised(app: &App, n: u8, amount: Uint128) -> MerkleTree<Keccak256Algorithm> {
     // iterate and generate n leaves with equalised amount
     prep_merkle_tree_rationed(app, vec![1; n as usize], amount)
 }
@@ -46,7 +46,7 @@ fn prep_merkle_tree_rationed(
     app: &App,
     ratio: Vec<u8>,
     amount: Uint128,
-) -> MerkleTree<Sha3_256Algorithm> {
+) -> MerkleTree<Keccak256Algorithm> {
     let total_ratio = ratio.iter().sum::<u8>() as u128;
     let n = ratio.len() as u8;
 

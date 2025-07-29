@@ -1,10 +1,15 @@
 import type { MetaRecord } from "nextra";
 
 const meta: MetaRecord = {
-  dedaub: {
-    title: "Dedaub",
+  "dedaub-p1": {
+    title: "Dedaub P1",
     type: "doc",
     href: "https://github.com/satlayer/satlayer-bvs/blob/main/docs/public/audits/satlayer-core-phase-1-dedaub-20250325.pdf",
+  },
+  "dedaub-p2": {
+    title: "Dedaub P2",
+    type: "doc",
+    href: "https://github.com/satlayer/satlayer-bvs/blob/main/docs/public/audits/satlayer-core-phase-2-dedaub-20250620.pdf",
   },
   coinspect: {
     title: "Coinspect",

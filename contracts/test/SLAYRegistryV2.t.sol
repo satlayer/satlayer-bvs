@@ -39,6 +39,20 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         registry.unpause();
     }
 
+    function test_pause() public {
+        vm.prank(owner);
+        registry.pause();
+        assertTrue(registry.paused());
+
+        vm.prank(owner);
+        registry.unpause();
+        assertFalse(registry.paused());
+
+        // Verify a paused-only function works after unpausing
+        registry.registerAsService("https://service.example.com", "Service Name");
+        assertTrue(registry.isService(address(this)), "Service should be registered after unpausing");
+    }
+
     function test_RegisterAsService() public {
         vm.expectEmit();
         emit ISLAYRegistryV2.ServiceRegistered(address(this));
@@ -111,6 +125,46 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
 
         vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
         registry.registerAsOperator("https://operator.com", "Operator X");
+    }
+
+    function test_updateMetadata_asService() public {
+        vm.prank(service);
+        registry.registerAsService("https://service.example.com", "Service Name");
+
+        vm.prank(service);
+        vm.expectEmit();
+        emit ISLAYRegistryV2.MetadataUpdated(service, "https://updated-service.example.com", "Updated Service Name");
+        registry.updateMetadata("https://updated-service.example.com", "Updated Service Name");
+    }
+
+    function test_updateMetadata_asOperator() public {
+        vm.prank(operator);
+        registry.registerAsOperator("https://operator.example.com", "Operator Name");
+
+        vm.prank(operator);
+        vm.expectEmit();
+        emit ISLAYRegistryV2.MetadataUpdated(operator, "https://updated-operator.example.com", "Updated Operator Name");
+        registry.updateMetadata("https://updated-operator.example.com", "Updated Operator Name");
+    }
+
+    function test_updateMetadata_notRegistered() public {
+        address notRegistered = vm.randomAddress();
+
+        vm.prank(notRegistered);
+        vm.expectRevert("Not registered");
+        registry.updateMetadata("https://not-registered.example.com", "Not Registered");
+    }
+
+    function test_updateMetadata_whenPaused() public {
+        vm.prank(service);
+        registry.registerAsService("https://service.example.com", "Service Name");
+
+        vm.prank(owner);
+        registry.pause();
+
+        vm.prank(service);
+        vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+        registry.updateMetadata("https://updated-service.example.com", "Updated Service Name");
     }
 
     /**
@@ -511,6 +565,48 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         );
     }
 
+    function test_disableSlashing() public {
+        vm.startPrank(service);
+        registry.registerAsService("service.com", "Service A");
+
+        address destination = vm.randomAddress();
+        registry.enableSlashing(
+            ISLAYRegistryV2.SlashParameter({destination: destination, maxMbips: 100000, resolutionWindow: 3600})
+        );
+
+        // Verify slashing is enabled
+        ISLAYRegistryV2.SlashParameter memory param = registry.getSlashParameter(service);
+        assertEq(param.destination, destination);
+
+        // Disable slashing
+        vm.expectEmit();
+        emit ISLAYRegistryV2.SlashParameterUpdated(service, address(0), 0, 0);
+        registry.disableSlashing();
+
+        // Verify slashing is disabled
+        vm.expectRevert("Slashing not enabled");
+        registry.getSlashParameter(service);
+    }
+
+    function test_disableSlashing_notService() public {
+        address notService = vm.randomAddress();
+        vm.prank(notService);
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRegistryV2.ServiceNotFound.selector, notService));
+        registry.disableSlashing();
+    }
+
+    function test_disableSlashing_whenPaused() public {
+        vm.prank(service);
+        registry.registerAsService("service.com", "Service A");
+
+        vm.prank(owner);
+        registry.pause();
+
+        vm.prank(service);
+        vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+        registry.disableSlashing();
+    }
+
     function test_enableSlashing_lifecycle() public {
         vm.prank(operator);
         registry.registerAsOperator("operator.com", "Operator X");
@@ -524,12 +620,9 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         vm.stopPrank();
 
         vm.prank(operator);
-        registry.registerServiceToOperator(service);
-
-        vm.prank(operator);
         vm.expectEmit();
         emit ISLAYRegistryV2.RelationshipUpdated(service, operator, RelationshipV2.Status.Active, 1);
-        registry.approveSlashingFor(service);
+        registry.registerServiceToOperator(service);
     }
 
     function test_approveSlashingFor_notOperator() public {
@@ -614,9 +707,6 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         vm.prank(operator);
         registry.registerServiceToOperator(service);
 
-        vm.prank(operator);
-        registry.approveSlashingFor(service);
-
         // No change in slashing parameters
         vm.expectRevert("Slashing not updated");
         vm.prank(operator);
@@ -695,7 +785,7 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         // update the max active relationships to 6
         vm.prank(owner);
         vm.expectEmit();
-        emit ISLAYRegistryV2.MaxActiveRelationshipsUpdated(6);
+        emit ISLAYRegistryV2.MaxActiveRelationshipsUpdated(5, 6);
         registry.setMaxActiveRelationships(6);
 
         assertEq(registry.getMaxActiveRelationships(), 6, "Max active relationships should be updated");
@@ -724,7 +814,6 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
 
         vm.prank(operator);
         uint256 timeAtWhichOperatorOptedInParam1 = block.timestamp;
-        registry.approveSlashingFor(service);
         ISLAYRegistryV2.SlashParameter memory obj =
             registry.getSlashParameterAt(service, operator, uint32(block.timestamp));
 
@@ -776,9 +865,7 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         vm.prank(operator);
         registry.registerServiceToOperator(service);
 
-        vm.prank(operator);
         uint256 timeAtWhichOperatorOptedInParam1 = block.timestamp;
-        registry.approveSlashingFor(service);
 
         _advanceBlockBy(10);
 

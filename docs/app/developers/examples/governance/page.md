@@ -1,1 +1,1 @@
-../../../../../examples/governance/README.md
+../../../../../examples/cw/governance/README.md

@@ -10,7 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/wealdtech/go-merkletree/v2"
-	"github.com/wealdtech/go-merkletree/v2/sha3"
+	"github.com/wealdtech/go-merkletree/v2/keccak256"
 )
 
 var filePath string
@@ -228,7 +228,7 @@ func (d *Distribution) String() string {
 
 func leafHash(earner string, reward string) []byte {
 	// Create a leaf hash by concatenating the earner and reward and hashing them
-	hasher := sha3.New256()
+	hasher := keccak256.New()
 	return hasher.Hash([]byte(earner), []byte(reward))
 }
 
@@ -315,8 +315,8 @@ func createMerkleTreeFromDistribution(dist Distribution) (*RewardsMerkleTree, er
 	// Create new merkle tree with default settings - leaves are double-hashed
 	tree, err := merkletree.NewTree(
 		merkletree.WithData(data),
-		merkletree.WithHashType(sha3.New256()),
-		merkletree.WithSorted(true),
+		merkletree.WithHashType(keccak256.New()),
+		merkletree.WithSorted(false),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create merkle tree: %w", err)

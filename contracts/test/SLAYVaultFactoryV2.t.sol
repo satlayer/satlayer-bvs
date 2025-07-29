@@ -6,6 +6,7 @@ import "../src/SLAYVaultV2.sol";
 import "../src/SLAYVaultFactoryV2.sol";
 import {Test, console} from "forge-std/Test.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {TestSuiteV2} from "./TestSuiteV2.sol";
 import {ISLAYVaultFactoryV2} from "../src/interface/ISLAYVaultFactoryV2.sol";
 
@@ -80,5 +81,72 @@ contract SLAYVaultFactoryV2Test is Test, TestSuiteV2 {
         vm.startPrank(owner);
         vm.expectRevert(abi.encodeWithSelector(ISLAYVaultFactoryV2.NotOperator.selector, address(notOperator)));
         vaultFactory.create(underlying, notOperator, "Name", "Symbol");
+    }
+
+    function test_create_whenPaused() public {
+        vm.prank(owner);
+        vaultFactory.pause();
+
+        // Try to create a vault when paused
+        vm.prank(operator);
+        vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+        vaultFactory.create(underlying);
+
+        // Try to create a vault with custom params when paused
+        vm.prank(operator);
+        vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+        vaultFactory.create(underlying);
+
+        // You can still create a vault when owner
+        vm.prank(owner);
+        vaultFactory.create(underlying, operator, "Custom Name", "Custom Symbol");
+    }
+
+    function test_create_whenPausedAndUnpaused() public {
+        // Pause the contract
+        vm.prank(owner);
+        vaultFactory.pause();
+        assertTrue(vaultFactory.paused());
+
+        // Unpause the contract
+        vm.prank(owner);
+        vaultFactory.unpause();
+        assertFalse(vaultFactory.paused());
+
+        // Create a vault when unpaused
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        assertEq(vault.delegated(), operator);
+
+        // Create a vault with custom params when unpaused
+        vm.prank(owner);
+        SLAYVaultV2 customVault = vaultFactory.create(underlying, operator, "Custom Name", "Custom Symbol");
+        assertEq(customVault.delegated(), operator);
+    }
+
+    function test_immutable_beacon() public view {
+        // The beacon address should not be zero
+        assertTrue(vaultFactory.BEACON() != address(0));
+    }
+
+    function test_immutable_registry() public view {
+        assertEq(address(vaultFactory.REGISTRY()), address(registry));
+    }
+
+    function test_authorizeUpgrade_onlyOwner() public {
+        assertEq(vaultFactory.owner(), owner);
+
+        address mockImpl = address(new SLAYVaultFactoryV2(address(0), registry));
+
+        address sender = vm.randomAddress();
+        vm.prank(sender);
+        // Call to upgradeToAndCall and expect revert
+        (bool success, bytes memory returnData) = address(vaultFactory).call(
+            abi.encodeWithSelector(bytes4(keccak256("upgradeToAndCall(address,bytes)")), mockImpl, "")
+        );
+        assertFalse(success, "Expected upgradeToAndCall to fail");
+        assertEq(
+            returnData, abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, address(sender))
+        );
     }
 }
