@@ -1,0 +1,4 @@
+@satlayer/=../../../../contracts/src/
+@openzeppelin/foundry-upgrades/=../../../../contracts/node_modules/@openzeppelin/foundry-upgrades/src/
+@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
+@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/
