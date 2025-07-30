@@ -101,6 +101,17 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         assertTrue(registry.isOperator(address(this)), "Operator should be registered");
     }
 
+    function testFuzz_isOperator(address account) public {
+        vm.assume(account != address(0));
+        assertFalse(registry.isOperator(account));
+        assertFalse(registry.isService(account));
+    }
+
+    function testFuzz_isService(address account) public {
+        vm.assume(account != address(0));
+        assertFalse(registry.isService(account));
+    }
+
     function test_RegisterAsOperator_AlreadyRegistered() public {
         registry.registerAsOperator("http://operator.com", "Operator X");
 
