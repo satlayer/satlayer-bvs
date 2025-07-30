@@ -462,9 +462,8 @@ contract SLAYRegistryV2 is SLAYBase, ISLAYRegistryV2 {
         EnumerableSet.AddressSet storage activeOperators = _servicesActiveRelationships[_msgSender()];
         uint256 activeOperatorsCount = activeOperators.length();
         for (uint256 i = 0; i < activeOperatorsCount;) {
-            address operator = activeOperators.at(i);
             require(
-                _operators[operator].withdrawalDelay >= delay,
+                _operators[activeOperators.at(i)].withdrawalDelay >= delay,
                 "Service's minimum withdrawal delay must be less than or equal to active operator's withdrawal delay"
             );
 
