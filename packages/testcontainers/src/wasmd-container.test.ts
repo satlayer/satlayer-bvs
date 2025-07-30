@@ -3,7 +3,7 @@ import { stringToPath } from "@cosmjs/crypto";
 import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing";
 import { afterAll, beforeAll, expect, test } from "vitest";
 
-import { CosmWasmContainer, StartedCosmWasmContainer } from "./container";
+import { CosmWasmContainer, StartedCosmWasmContainer } from "./wasmd-container";
 
 let started: StartedCosmWasmContainer;
 

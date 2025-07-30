@@ -1,15 +1,15 @@
 import { QueryMsg as RouterQueryMsg } from "@satlayer/cosmwasm-schema/vault-router";
 import { afterEach, beforeEach, expect, test } from "vitest";
 
-import { CosmWasmContainer, StartedCosmWasmContainer } from "./container";
-import { SatLayerContracts } from "./satlayer";
+import { CosmWasmContracts } from "./cosmwasm";
+import { CosmWasmContainer, StartedCosmWasmContainer } from "./wasmd-container";
 
 let started: StartedCosmWasmContainer;
-let contracts: SatLayerContracts;
+let contracts: CosmWasmContracts;
 
 beforeEach(async () => {
   started = await new CosmWasmContainer().start();
-  contracts = await SatLayerContracts.bootstrap(started);
+  contracts = await CosmWasmContracts.bootstrap(started);
 }, 30_000);
 
 afterEach(async () => {

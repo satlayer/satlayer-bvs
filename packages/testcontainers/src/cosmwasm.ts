@@ -6,9 +6,9 @@ import { ExecuteMsg as RegistryExecuteMsg, QueryMsg as RegistryQueryMsg } from "
 import { ExecuteMsg as RewardsExecuteMsg, QueryMsg as RewardsQueryMsg } from "@satlayer/cosmwasm-schema/rewards";
 import { ExecuteMsg as RouterExecuteMsg, QueryMsg as RouterQueryMsg } from "@satlayer/cosmwasm-schema/vault-router";
 
-import { instantiateBvs, uploadBvs } from "./bvs";
-import { StartedCosmWasmContainer } from "./container";
-import { Cw20InitMsg, instantiateCw20, uploadCw20 } from "./cw20";
+import { instantiateBvs, uploadBvs } from "./cosmwasm-artifacts";
+import { Cw20InitMsg, instantiateCw20, uploadCw20 } from "./cosmwasm-cw20";
+import { StartedCosmWasmContainer } from "./wasmd-container";
 
 type Data = {
   cw20: { codeId: number };
@@ -23,15 +23,21 @@ type Data = {
   rewards: { codeId: number; address: string };
 };
 
-export class SatLayerContracts {
+export class CosmWasmContracts {
   private constructor(
     public readonly started: StartedCosmWasmContainer,
     public readonly data: Data,
-    public readonly pauser = new Contract<PauserExecuteMsg, PauserQueryMsg>(started, data.pauser.address),
-    public readonly registry = new Contract<RegistryExecuteMsg, RegistryQueryMsg>(started, data.registry.address),
-    public readonly guardrail = new Contract<GuardrailExecuteMsg, GuardrailQueryMsg>(started, data.guardrail.address),
-    public readonly router = new Contract<RouterExecuteMsg, RouterQueryMsg>(started, data.router.address),
-    public readonly rewards = new Contract<RewardsExecuteMsg, RewardsQueryMsg>(started, data.rewards.address),
+    public readonly pauser = new CosmWasmContract<PauserExecuteMsg, PauserQueryMsg>(started, data.pauser.address),
+    public readonly registry = new CosmWasmContract<RegistryExecuteMsg, RegistryQueryMsg>(
+      started,
+      data.registry.address,
+    ),
+    public readonly guardrail = new CosmWasmContract<GuardrailExecuteMsg, GuardrailQueryMsg>(
+      started,
+      data.guardrail.address,
+    ),
+    public readonly router = new CosmWasmContract<RouterExecuteMsg, RouterQueryMsg>(started, data.router.address),
+    public readonly rewards = new CosmWasmContract<RewardsExecuteMsg, RewardsQueryMsg>(started, data.rewards.address),
   ) {}
 
   get client(): SigningCosmWasmClient {
@@ -42,7 +48,7 @@ export class SatLayerContracts {
     return this.started.wallet;
   }
 
-  static async bootstrap(started: StartedCosmWasmContainer): Promise<SatLayerContracts> {
+  static async bootstrap(started: StartedCosmWasmContainer): Promise<CosmWasmContracts> {
     const accounts = await started.wallet.getAccounts();
     const [
       cw20Upload,
@@ -124,7 +130,7 @@ export class SatLayerContracts {
       {},
     );
 
-    return new SatLayerContracts(started, {
+    return new CosmWasmContracts(started, {
       cw20: { codeId: cw20Upload.codeId },
       pauser: { address: pauserResult.contractAddress, codeId: pauserUpload.codeId },
       registry: { address: registryResult.contractAddress, codeId: registryUpload.codeId },
@@ -250,7 +256,7 @@ export class SatLayerContracts {
   }
 }
 
-export class Contract<EM, QM> {
+export class CosmWasmContract<EM, QM> {
   constructor(
     public readonly started: StartedCosmWasmContainer,
     public readonly address: string,
