@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
-import { CosmWasmContainer, StartedCosmWasmContainer, SatLayerContracts } from "@satlayer/testcontainers";
+import { CosmWasmContainer, StartedCosmWasmContainer, CosmWasmContracts } from "@satlayer/testcontainers";
 import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { Coin, DirectSecp256k1HdWallet } from "@cosmjs/proto-signing";
 import { readFile } from "node:fs/promises";
@@ -30,7 +30,7 @@ import { ExecuteMsg as GuardrailExecuteMsg } from "@satlayer/cosmwasm-schema/gua
 import { Committee } from "./committee";
 
 let started: StartedCosmWasmContainer;
-let contracts: SatLayerContracts;
+let contracts: CosmWasmContracts;
 let bvs_wallet: DirectSecp256k1HdWallet;
 let satlayer_wallet: DirectSecp256k1HdWallet;
 let clientSigner: SigningCosmWasmClient;
@@ -135,9 +135,9 @@ async function setupStaking() {
 }
 
 beforeAll(async () => {
-  // Set up CosmWasmContainer with SatLayerContracts bootstrapped
+  // Set up CosmWasmContainer with CosmWasmContracts bootstrapped
   started = await new CosmWasmContainer().start();
-  contracts = await SatLayerContracts.bootstrap(started);
+  contracts = await CosmWasmContracts.bootstrap(started);
 
   // A wallet with 3 accounts, owner of contract, operator, and anyone (for testing)
   bvs_wallet = await DirectSecp256k1HdWallet.generate(12, {

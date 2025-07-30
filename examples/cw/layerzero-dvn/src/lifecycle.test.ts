@@ -2,9 +2,9 @@ import { beforeAll, expect, test, vi } from "vitest";
 import {
   AnvilContainer,
   ChainName,
-  Contract,
+  CosmWasmContract,
   CosmWasmContainer,
-  SatLayerContracts,
+  CosmWasmContracts,
   StartedAnvilContainer,
   StartedCosmWasmContainer,
 } from "@satlayer/testcontainers";
@@ -29,7 +29,7 @@ let opNodeStarted: StartedAnvilContainer;
 
 let cosmosNodeStarted: StartedCosmWasmContainer;
 let cosmosClient: SigningCosmWasmClient;
-let contracts: SatLayerContracts;
+let contracts: CosmWasmContracts;
 let wallet: DirectSecp256k1HdWallet;
 
 let ownerAddress: string;
@@ -38,13 +38,13 @@ let operator2Address: string;
 let operator3Address: string;
 let bvsAddress: string;
 
-let bvsContract: Contract<ExecuteMsg, QueryMsg>;
+let bvsContract: CosmWasmContract<ExecuteMsg, QueryMsg>;
 
 const dvnEthId = 1;
 const dvnOpId = 2;
 
 async function deployContract(cosmosClient: SigningCosmWasmClient, owner: string) {
-  const contractPath = require.resolve("@examples/layerzero-dvn/src/bvs-contract/dist/contract.wasm");
+  const contractPath = require.resolve("./bvs-contract/dist/contract.wasm");
   const uploaded = await cosmosClient.upload(owner, await readFile(contractPath), "auto");
   const initMsg: InstantiateMsg = {
     registry: contracts.registry.address,
@@ -60,7 +60,7 @@ async function initBVS(cosmosClient: SigningCosmWasmClient) {
   // deploy BVS contract
   const instantiated = await deployContract(cosmosClient, ownerAddress);
   bvsAddress = instantiated.contractAddress;
-  bvsContract = new Contract<ExecuteMsg, QueryMsg>(cosmosNodeStarted, bvsAddress);
+  bvsContract = new CosmWasmContract<ExecuteMsg, QueryMsg>(cosmosNodeStarted, bvsAddress);
 
   // service enable slashing
   await bvsContract.execute(cosmosClient, ownerAddress, {
@@ -131,7 +131,7 @@ beforeAll(async () => {
 
   // setup local cosmos node with satlayer contracts
   cosmosNodeStarted = await new CosmWasmContainer().start();
-  contracts = await SatLayerContracts.bootstrap(cosmosNodeStarted);
+  contracts = await CosmWasmContracts.bootstrap(cosmosNodeStarted);
 
   wallet = await DirectSecp256k1HdWallet.generate(12, {
     prefix: "wasm",
