@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { PolicyManager } from "./policy-manager";
 import { Api } from "./api";
-import { CosmWasmContainer, SatLayerContracts, StartedCosmWasmContainer } from "@satlayer/testcontainers";
+import { CosmWasmContainer, CosmWasmContracts, StartedCosmWasmContainer } from "@satlayer/testcontainers";
 import { AccountData, DirectSecp256k1HdWallet } from "@cosmjs/proto-signing";
 import { stringToPath } from "@cosmjs/crypto";
 import { ExecuteMsg as VaultBankExecuteMsg } from "@satlayer/cosmwasm-schema/vault-bank";
@@ -15,7 +15,7 @@ import { ExecuteMsg as RewardsExecuteMsg, RewardsType } from "@satlayer/cosmwasm
 let policyManager: PolicyManager;
 let api: Api;
 let started: StartedCosmWasmContainer;
-let contracts: SatLayerContracts;
+let contracts: CosmWasmContracts;
 let wallet: DirectSecp256k1HdWallet;
 
 let vaultAddress: string;
@@ -27,9 +27,9 @@ let rewardsAccount: AccountData;
 
 describe("PolicyManager", () => {
   beforeEach(async () => {
-    // Set up CosmWasmContainer with SatLayerContracts bootstrapped
+    // Set up CosmWasmContainer with CosmWasmContracts bootstrapped
     started = await new CosmWasmContainer().start();
-    contracts = await SatLayerContracts.bootstrap(started);
+    contracts = await CosmWasmContracts.bootstrap(started);
 
     // A wallet with 4 accounts operator, staker and service
     wallet = await DirectSecp256k1HdWallet.generate(12, {

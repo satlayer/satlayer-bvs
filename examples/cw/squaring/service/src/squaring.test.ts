@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
-import { CosmWasmContainer, StartedCosmWasmContainer, SatLayerContracts } from "@satlayer/testcontainers";
+import { CosmWasmContainer, StartedCosmWasmContainer, CosmWasmContracts } from "@satlayer/testcontainers";
 import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { SquaringNode, ServiceNode } from "./squaring";
 import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing";
@@ -8,7 +8,7 @@ import { stringToPath } from "@cosmjs/crypto";
 import { ExecuteMsg, InstantiateMsg } from "./contract";
 
 let started: StartedCosmWasmContainer;
-let contracts: SatLayerContracts;
+let contracts: CosmWasmContracts;
 let wallet: DirectSecp256k1HdWallet;
 let client: SigningCosmWasmClient;
 
@@ -16,9 +16,9 @@ let squaringContractAddress: string;
 let squaringNode: SquaringNode;
 
 beforeAll(async () => {
-  // Set up CosmWasmContainer with SatLayerContracts bootstrapped
+  // Set up CosmWasmContainer with CosmWasmContracts bootstrapped
   started = await new CosmWasmContainer().start();
-  contracts = await SatLayerContracts.bootstrap(started);
+  contracts = await CosmWasmContracts.bootstrap(started);
 
   // A wallet with 3 accounts, owner of contract, operator, and anyone (for testing)
   wallet = await DirectSecp256k1HdWallet.generate(12, {
