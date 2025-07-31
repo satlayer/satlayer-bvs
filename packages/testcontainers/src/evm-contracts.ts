@@ -8,8 +8,8 @@ import slayVaultFactory from "@satlayer/contracts/SLAYVaultFactoryV2.sol/SLAYVau
 import slayVault from "@satlayer/contracts/SLAYVaultV2.sol/SLAYVaultV2.json";
 import { Account, encodeFunctionData, getContract, GetContractReturnType } from "viem";
 
-import erc20Abi from "../MockERC20.sol/MockERC20.json";
 import { StartedAnvilContainer, SuperTestClient } from "./anvil-container";
+import erc20Abi from "./MockERC20.sol/MockERC20.json";
 
 export class EVMContracts {
   private constructor(
