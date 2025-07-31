@@ -239,6 +239,11 @@ export class StartedAnvilContainer extends AbstractStartedContainer {
     return privateKeyToAccount(randomPrivKey);
   }
 
+  generateAccount(salt: string): Account {
+    const privateKey = keccak256(toHex(salt));
+    return privateKeyToAccount(privateKey as `0x${string}`);
+  }
+
   getRandomAddress(): `0x${string}` {
     const randomAccount = this.getRandomAccount();
     return randomAccount.address as `0x${string}`;
