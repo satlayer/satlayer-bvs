@@ -10,8 +10,7 @@
   "files": [
     "dist",
     "wasmd",
-    "cw20.wasm",
-    "MockERC20.sol"
+    "cw20.wasm"
   ],
   "scripts": {
     "build": "tsc",

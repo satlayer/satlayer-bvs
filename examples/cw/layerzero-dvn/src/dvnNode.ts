@@ -1,6 +1,6 @@
 import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { setTimeout } from "node:timers/promises";
-import { ChainName, SuperTestClient } from "@satlayer/testcontainers/dist/anvil-container";
+import { ChainName, SuperTestClient } from "@satlayer/testcontainers";
 
 import endpointV2 from "@layerzerolabs/lz-evm-protocol-v2/artifacts/contracts/EndpointV2.sol/EndpointV2.json";
 import customDVN from "./evm/out/CustomDVN.sol/CustomDVN.json";
