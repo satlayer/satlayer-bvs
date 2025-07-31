@@ -84,3 +84,53 @@ test("should init vault", async () => {
   const stakerBalance = await vaultContract.read.balanceOf([staker.address]);
   expect(stakerBalance).toStrictEqual(BigInt(1e8));
 });
+
+test("should init ERC20", async () => {
+  const erc20 = await evmContracts.initERC20({
+    name: "Wrapped Bitcoin",
+    symbol: "WBTC",
+    decimals: 8,
+  });
+
+  expect(erc20.contractAddress).toBeDefined();
+
+  const erc20Name = await erc20.contract.read.name([]);
+  expect(erc20Name).toBe("Wrapped Bitcoin");
+
+  const erc20Symbol = await erc20.contract.read.symbol([]);
+  expect(erc20Symbol).toBe("WBTC");
+
+  const erc20Decimals = await erc20.contract.read.decimals([]);
+  expect(erc20Decimals).toBe(8);
+
+  // check if the contract is deployed
+  const balance = await erc20.contract.read.balanceOf([started.getRandomAddress()]);
+  expect(balance).toStrictEqual(BigInt(0));
+
+  // mint some tokens to a random address
+  const random = started.generateAccount("random");
+  await started.setBalance(random.address, BigInt(1e18)); // fund 1 ETH to random for gas
+  await erc20.contract.write.mint([random.address, 1e8], { account: random });
+  await started.mineBlock(1); // mine a block to ensure the transaction is processed
+
+  // expect the balance of the random address to be 1e8
+  const randomBalance = await erc20.contract.read.balanceOf([random.address]);
+  expect(randomBalance).toStrictEqual(BigInt(1e8));
+
+  // transfer some tokens to another random address
+  const anotherRandom = started.generateAccount("anotherRandom");
+  await erc20.contract.write.transfer([anotherRandom.address, 1e6], { account: random });
+  await started.mineBlock(1); // mine a block to ensure the transaction is processed
+
+  // expect the balance of the random address to be 1e8 - 1e6
+  const updatedRandomBalance = await erc20.contract.read.balanceOf([random.address]);
+  expect(updatedRandomBalance).toStrictEqual(BigInt(1e8 - 1e6));
+
+  // burn some tokens from the random address
+  await erc20.contract.write.burn([random.address, 1e6], { account: random });
+  await started.mineBlock(1); // mine a block to ensure the transaction is processed
+
+  // expect the balance of the random address to be 1e8 - 1e6 - 1e6
+  const finalRandomBalance = await erc20.contract.read.balanceOf([random.address]);
+  expect(finalRandomBalance).toStrictEqual(BigInt(1e8 - 2e6));
+});
