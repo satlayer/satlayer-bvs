@@ -5,12 +5,13 @@
     "url": "git+https://github.com/satlayer/satlayer-bvs"
   },
   "license": "MIT",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
   "files": [
     "dist",
     "wasmd",
-    "cw20.wasm"
+    "cw20.wasm",
+    "MockERC20.sol"
   ],
   "scripts": {
     "build": "tsc",
