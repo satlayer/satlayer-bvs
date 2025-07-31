@@ -1,0 +1,272 @@
+import UpgradeableBeacon from "@openzeppelin/upgrades-core/artifacts/@openzeppelin/contracts-v5/proxy/beacon/UpgradeableBeacon.sol/UpgradeableBeacon.json";
+import ERC1967Proxy from "@openzeppelin/upgrades-core/artifacts/@openzeppelin/contracts-v5/proxy/ERC1967/ERC1967Proxy.sol/ERC1967Proxy.json";
+import slayBase from "@satlayer/contracts/SLAYBase.sol/SLAYBase.json";
+import slayRegistry from "@satlayer/contracts/SLAYRegistryV2.sol/SLAYRegistryV2.json";
+import slayRewards from "@satlayer/contracts/SLAYRewardsV2.sol/SLAYRewardsV2.json";
+import slayRouter from "@satlayer/contracts/SLAYRouterV2.sol/SLAYRouterV2.json";
+import slayVaultFactory from "@satlayer/contracts/SLAYVaultFactoryV2.sol/SLAYVaultFactoryV2.json";
+import slayVault from "@satlayer/contracts/SLAYVaultV2.sol/SLAYVaultV2.json";
+import { Account, encodeFunctionData, getContract, GetContractReturnType } from "viem";
+
+import { StartedAnvilContainer, SuperTestClient } from "./anvil-container";
+import erc20Abi from "./MockERC20.sol/MockERC20.json";
+
+export class EVMContracts {
+  private constructor(
+    public readonly started: StartedAnvilContainer,
+    public readonly registry: GetContractReturnType<typeof slayRegistry.abi, SuperTestClient>,
+    public readonly router: GetContractReturnType<typeof slayRouter.abi, SuperTestClient>,
+    public readonly rewards: GetContractReturnType<typeof slayRewards.abi, SuperTestClient>,
+    public readonly vaultFactory: GetContractReturnType<typeof slayVaultFactory.abi, SuperTestClient>,
+  ) {}
+
+  get client(): SuperTestClient {
+    return this.started.getClient();
+  }
+
+  get wallet(): Account {
+    return this.started.getAccount();
+  }
+
+  static async bootstrap(started: StartedAnvilContainer): Promise<EVMContracts> {
+    const owner = started.getAccount().address;
+
+    // deploy SLAYBase impl contract
+    const base = await started.deployContract({
+      abi: slayBase.abi,
+      bytecode: slayBase.bytecode.object as `0x${string}`,
+      salt: "SLAYBase",
+      constructorArgs: [],
+    });
+
+    // ================  Deploy Proxy Contracts ================
+
+    // deploy registryProxy contract with ERC1967Proxy and SLAYBase as the impl contract
+    const registryProxy = await started.deployContract({
+      abi: ERC1967Proxy.abi,
+      bytecode: ERC1967Proxy.bytecode as `0x${string}`,
+      salt: "registryProxy",
+      constructorArgs: [
+        base.contractAddress,
+        encodeFunctionData({
+          abi: slayBase.abi,
+          functionName: "initialize",
+          args: [owner],
+        }),
+      ],
+    });
+
+    // deploy routerProxy contract with ERC1967Proxy and SLAYBase as the impl contract
+    const routerProxy = await started.deployContract({
+      abi: ERC1967Proxy.abi,
+      bytecode: ERC1967Proxy.bytecode as `0x${string}`,
+      salt: "routerProxy",
+      constructorArgs: [
+        base.contractAddress,
+        encodeFunctionData({
+          abi: slayBase.abi,
+          functionName: "initialize",
+          args: [owner],
+        }),
+      ],
+    });
+
+    // deploy rewardsProxy contract with ERC1967Proxy and SLAYBase as the impl contract
+    const rewardsProxy = await started.deployContract({
+      abi: ERC1967Proxy.abi,
+      bytecode: ERC1967Proxy.bytecode as `0x${string}`,
+      salt: "rewardsProxy",
+      constructorArgs: [
+        base.contractAddress,
+        encodeFunctionData({
+          abi: slayBase.abi,
+          functionName: "initialize",
+          args: [owner],
+        }),
+      ],
+    });
+
+    // deploy vaultFactory contract with SLAYBase as the impl contract
+    const vaultFactory = await started.deployContract({
+      abi: ERC1967Proxy.abi,
+      bytecode: ERC1967Proxy.bytecode as `0x${string}`,
+      salt: "vaultFactory",
+      constructorArgs: [
+        base.contractAddress,
+        encodeFunctionData({
+          abi: slayBase.abi,
+          functionName: "initialize",
+          args: [owner],
+        }),
+      ],
+    });
+
+    // ================  Deploy Implementation Contracts ================
+
+    // deploy SLAYRegistryV2 impl contract
+    const registryImpl = await started.deployContract({
+      abi: slayRegistry.abi,
+      bytecode: slayRegistry.bytecode.object as `0x${string}`,
+      salt: "SLAYRegistryV2",
+      constructorArgs: [routerProxy.contractAddress],
+    });
+
+    // deploy SLAYRouterV2 impl contract
+    const routerImpl = await started.deployContract({
+      abi: slayRouter.abi,
+      bytecode: slayRouter.bytecode.object as `0x${string}`,
+      salt: "SLAYRouterV2",
+      constructorArgs: [registryProxy.contractAddress],
+    });
+
+    // deploy SLAYRewardsV2 impl contract
+    const rewardsImpl = await started.deployContract({
+      abi: slayRewards.abi,
+      bytecode: slayRewards.bytecode.object as `0x${string}`,
+      salt: "SLAYRewardsV2",
+      constructorArgs: [],
+    });
+
+    // deploy SLAYVaultV2 impl contract
+    const vaultImpl = await started.deployContract({
+      abi: slayVault.abi,
+      bytecode: slayVault.bytecode.object as `0x${string}`,
+      salt: "SLAYVaultV2",
+      constructorArgs: [routerProxy.contractAddress, registryProxy.contractAddress],
+    });
+
+    // deploy SLAYVaultV2 Beacon contract
+    const vaultBeacon = await started.deployContract({
+      abi: UpgradeableBeacon.abi,
+      bytecode: UpgradeableBeacon.bytecode as `0x${string}`,
+      salt: "SLAYVaultBeacon",
+      constructorArgs: [vaultImpl.contractAddress, owner],
+    });
+
+    // deploy SLAYVaultFactoryV2 impl contract
+    const vaultFactoryImpl = await started.deployContract({
+      abi: slayVaultFactory.abi,
+      bytecode: slayVaultFactory.bytecode.object as `0x${string}`,
+      salt: "SLAYVaultFactoryV2",
+      constructorArgs: [vaultBeacon.contractAddress, registryProxy.contractAddress],
+    });
+
+    // ================  Upgrade Proxy Contracts ================
+
+    // get registryProxy contract instance ( cannot use registryProxy.contract because it is the instance of ERC1967Proxy )
+    const registryProxyContract = getContract({
+      address: registryProxy.contractAddress,
+      abi: slayBase.abi,
+      client: started.getClient(),
+    });
+    // upgrade registryProxy to use SLAYRegistryV2 impl contract
+    await registryProxyContract.write.upgradeToAndCall([
+      registryImpl.contractAddress,
+      encodeFunctionData({
+        abi: slayRegistry.abi,
+        functionName: "initialize2",
+        args: [],
+      }),
+    ]);
+    // get registry contract instance
+    const registryContract = getContract({
+      address: registryProxy.contractAddress,
+      abi: slayRegistry.abi,
+      client: started.getClient(),
+    });
+
+    // get routerProxy contract instance ( cannot use routerProxy.contract because it is the instance of ERC1967Proxy )
+    const routerProxyContract = getContract({
+      address: routerProxy.contractAddress,
+      abi: slayBase.abi,
+      client: started.getClient(),
+    });
+    // upgrade routerProxy to use SLAYRouterV2 impl contract
+    await routerProxyContract.write.upgradeToAndCall([
+      routerImpl.contractAddress,
+      encodeFunctionData({
+        abi: slayRouter.abi,
+        functionName: "initialize2",
+        args: [],
+      }),
+    ]);
+    // get router contract instance
+    const routerContract = getContract({
+      address: routerProxy.contractAddress,
+      abi: slayRouter.abi,
+      client: started.getClient(),
+    });
+
+    // get rewardsProxy contract instance ( cannot use rewardsProxy.contract because it is the instance of ERC1967Proxy )
+    const rewardsProxyContract = getContract({
+      address: rewardsProxy.contractAddress,
+      abi: slayBase.abi,
+      client: started.getClient(),
+    });
+    // upgrade rewardsProxy to use SLAYRewardsV2 impl contract
+    await rewardsProxyContract.write.upgradeToAndCall([rewardsImpl.contractAddress, ""]);
+    // get rewards contract instance
+    const rewardsContract = getContract({
+      address: rewardsProxy.contractAddress,
+      abi: slayRewards.abi,
+      client: started.getClient(),
+    });
+
+    // get vaultFactory contract instance ( cannot use vaultFactory.contract because it is the instance of ERC1967Proxy )
+    const vaultFactoryProxyContract = getContract({
+      address: vaultFactory.contractAddress,
+      abi: slayBase.abi,
+      client: started.getClient(),
+    });
+    // upgrade vaultFactory to use SLAYVaultFactoryV2 impl contract
+    await vaultFactoryProxyContract.write.upgradeToAndCall([vaultFactoryImpl.contractAddress, ""]);
+    // get vaultFactory contract instance
+    const vaultFactoryContract = getContract({
+      address: vaultFactory.contractAddress,
+      abi: slayVaultFactory.abi,
+      client: started.getClient(),
+    });
+
+    // mine a block to ensure all transactions are processed
+    await started.mineBlock(1);
+
+    return new EVMContracts(started, registryContract, routerContract, rewardsContract, vaultFactoryContract);
+  }
+
+  /// Initializes an ERC20 token with the given name, symbol, and decimals.
+  async initERC20({ name, symbol, decimals }: { name: string; symbol: string; decimals: number }) {
+    return this.started.deployContract({
+      abi: erc20Abi.abi,
+      bytecode: erc20Abi.bytecode.object as `0x${string}`,
+      salt: `ERC20-${symbol}`,
+      constructorArgs: [name, symbol, decimals],
+    });
+  }
+
+  /// Initializes a SLAYVault for the given operator and underlying asset.
+  /// Returns the address of the created SLAYVault.
+  async initVault({
+    operator,
+    underlyingAsset,
+  }: {
+    operator: Account;
+    underlyingAsset: `0x${string}`;
+  }): Promise<`0x${string}`> {
+    // get vault address from vault factory
+    const createRes = await this.vaultFactory.simulate.create([underlyingAsset], { account: operator.address });
+    // commit the transaction to create the vault
+    await this.vaultFactory.write.create([underlyingAsset], { account: operator });
+    return createRes.result;
+  }
+
+  /// Returns a contract instance for the SLAYVault at the given address.
+  async getVaultContractInstance(
+    vaultAddress: `0x${string}`,
+  ): Promise<GetContractReturnType<typeof slayVault.abi, SuperTestClient>> {
+    return getContract({
+      address: vaultAddress,
+      abi: slayVault.abi,
+      client: this.started.getClient(),
+    });
+  }
+}

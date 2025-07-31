@@ -1,7 +1,7 @@
 import { QueryMsg as RouterQueryMsg } from "@satlayer/cosmwasm-schema/vault-router";
 import { afterEach, beforeEach, expect, test } from "vitest";
 
-import { CosmWasmContracts } from "./cosmwasm";
+import { CosmWasmContracts } from "./cosmwasm-contracts";
 import { CosmWasmContainer, StartedCosmWasmContainer } from "./wasmd-container";
 
 let started: StartedCosmWasmContainer;

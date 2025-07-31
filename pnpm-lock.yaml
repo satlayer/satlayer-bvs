@@ -523,6 +523,9 @@ importers:
       '@cosmjs/stargate':
         specifier: ^0.34.0
         version: 0.34.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      '@openzeppelin/upgrades-core':
+        specifier: ^1.44.1
+        version: 1.44.1
       '@satlayer/bvs-guardrail':
         specifier: workspace:*
         version: link:../../crates/bvs-guardrail
@@ -550,6 +553,9 @@ importers:
       '@satlayer/bvs-vault-router':
         specifier: workspace:*
         version: link:../../crates/bvs-vault-router
+      '@satlayer/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
       '@satlayer/cosmwasm-schema':
         specifier: workspace:*
         version: link:../cosmwasm-schema
