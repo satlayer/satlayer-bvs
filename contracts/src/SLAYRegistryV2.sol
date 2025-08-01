@@ -490,6 +490,8 @@ contract SLAYRegistryV2 is SLAYBase, ISLAYRegistryV2 {
 
     /// @inheritdoc ISLAYRegistryV2
     function setDefaultWithdrawalDelay(uint32 delay) external override onlyOwner {
+        require(delay >= 1 days, "Delay must be at least more than or equal to 1 day");
+
         uint32 oldDelay = defaultWithdrawalDelay;
         defaultWithdrawalDelay = delay;
         emit DefaultWithdrawalDelayUpdated(oldDelay, delay);
