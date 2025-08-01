@@ -115,6 +115,13 @@ interface ISLAYRegistryV2 {
     event MinWithdrawalDelayUpdated(address indexed service, uint32 delay);
 
     /**
+     * @dev Emitted when the default withdrawal delay is updated.
+     * @param oldDelay The previous default withdrawal delay in seconds.
+     * @param newDelay The new default withdrawal delay in seconds.
+     */
+    event DefaultWithdrawalDelayUpdated(uint32 oldDelay, uint32 newDelay);
+
+    /**
      * @dev Emitted when {SlashParameter} for a service is updated.
      * @param service The address of the service
      * @param destination The address at which slash collateral will be moved.
@@ -367,4 +374,13 @@ interface ISLAYRegistryV2 {
      * @return The minimum withdrawal delay in seconds
      */
     function getMinWithdrawalDelay(address service) external view returns (uint32);
+
+    /**
+     * @notice Sets the default withdrawal delay for operators's vaults
+     * @dev This function can only be called by the contract owner.
+     * The new default delay is only applied to new operators and operators updating their withdrawal delay.
+     *
+     * @param delay The new default withdrawal delay in seconds
+     */
+    function setDefaultWithdrawalDelay(uint32 delay) external;
 }

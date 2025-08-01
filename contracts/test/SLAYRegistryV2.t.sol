@@ -469,7 +469,9 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         registry.registerAsOperator("https://operator.com", "Operator X");
 
         // if delay is not updated, it should be the default 7 days
-        assertEq(registry.getWithdrawalDelay(operator), 7 days, "Default withdrawal delay should be 7 days");
+        assertEq(
+            registry.getWithdrawalDelay(operator), 7 days, "Default withdrawal delay should be defaultWithdrawalDelay"
+        );
 
         vm.expectEmit();
         emit ISLAYRegistryV2.WithdrawalDelayUpdated(operator, newDelay);
@@ -491,10 +493,10 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         vm.startPrank(operator);
         registry.registerAsOperator("https://operator.com", "Operator X");
 
-        vm.expectRevert("Delay must be at least more than or equal to 7 days");
+        vm.expectRevert("Delay must be at least more than or equal to defaultWithdrawalDelay");
         registry.setWithdrawalDelay(7 days - 1);
 
-        vm.expectRevert("Delay must be at least more than or equal to 7 days");
+        vm.expectRevert("Delay must be at least more than or equal to defaultWithdrawalDelay");
         registry.setWithdrawalDelay(0);
     }
 
