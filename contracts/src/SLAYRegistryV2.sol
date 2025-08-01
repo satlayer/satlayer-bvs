@@ -271,14 +271,14 @@ contract SLAYRegistryV2 is SLAYBase, ISLAYRegistryV2 {
     /// @inheritdoc ISLAYRegistryV2
     function setWithdrawalDelay(uint32 delay) external override whenNotPaused onlyOperator(_msgSender()) {
         require(delay >= DEFAULT_WITHDRAWAL_DELAY, "Delay must be at least more than or equal to 7 days");
+        address operator = _msgSender();
 
         // check for all active services of the operator if their minimum withdrawal delay is less than the new delay.
-        EnumerableSet.AddressSet storage activeServices = _operatorsActiveRelationships[_msgSender()];
+        EnumerableSet.AddressSet storage activeServices = _operatorsActiveRelationships[operator];
         uint256 activeServicesCount = activeServices.length();
         for (uint256 i = 0; i < activeServicesCount;) {
-            address service = activeServices.at(i);
             require(
-                _services[service].minWithdrawalDelay <= delay,
+                _services[activeServices.at(i)].minWithdrawalDelay <= delay,
                 "Operator withdrawal delay must be more than or equal to active service's minimum withdrawal delay"
             );
 
@@ -289,9 +289,9 @@ contract SLAYRegistryV2 is SLAYBase, ISLAYRegistryV2 {
         }
 
         // update the withdrawal delay for the operator.
-        _operators[_msgSender()].withdrawalDelay = delay;
+        _operators[operator].withdrawalDelay = delay;
 
-        emit WithdrawalDelayUpdated(_msgSender(), delay);
+        emit WithdrawalDelayUpdated(operator, delay);
     }
 
     /// @inheritdoc ISLAYRegistryV2
