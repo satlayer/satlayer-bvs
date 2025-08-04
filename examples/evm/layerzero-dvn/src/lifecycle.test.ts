@@ -256,7 +256,6 @@ test("lifecycle of sending message from ETH -> Optimism using custom DVN + BVS",
 
   // create DVN route config for SimpleOApp.sol for ETH -> Optimism
   // If not set, the default DVNs will be used.
-  // If not set, the default DVNs will be used.
   // also there must be at least one optional DVN configured.
   let fromEthToOpConfig = ConfigHelper.from([
     {
