@@ -1087,4 +1087,80 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         );
         registry.setWithdrawalDelay(newDelay2);
     }
+
+    function test_getActiveOperatorCount() public {
+        // Register multiple operators
+        for (uint256 i = 0; i < 5; i++) {
+            address operatorAddr = vm.addr(i + 1);
+            vm.startPrank(operatorAddr);
+            registry.registerAsOperator("https://operator.com", string(abi.encodePacked("Operator ", i)));
+            vm.stopPrank();
+        }
+
+        // Register a service
+        vm.prank(service);
+        registry.registerAsService("https://service.com", "Service A");
+
+        // Register service to the 5 operators
+        for (uint256 i = 0; i < 5; i++) {
+            address operatorAddr = vm.addr(i + 1);
+            vm.prank(operatorAddr);
+            registry.registerServiceToOperator(service);
+        }
+
+        // Register 4 operators to the service (to get 4 ACTIVE)
+        for (uint256 i = 0; i < 4; i++) {
+            address operatorAddr = vm.addr(i + 1);
+            vm.prank(service);
+            registry.registerOperatorToService(operatorAddr);
+        }
+
+        // Check active operator count
+        assertEq(registry.getActiveOperatorCount(service), 4, "Active operator count should be 4");
+
+        // Register the last operator to make it active
+        address lastOperator = vm.addr(5);
+        vm.prank(service);
+        registry.registerOperatorToService(lastOperator);
+
+        assertEq(registry.getActiveOperatorCount(service), 5, "Active operator count should be 5");
+    }
+
+    function test_getActiveServiceCount() public {
+        // Register multiple services
+        for (uint256 i = 0; i < 5; i++) {
+            address serviceAddr = vm.addr(i + 1);
+            vm.startPrank(serviceAddr);
+            registry.registerAsService("https://service.com", string(abi.encodePacked("Service ", i)));
+            vm.stopPrank();
+        }
+
+        // Register an operator
+        vm.prank(operator);
+        registry.registerAsOperator("https://operator.com", "Operator X");
+
+        // Register operator to the 5 services
+        for (uint256 i = 0; i < 5; i++) {
+            address serviceAddr = vm.addr(i + 1);
+            vm.prank(serviceAddr);
+            registry.registerOperatorToService(operator);
+        }
+
+        // Register 4 services to the operator (to get 4 ACTIVE)
+        for (uint256 i = 0; i < 4; i++) {
+            address serviceAddr = vm.addr(i + 1);
+            vm.prank(operator);
+            registry.registerServiceToOperator(serviceAddr);
+        }
+
+        // Check active service count
+        assertEq(registry.getActiveServiceCount(operator), 4, "Active service count should be 4");
+
+        // Register the last service to make it active
+        address lastService = vm.addr(5);
+        vm.prank(operator);
+        registry.registerServiceToOperator(lastService);
+
+        assertEq(registry.getActiveServiceCount(operator), 5, "Active service count should be 5");
+    }
 }
