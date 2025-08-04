@@ -383,4 +383,18 @@ interface ISLAYRegistryV2 {
      * @param delay The new default withdrawal delay in seconds
      */
     function setDefaultWithdrawalDelay(uint32 delay) external;
+
+    /**
+     * @notice Gets the number of active operators registered to a service
+     * @param service The address of the service
+     * @return The number of active operators registered to the service
+     */
+    function getActiveOperatorCount(address service) external view returns (uint256);
+
+    /**
+     * @notice Gets the number of active services registered to an operator
+     * @param operator The address of the operator
+     * @return The number of active services registered to the operator
+     */
+    function getActiveServiceCount(address operator) external view returns (uint256);
 }

@@ -496,4 +496,14 @@ contract SLAYRegistryV2 is SLAYBase, ISLAYRegistryV2 {
         defaultWithdrawalDelay = delay;
         emit DefaultWithdrawalDelayUpdated(oldDelay, delay);
     }
+
+    /// @inheritdoc ISLAYRegistryV2
+    function getActiveOperatorCount(address service) external view override returns (uint256) {
+        return _servicesActiveRelationships[service].length();
+    }
+
+    /// @inheritdoc ISLAYRegistryV2
+    function getActiveServiceCount(address operator) external view override returns (uint256) {
+        return _operatorsActiveRelationships[operator].length();
+    }
 }
