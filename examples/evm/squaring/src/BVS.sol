@@ -9,8 +9,8 @@ import { ISLAYRegistryV2 } from "@satlayer/contracts/interface/ISLAYRegistryV2.s
 
 contract BVS {
     address owner;
-    SLAYRegistryV2 immutable registry;
-    SLAYRouterV2 immutable router;
+    address immutable registry;
+    address immutable router;
     mapping(int64 => address) requests;
     mapping(int64 => mapping(address => int64)) responses;
 
@@ -34,12 +34,12 @@ contract BVS {
         _;
     }
 
-    constructor(SLAYRouterV2 router_, SLAYRegistryV2 registry_) {
+    constructor(address router_, address registry_) {
         owner = msg.sender;
         registry = registry_;
         router = router_;
 
-        registry.registerAsService("www.dsquaring.com", "Decentralized Squaring");
+        ISLAYRegistryV2(registry).registerAsService("www.dsquaring.com", "Decentralized Squaring");
         emit contractRegistered(address(this));
     }
 
@@ -56,7 +56,7 @@ contract BVS {
             revert RequestNotFound();
         }
 
-        RelationshipV2.Status registrationStatus = registry.getRelationshipStatus(address(this), operator);
+        RelationshipV2.Status registrationStatus = ISLAYRegistryV2(registry).getRelationshipStatus(address(this), operator);
 
         if (registrationStatus != RelationshipV2.Status.Active) {
             revert Unauthorized();
@@ -96,7 +96,7 @@ contract BVS {
         });
 
         emit slashRequested(operator, payload);
-        return router.requestSlashing(payload);
+        return SLAYRouterV2(router).requestSlashing(payload);
     }
 
     function _expensiveComputation(int64 input) internal returns(int64){
@@ -104,22 +104,22 @@ contract BVS {
     }
 
     function registerOperator(address operator) public onlyOwner {
-        registry.registerOperatorToService(operator);
+        SLAYRegistryV2(registry).registerOperatorToService(operator);
         emit operatorRegistration(operator, true);
     }
 
     function deregisterOperator(address operator) public onlyOwner {
-        registry.deregisterOperatorFromService(operator);
+        SLAYRegistryV2(registry).deregisterOperatorFromService(operator);
         emit operatorRegistration(operator, false);
     }
 
     function enableSlashing(ISLAYRegistryV2.SlashParameter calldata params) public onlyOwner {
-        registry.enableSlashing(params);
+        SLAYRegistryV2(registry).enableSlashing(params);
         emit slashEnabled(params);
     }
 
     function disableSlashing() public onlyOwner {
-        registry.disableSlashing();
+        SLAYRegistryV2(registry).disableSlashing();
     }
 
     function transferOwnership(address newOwner) external onlyOwner {
