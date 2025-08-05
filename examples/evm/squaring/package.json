@@ -2,8 +2,9 @@
   "name": "@examples/squaring-evm",
   "private": true,
   "scripts": {
-    "build": "forge build -C src/contracts -o src/contracts/out -vvv --force",
-    "test": "vitest run --reporter verbose"
+    "build:sol": "forge build -C src/contracts -o src/contracts/out -vvv --force",
+    "test": "vitest run --reporter verbose",
+    "test:sol": "forge test --contracts src/contracts"
   },
   "dependencies": {
     "@ethersproject/bytes": "^5.8.0",

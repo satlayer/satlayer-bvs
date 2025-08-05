@@ -4,10 +4,10 @@ pragma solidity ^0.8.13;
 import { RelationshipV2 } from "@satlayer/contracts/RelationshipV2.sol";
 import {SLAYRegistryV2} from "@satlayer/contracts/SLAYRegistryV2.sol";
 import {SLAYRouterV2} from "@satlayer/contracts/SLAYRouterV2.sol";
-import { Payload } from "@satlayer/contracts/interface/ISLAYRouterSlashingV2.sol";
-import { SlashParameter } from "@satlayer/contracts/interface/ISLAYRegistryV2.sol";
+import { ISLAYRouterSlashingV2 } from "@satlayer/contracts/interface/ISLAYRouterSlashingV2.sol";
+import { ISLAYRegistryV2 } from "@satlayer/contracts/interface/ISLAYRegistryV2.sol";
 
-contract Squaring {
+contract BVS {
     address owner;
     SLAYRegistryV2 immutable registry;
     SLAYRouterV2 immutable router;
@@ -17,15 +17,16 @@ contract Squaring {
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     event requested(address indexed sender, int64 number);
     event contractRegistered(address indexed thisContract);
-    event operatorRegistration(address indexed status, bool indexed status);
-    event slashEnabled(SlashParameter params);
+    event operatorRegistration(address indexed operator, bool indexed status);
+    event slashRequested(address indexed accusedOperator, ISLAYRouterSlashingV2.Payload params);
+    event slashEnabled(ISLAYRegistryV2.SlashParameter params);
     event slashDisabled();
 
     error ZeroValueNotAllowed();
     error Unauthorized();
     error ResponseNotFound();
     error RequestNotFound();
-    error InvalidProof();
+    error invalidChallenge();
     error Responded();
 
     modifier onlyOwner() {
@@ -39,7 +40,7 @@ contract Squaring {
         router = router_;
 
         registry.registerAsService("www.dsquaring.com", "Decentralized Squaring");
-        emit contractRegistered(this);
+        emit contractRegistered(address(this));
     }
 
     function request(int64 num) external {
@@ -55,26 +56,26 @@ contract Squaring {
             revert RequestNotFound();
         }
 
-        RelationshipV2.Status registrationStatus = registry.getRelationshipStatus(this, operator);
+        RelationshipV2.Status registrationStatus = registry.getRelationshipStatus(address(this), operator);
 
         if (registrationStatus != RelationshipV2.Status.Active) {
             revert Unauthorized();
         }
 
-        int64 out = responses[input][operator];
+        int64 prevOutput = responses[input][operator];
 
-        if(out == 0){
+        if(prevOutput != 0){
             revert Responded();
         }
 
-        responses[input][operator] = out;
+        responses[input][operator] = output;
     }
 
-    function getResponse(int64 input, address operator) external view {
+    function getResponse(int64 input, address operator) external view returns(int64) {
         return responses[input][operator];
     }
 
-    function compute(int64 inp, address operator) external {
+    function compute(int64 inp, address operator) external returns(bytes32) {
         int64 prevSquared = responses[inp][operator];
 
         if (prevSquared == 0) {
@@ -83,17 +84,19 @@ contract Squaring {
 
         int64 newSquared = _expensiveComputation(inp);
 
-        if(prevSquared != newSquared){
-            revert InvalidProof();
+        if(prevSquared == newSquared){
+            revert invalidChallenge();
         }
 
-        router.requestSlashing(Payload({
+        ISLAYRouterSlashingV2.Payload memory payload = ISLAYRouterSlashingV2.Payload({
             operator: operator,
             mbips: 1000,
             timestamp: uint32(block.timestamp),
             reason: "Invalid Proof"
-        }));
+        });
 
+        emit slashRequested(operator, payload);
+        return router.requestSlashing(payload);
     }
 
     function _expensiveComputation(int64 input) internal returns(int64){
@@ -110,7 +113,7 @@ contract Squaring {
         emit operatorRegistration(operator, false);
     }
 
-    function enableSlashing(SlashParameter calldata params) public onlyOwner {
+    function enableSlashing(ISLAYRegistryV2.SlashParameter calldata params) public onlyOwner {
         registry.enableSlashing(params);
         emit slashEnabled(params);
     }
