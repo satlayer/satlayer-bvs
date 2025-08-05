@@ -23,6 +23,10 @@ const meta: MetaRecord = {
   developers: {
     display: "children",
   },
+  _CW: {
+    type: "separator",
+    title: "CosmWasm (Rust)",
+  },
   contracts: {},
   _M: {
     type: "separator",
