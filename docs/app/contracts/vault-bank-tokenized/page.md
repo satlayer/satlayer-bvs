@@ -1,1 +1,0 @@
-../../../../crates/bvs-vault-bank-tokenized/README.md

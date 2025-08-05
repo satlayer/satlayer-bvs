@@ -27,7 +27,9 @@ const meta: MetaRecord = {
     type: "separator",
     title: "CosmWasm (Rust)",
   },
-  contracts: {},
+  cosmwasm: {
+    display: "children",
+  },
   _M: {
     type: "separator",
     title: "More",
