@@ -1,5 +1,5 @@
 ---
-title: CosmWasm Contracts
+title: Reference
 asIndexPage: true
 ---
 
