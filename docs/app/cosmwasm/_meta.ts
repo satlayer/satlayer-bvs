@@ -6,7 +6,9 @@ const meta: MetaRecord = {
       collapsed: false,
     },
   },
-  examples: {},
+  examples: {
+    title: "Rust Examples",
+  },
   contracts: {},
 };
 

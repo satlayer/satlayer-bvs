@@ -1,3 +1,7 @@
+---
+sidebarTitle: Insurance as a BVS
+---
+
 # Insurance as a BVS Example
 
 This example demonstrates how to use the Bitcoin Validated Service (BVS) to provide insurance services.
