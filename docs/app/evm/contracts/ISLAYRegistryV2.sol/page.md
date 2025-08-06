@@ -1,0 +1,1 @@
+../../../../../contracts/docs/src/src/interface/ISLAYRegistryV2.sol/interface.ISLAYRegistryV2.md

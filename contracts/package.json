@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "build": "forge build",
+    "doc": "forge doc",
     "fmt": "forge fmt",
     "test": "forge test"
   },
