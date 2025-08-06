@@ -72,6 +72,27 @@ describe("AnvilContainer", () => {
     expect(balance).toBe(amount);
   });
 
+  it("should mine block and advance timestamp proportionally", async () => {
+    const client = started.getClient();
+
+    // Get the current block number and timestamp
+    const initialBlock = await client.getBlock();
+    const initialTimestamp = initialBlock.timestamp;
+
+    // Mine 5 blocks
+    await started.mineBlock(5);
+
+    // Get the new block number and timestamp
+    const newBlock = await client.getBlock();
+    const newTimestamp = newBlock.timestamp;
+
+    // Verify that the block number has increased by 5
+    expect(newBlock.number).toStrictEqual(initialBlock.number + BigInt(5));
+
+    // Verify that the timestamp has increased proportionally
+    expect(newTimestamp).toStrictEqual(initialTimestamp + BigInt(5) + BigInt(1)); // +1 for the initial block timestamp
+  });
+
   it("should be able to set balance for an address", async () => {
     const testAddress = "0x1234567890123456789012345678901234567890";
     const amount = parseEther("10", "wei");
