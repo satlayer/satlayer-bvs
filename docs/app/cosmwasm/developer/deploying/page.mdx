@@ -7,8 +7,7 @@ import { Tabs } from 'nextra/components'
 # Deploying CosmWasm Contracts
 
 CosmWasm contracts can be deployed on Babylon Genesis and Babylon Testnet (or CosmWasm-compatible chains)
-using the `babylond` command line interface.
-The `babylond` CLI is a wrapper around the `cosmos-sdk` Go CLI.
+using the `cosmos-sdk`-compatible command line interface. (The `babylond` CLI is a wrapper around the `cosmos-sdk` Go CLI).
 
 You are not limited to using the `babylond` CLI to deploy CosmWasm contracts.
 Another option is to use the [cosmos/cosmjs](https://github.com/cosmos/cosmjs) library
@@ -74,7 +73,7 @@ docker run --rm -it -v $(pwd):/home/babylon docker.io/babylonlabs/babylond:v1.0.
 You can verify it is working by running the following command:
 
 ```sh
-babylond --help
+wasmd --help
 ```
 
 Add a new key for the deployer.
@@ -82,14 +81,14 @@ You will be prompted to enter a password and save it,
 you will need this password to sign transactions—**write the password down**.
 
 ```sh
-babylond keys add deployer
+wasmd keys add deployer
 ```
 
 Query the balance, make sure you have enough tokens to deploy the contracts.
 Transfer them to the deployer if necessary.
 
 ```sh
-babylond query bank balances $(babylond keys show deployer -a)
+wasmd query bank balances $(wasmd keys show deployer -a)
 ```
 
 ### Store Code
@@ -104,24 +103,24 @@ This is optional,
 but it is recommended to set it to the deployer address to prevent others from instantiating the contract.
 
 ```shell
-babylond tx wasm store path/to/artifacts/contract.wasm \
+wasmd tx wasm store path/to/artifacts/contract.wasm \
   --from=deployer \
   --gas=auto --gas-adjustment=1.3 --gas-prices=0.005ubbn \
-  --instantiate-anyof-addresses=$(babylond keys show deployer -a)
+  --instantiate-anyof-addresses=$(wasmd keys show deployer -a)
 ```
 
 The most convenient way to get the `CODE_ID` is to query the list of codes and find the one you just uploaded.
 The `creator:` field should match the address of the deployer.
 
 ```shell
-babylond query wasm list-code --reverse --limit=3
+wasmd query wasm list-code --reverse --limit=3
 ```
 
 Alternatively, query the transaction hash to get the `CODE_ID` using the transaction hash.
 Below is an example of how to get the `CODE_ID` from the transaction hash using `jq`.
 
 ```shell
-CODE_ID=$(babylond query tx $TX_HASH --output=json \
+CODE_ID=$(wasmd query tx $TX_HASH --output=json \
 | jq -r '.events[] | select(.type == "store_code") | .attributes[] | select(.key == "code_id") | .value')
 echo $CODE_ID
 ```
@@ -142,9 +141,9 @@ Followed by the `CODE_ID` and the contract initialization parameters.
 > and [cosmwasm/issues/926](https://github.com/CosmWasm/cosmwasm/issues/926#issuecomment-851259818) for more details.
 
 ```shell
-ADMIN=$(babylond keys show deployer -a)
+ADMIN=$(wasmd keys show deployer -a)
 CODE_ID=''
 INIT_JSON='{}'
-babylond tx wasm instantiate --from=deployer --admin=$ADMIN $CODE_ID $INIT_JSON \
+wasmd tx wasm instantiate --from=deployer --admin=$ADMIN $CODE_ID $INIT_JSON \
   --gas=auto --gas-adjustment=1.3 --gas-prices=0.005ubbn
 ```

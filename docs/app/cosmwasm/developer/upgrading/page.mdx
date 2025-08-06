@@ -21,6 +21,6 @@ Follow the [same steps as the initial deployment](/developers/cosmwasm/deploying
 CONTRACT_ADDRESS=''
 CODE_ID=''
 MIGRATE_JSON='{}'
-babylond tx wasm migrate --from=deployer $CONTRACT_ADDRESS $CODE_ID $MIGRATE_JSON \
+wasmd tx wasm migrate --from=deployer $CONTRACT_ADDRESS $CODE_ID $MIGRATE_JSON \
   --gas=auto --gas-adjustment=1.3 --gas-prices=0.005ubbn
 ```

@@ -1,13 +1,10 @@
 import type { MetaRecord } from "nextra";
 
 const meta: MetaRecord = {
-  developer: {
-    theme: {
-      collapsed: false,
-    },
+  developer: {},
+  languages: {
+    title: "Integrate on CosmWasm",
   },
-  examples: {},
-  contracts: {},
 };
 
 export default meta;

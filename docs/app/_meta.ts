@@ -11,7 +11,7 @@ const meta: MetaRecord = {
   },
   _G: {
     type: "separator",
-    title: "Getting Started",
+    title: "Architecture",
   },
   "getting-started": {
     display: "children",
@@ -28,6 +28,13 @@ const meta: MetaRecord = {
     title: "CosmWasm (Rust)",
   },
   cosmwasm: {
+    display: "children",
+  },
+  _A: {
+    type: "separator",
+    title: "Protocol-agnostic",
+  },
+  agnostic: {
     display: "children",
   },
   _M: {

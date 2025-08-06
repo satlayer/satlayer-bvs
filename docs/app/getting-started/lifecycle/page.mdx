@@ -2,21 +2,25 @@
 sidebarTitle: Validated Service Lifecycle
 ---
 
-import { Tabs, Cards } from 'nextra/components'
+import { Tabs, Cards, Callout } from 'nextra/components'
 import {
   CubeIcon, WindowIcon
 } from '@heroicons/react/24/outline';
 
 # Validated Service Lifecycle
 
-SatLayer supports two types of services:
+SatLayer supports various types of integration:
 
-- [**CosmWasm Contract**](/developers/cosmwasm):
-Service with deployed on-chain logic,
+- **EVM Contract**:
+Service with deployed on-chain logic developed in Solidity (or EVM-compatible language),
 objectively verifiable and irrefutable by the network,
 driven primarily by the contract code.
-- [**Program-agnostic**](/developers/program-agnostic):
-Service with a program-agnostic and/or chain-agnostic logic
+- [**CosmWasm Contract**](/cosmwasm/getting-started):
+Service with deployed on-chain logic developed in Rust,
+objectively verifiable and irrefutable by the network,
+driven primarily by the contract code.
+- [**Protocol-agnostic**](/agnostic/getting-started):
+Service with a contract-agnostic and/or protocol-agnostic logic (using EOA)
 that can be verified by the network,
 but not necessarily on-chain.
 This allows a wider range of services that can utilize shared security.
@@ -25,11 +29,16 @@ This allows a wider range of services that can utilize shared security.
 
 Regardless of the type of service,
 the lifecycle of a Bitcoin Validated Service (BVS) is the same.
-BVS developers integrate with the SatLayer ecosystem through [Core Contracts](/contracts),
+BVS developers integrate with the SatLayer ecosystem through a set of core contracts,
 either directly as EOA or governed through a set (or singular) smart contract.
 
 The two core contracts utilized by BVS for the entire BVS lifecycle
-are [Registry](/cosmwasm/contracts/registry) and [Vault Router](/cosmwasm/contracts/vault-router).
+are **BVS Registry** and **BVS Router**.
+
+<Callout type="info">
+  The lifecycle of a Bitcoin Validated Service (BVS) is similar regardless of the type of service.
+  The code section below provides an high-level overview of the lifecycle and how to integrate with the SatLayer ecosystem.
+</Callout>
 
 ### BVS Registry
 
@@ -39,10 +48,29 @@ For on-chain services, the Operator can be queried and asserted to determine if 
 
 Example for registering a BVS service:
 
-<Tabs items={['CosmWasm Contract', 'Program-agnostic']} storageKey="ServiceType">
+<Tabs items={['Solidity (EVM)', 'Rust (CosmWasm)', 'Protocol-agnostic']} storageKey="ServiceType">
   [//]: # (//@formatter:off)
   <Tabs.Tab>
-    <>We execute service registration during `pub fn instantiate`, but they can be executed at any time in the contract lifecycle, e.g. during `pub fn migrate` or `pub fn execute`.</>
+    We register the service during the contract constructor, but it can be executed at any time in the contract lifecycle.
+
+    ```solidity filename="BVS.sol"
+    contract BVS is Ownable {
+      SLAYRegistry private _SLAYRegistry;
+      SLAYRouter private _SLAYRouter;
+
+      constructor(SLAYRegistry SLAYRegistry_, SLAYRouter SLAYRouter_, address owner) Ownable(owner) {
+          _SLAYRegistry = SLAYRegistry_;
+          _SLAYRouter = slayRouter_;
+
+          SLAYRegistry_.registerAsService(
+              "https://www.myservice.com", "My Service"
+          );
+      }
+    }
+    ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+    We execute service registration during `pub fn instantiate`, but they can be executed at any time in the contract lifecycle, e.g. during `pub fn migrate` or `pub fn execute`.
 
     ```rust filename="contract.rs"
     #[cfg_attr(not(feature = "library"), entry_point)]
@@ -72,7 +100,7 @@ Example for registering a BVS service:
 
   </Tabs.Tab>
   <Tabs.Tab>
-    <>In this example, we use the [cosmos/cosmjs JavaScript SDK](https://github.com/cosmos/cosmjs) to register a service but program-agnostic services can be implemented in any language.</>
+    In this example, we use the [cosmos/cosmjs JavaScript SDK](https://github.com/cosmos/cosmjs) to register a service but contract-agnostic services can be implemented in any language.
 
     ```js filename="init.js"
     const executeMsg = {
@@ -91,20 +119,42 @@ Example for registering a BVS service:
   [//]: # (//@formatter:on)
 </Tabs>
 
-### BVS Vault Router
+### BVS Router
 
-The [BVS Vault Router]((/contracts/vault-router)) is a central contract
+The BVS Router is a central contract
 that manages the interaction between vaults and other contracts in the SatLayer ecosystem.
 As a BVS,
 the Vault Router coordinates the programmable slashing of vaults,
 serving as the execution layer for the slashing logic.
 
-Example for initializing a slash:
+High-level example for initializing a slash request:
 
-<Tabs items={['CosmWasm Contract', 'Program-agnostic']} storageKey="ServiceType">
+<Tabs items={['Solidity (EVM)', 'Rust (CosmWasm)', 'Protocol-agnostic']} storageKey="ServiceType">
   [//]: # (//@formatter:off)
   <Tabs.Tab>
-    <>The `CosmosMsg` for slashing requests to the BVS Vault Router contract, this can be called during `pub fn execute`.</>
+    The `requestSlashing` function is used to request a slashing of an operator.
+    This can be called at any time in the contract lifecycle, for example, during a specific event or condition that leads to slashing.
+
+    ```solidity filename="BVS.sol"
+    contract BVS is Ownable {
+      SLAYRegistry private _SLAYRegistry;
+      SLAYRouter private _SLAYRouter;
+
+      function requestSlashing(address operator, uint32 timestamp) external {
+        ISLAYRouterSlashingV2.Payload memory payload = ISLAYRouterSlashingV2.Payload({
+          operator: operator,
+          mbips: 100,
+          timestamp: timestamp,
+          reason: "Missing Heartbeat"
+        });
+
+        _SLAYRouter.requestSlashing(payload);
+      }
+    }
+    ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+    The `CosmosMsg` for slashing requests to the BVS Vault Router contract, this can be called during `pub fn execute`.
 
     ```rust filename="contract.rs"
     let request_slashing = bvs_vault_router::msg::ExecuteMsg::RequestSlashing(
@@ -128,7 +178,7 @@ Example for initializing a slash:
 
   </Tabs.Tab>
   <Tabs.Tab>
-    <>In this example, we use the [cosmos/cosmjs JavaScript SDK](https://github.com/cosmos/cosmjs) but program-agnostic services can be implemented in any language.</>
+    In this example, we use the [cosmos/cosmjs JavaScript SDK](https://github.com/cosmos/cosmjs) but protocol-agnostic services can be implemented in any language.
 
     ```js filename="slashing.js"
     const executeMsg = {
@@ -157,7 +207,7 @@ the next steps are different.
 <Cards num={2}>
   <Cards.Card
     title="CosmWasm Contract"
-    href="/developers/cosmwasm"
+    href="/cosmwasm/getting-started"
     icon={<CubeIcon/>}
     arrow>
     <div className="x:p-4 x:grow x:bg-white x:dark:bg-black x:leading-7">
@@ -165,12 +215,12 @@ the next steps are different.
     </div>
   </Cards.Card>
   <Cards.Card
-    title="Program-agnostic"
-    href="/developers/program-agnostic"
+    title="Protocol-agnostic"
+    href="/agnostic/getting-started"
     icon={<WindowIcon/>}
     arrow>
     <div className="x:p-4 x:grow x:bg-white x:dark:bg-black x:leading-7">
-      <>Service with a program-agnostic and/or chain-agnostic logic.</>
+      <>Service with a contract-agnostic and/or protocol-agnostic logic.</>
     </div>
   </Cards.Card>
 </Cards>

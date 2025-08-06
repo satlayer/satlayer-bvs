@@ -178,7 +178,7 @@ contract SLAYRewardsV2 is SLAYBase, ISLAYRewardsV2 {
      * This is done to ensure that the leaf is unique for each (earner, amount) pair.
      * The leaf is hashed using double keccak256.
      *
-     * The earner and amount are converted to strings and then hashed to ensure that it conform with the tree generation code that is chain-agnostic.
+     * The earner and amount are converted to strings and then hashed to ensure that it conform with the tree generation code that is protocol-agnostic.
      * This will also allow future expansion into multi control plane claiming, where the earner might not be an evm address.
      * The earner is represented as a checksum hex string to ensure that the address is in a consistent format with the rewards distribution file submitted by the provider.
      *
