@@ -16,16 +16,12 @@ const meta: MetaRecord = {
   "getting-started": {
     display: "children",
   },
-  _D: {
-    type: "separator",
-    title: "BVS Developers",
-  },
-  developers: {
-    display: "children",
-  },
   _EVM: {
     type: "separator",
     title: "EVM (Solidity)",
+  },
+  evm: {
+    display: "children",
   },
   _CW: {
     type: "separator",
