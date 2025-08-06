@@ -6,9 +6,6 @@ const meta: MetaRecord = {
     title: "Introduction",
   },
   index: {},
-  introduction: {
-    display: "children",
-  },
   _G: {
     type: "separator",
     title: "Architecture",
