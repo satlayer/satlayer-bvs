@@ -11,19 +11,32 @@ const meta: MetaRecord = {
   },
   _G: {
     type: "separator",
-    title: "Getting Started",
+    title: "Architecture",
   },
-  "getting-started": {
+  architecture: {
     display: "children",
   },
-  _D: {
+  _EVM: {
     type: "separator",
-    title: "BVS Developers",
+    title: "EVM (Solidity)",
   },
-  developers: {
+  evm: {
     display: "children",
   },
-  contracts: {},
+  _CW: {
+    type: "separator",
+    title: "CosmWasm (Rust)",
+  },
+  cosmwasm: {
+    display: "children",
+  },
+  _A: {
+    type: "separator",
+    title: "Protocol-agnostic",
+  },
+  agnostic: {
+    display: "children",
+  },
   _M: {
     type: "separator",
     title: "More",

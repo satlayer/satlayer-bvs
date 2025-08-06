@@ -1,1 +1,0 @@
-../../../../crates/bvs-vault-factory/README.md

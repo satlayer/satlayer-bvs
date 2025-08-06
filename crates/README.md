@@ -1,9 +1,9 @@
 ---
-title: Core Contracts
+title: Contract Reference
 asIndexPage: true
 ---
 
-# Core Contracts
+# CosmWasm Core Contracts
 
 The SatLayer ecosystem consists of several specialized contracts
 that work together to provide a complete staking and validation solution.

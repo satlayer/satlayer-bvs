@@ -36,7 +36,7 @@ These rewards are shared between operators (10%) and stakers (90%), with distrib
 Prerequisites for this example:
 
 1. Install Rust and Cargo: https://www.rust-lang.org/tools/install
-2. Basic understanding of [CosmWasm contracts](/developers/cosmwasm)
+2. Basic understanding of [CosmWasm contracts](/cosmwasm/developer)
 3. Node.js for development of the off-chain service: https://nodejs.org/en/download/
 4. Docker to run off-chain node: https://docs.docker.com/get-docker/
 

@@ -1,0 +1,149 @@
+---
+sidebarTitle: Deploying
+---
+
+import { Tabs } from 'nextra/components'
+
+# Deploying CosmWasm Contracts
+
+CosmWasm contracts can be deployed on Babylon Genesis and Babylon Testnet (or CosmWasm-compatible chains)
+using the `cosmos-sdk`-compatible command line interface. (The `babylond` CLI is a wrapper around the `cosmos-sdk` Go CLI).
+
+You are not limited to using the `babylond` CLI to deploy CosmWasm contracts.
+Another option is to use the [cosmos/cosmjs](https://github.com/cosmos/cosmjs) library
+to deploy CosmWasm contracts using JavaScript or TypeScript code.
+This guide provides the bare minimum to get you started with deployment operations,
+you should develop your own scripts/runbooks for your own operational needs.
+
+## Building
+
+You need to use [CosmWasm/optimizer](https://github.com/CosmWasm/optimizer) to build the contracts.
+It is a tool (Dockerfile) to deterministically produce the smallest possible Wasm for your Rust contract.
+It will produce an artifacts directory with `<crate_name>.wasm` and `checksums.txt` containing the hashes.
+
+The easiest way to build the contracts is to use the `docker` command.
+The artifacts will be available in the `$(pwd)/artifacts` directory after running the command.
+
+```shell
+docker run --rm -v "$(pwd)":/code \
+  --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
+  --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+  cosmwasm/optimizer:0.16.0
+```
+
+## Deploying
+
+For convenience, we will use `docker` to run the `babylond` CLI so you don't need to install the `babylond` CLI locally.
+
+### Prepare Environment
+
+<Tabs items={['Babylon Testnet', 'Babylon Genesis']}>
+  <Tabs.Tab>
+    <>Copy the `client.toml` file for `bbn-test-5` to the `.babylond/config` directory.</>
+
+    ```toml filename=".babylond/config/client.toml" copy
+    chain-id = "bbn-test-5"
+    node = "https://babylon-testnet-rpc.nodes.guru"
+    keyring-backend = "os"
+    output = "text"
+    broadcast-mode = "block"
+    ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+    <>Copy the `client.toml` file for `bbn-1` to the `.babylond/config` directory.</>
+
+    ```toml filename=".babylond/config/client.toml" copy
+    chain-id = "bbn-1"
+    node = "https://babylon-rpc.polkachu.com"
+    keyring-backend = "os"
+    output = "text"
+    broadcast-mode = "block"
+    ```
+  </Tabs.Tab>
+</Tabs>
+
+Start the interactive shell using the `babylond` docker image.
+We will bind the current directory `pwd` to the `/home/babylon` directory in the container,
+any keys or configuration files will be stored in the current directory.
+
+```sh
+docker run --rm -it -v $(pwd):/home/babylon docker.io/babylonlabs/babylond:v1.0.1
+```
+
+You can verify it is working by running the following command:
+
+```sh
+wasmd --help
+```
+
+Add a new key for the deployer.
+You will be prompted to enter a password and save it,
+you will need this password to sign transactions—**write the password down**.
+
+```sh
+wasmd keys add deployer
+```
+
+Query the balance, make sure you have enough tokens to deploy the contracts.
+Transfer them to the deployer if necessary.
+
+```sh
+wasmd query bank balances $(wasmd keys show deployer -a)
+```
+
+### Store Code
+
+Upload the contract to the chain by running the `store` command.
+- `--from` specifies the key to use for signing the transaction.
+- `--gas=auto` automatically estimates the gas required for the transaction by simulating it first.
+- `--gas-adjustment=1.3` increases the gas estimate by 30% to account for any discrepancies.
+- `--gas-prices=0.005ubbn` specifies the gas price to use for the transaction. Minimum is `0.002ubbn` for `bbn-test-5` and `bbn-1`.
+- `--instantiate-anyof-addresses` specifies the addresses that are allowed to instantiate the contract.
+This is optional,
+but it is recommended to set it to the deployer address to prevent others from instantiating the contract.
+
+```shell
+wasmd tx wasm store path/to/artifacts/contract.wasm \
+  --from=deployer \
+  --gas=auto --gas-adjustment=1.3 --gas-prices=0.005ubbn \
+  --instantiate-anyof-addresses=$(wasmd keys show deployer -a)
+```
+
+The most convenient way to get the `CODE_ID` is to query the list of codes and find the one you just uploaded.
+The `creator:` field should match the address of the deployer.
+
+```shell
+wasmd query wasm list-code --reverse --limit=3
+```
+
+Alternatively, query the transaction hash to get the `CODE_ID` using the transaction hash.
+Below is an example of how to get the `CODE_ID` from the transaction hash using `jq`.
+
+```shell
+CODE_ID=$(wasmd query tx $TX_HASH --output=json \
+| jq -r '.events[] | select(.type == "store_code") | .attributes[] | select(.key == "code_id") | .value')
+echo $CODE_ID
+```
+
+### Instantiate Contract
+
+Using the `CODE_ID` from the previous step, instantiate the contract.
+The `--admin` is the address that will have admin rights over the contract.
+You need to set this if you want to be able to upgrade the contract later.
+This is set to the deployer in this example, in production we would set this to a multisig/governance contract.
+Followed by the `CODE_ID` and the contract initialization parameters.
+
+> Contract admin is a contract management feature of `wasmd`,
+> among many things, it allows the contract to be upgraded later.
+> You cannot set this value in the contract, nor can you change it in the contract.
+> It is set during the instantiation of the contract by the creator.
+> See [std/src/query/wasm.rs#L57](https://github.com/CosmWasm/cosmwasm/blob/dc70bf3554f63308f681098819854773355b60cb/packages/std/src/query/wasm.rs#L57)
+> and [cosmwasm/issues/926](https://github.com/CosmWasm/cosmwasm/issues/926#issuecomment-851259818) for more details.
+
+```shell
+ADMIN=$(wasmd keys show deployer -a)
+CODE_ID=''
+INIT_JSON='{}'
+wasmd tx wasm instantiate --from=deployer --admin=$ADMIN $CODE_ID $INIT_JSON \
+  --gas=auto --gas-adjustment=1.3 --gas-prices=0.005ubbn
+```

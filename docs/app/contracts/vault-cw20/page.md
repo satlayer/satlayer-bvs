@@ -1,1 +1,0 @@
-../../../../crates/bvs-vault-cw20/README.md
