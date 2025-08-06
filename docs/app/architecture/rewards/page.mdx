@@ -4,7 +4,7 @@ import {Callout, Steps} from "nextra/components";
 # Distributing Rewards
 
 Rewards are the economic incentives
-provided by [Services](/getting-started/services) to [Operators](/getting-started/operators) and Stakers for their participation
+provided by [Services](/architecture/services) to [Operators](/architecture/operators) and Stakers for their participation
 in securing the Service network.
 
 ```mermaid
@@ -63,12 +63,12 @@ Should Services prefer, the merkle root can also be generated locally using the 
 
 ### Execute the distribution
 
-Services should call the `DistributeRewards` function on the [`bvs-rewards`](/cosmwasm/contracts/rewards) contract
+Services should call the `DistributeRewards` function on the BVS Rewards contract
 with the generated merkle root, in order to distribute the rewards.
 
 Before executing this step, Services must ensure that:
 - The reward tokens are available in sufficient amounts
-- Appropriate allowances are granted to the [`bvs-rewards`](/cosmwasm/contracts/rewards) contract
+- Appropriate allowances are granted to the rewards contract
 
 </Steps>
 

@@ -251,7 +251,7 @@ mod execute {
     }
 
     /// Moves the assets from the vault to the `vault-router` contract.
-    /// Part of the [https://build.satlayer.xyz/getting-started/slashing](Programmable Slashing) lifecycle.
+    /// Part of the [https://build.satlayer.xyz/architecture/slashing](Programmable Slashing) lifecycle.
     /// This function can only be called by `vault-router`, and takes an absolute `amount` of assets to be moved.
     /// The amount is calculated and enforced by the router.
     pub fn slash_locked(

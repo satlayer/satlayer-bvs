@@ -71,7 +71,7 @@ contract SLAYVaultV2 is
      * @notice The address where the vault is delegated to
      * @dev This address cannot withdraw assets from the vault
      * This delegated address (also called the Operator in SLAYRegistry) is not the same as the ERC7540 Operator
-     * See https://build.satlayer.xyz/getting-started/operators for more information
+     * See https://build.satlayer.xyz/architecture/operators for more information
      */
     address internal _delegated;
 

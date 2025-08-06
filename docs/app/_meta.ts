@@ -13,7 +13,7 @@ const meta: MetaRecord = {
     type: "separator",
     title: "Architecture",
   },
-  "getting-started": {
+  architecture: {
     display: "children",
   },
   _EVM: {

@@ -3,11 +3,11 @@ import { Callout } from 'nextra/components';
 # Integrating with SatLayer
 
 Before you integrate with SatLayer,
-the [CosmWasm Contract](/developers/cosmwasm)
-and [what is a service](/getting-started/services)
+the [CosmWasm Contract](/cosmwasm/developer)
+and [what is a service](/architecture/services)
 documentation is a recommended read.
 Foundational knowledge of CosmWasm is required to understand the integration process.
-Head over to the [Protocol-agnostic](/developers/protocol-agnostic) section
+Head over to the [Protocol-agnostic](/agnostic/developer) section
 if you are looking for a non-CosmWasm Contract integration.
 
 ---
@@ -26,7 +26,7 @@ cargo add --dev bvs-multi-test
 
 ## Registry
 
-The [BVS Registry](/cosmwasm/contracts/registry) is a central record-keeping contract for all Operators and Services within the SatLayer ecosystem.
+The BVS Registry is a central record-keeping contract for all Operators and Services within the SatLayer ecosystem.
 It serves as a directory where Operators and Services can register themselves and establish mutual relationships.
 
 ### Register as Service
@@ -173,7 +173,7 @@ the Vault Router coordinates the programmable slashing of vaults,
 serving as the execution layer for the slashing logic.
 
 <Callout type="info">
-  See [Programmable Slashing](/getting-started/slashing) for more information on how slashing works.
+  See [Programmable Slashing](/architecture/slashing) for more information on how slashing works.
 </Callout>
 
 ### Request Slashing

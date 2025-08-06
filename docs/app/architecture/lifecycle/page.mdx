@@ -15,11 +15,11 @@ SatLayer supports various types of integration:
 Service with deployed on-chain logic developed in Solidity (or EVM-compatible language),
 objectively verifiable and irrefutable by the network,
 driven primarily by the contract code.
-- [**CosmWasm Contract**](/cosmwasm/getting-started):
+- [**CosmWasm Contract**](/cosmwasm/developer):
 Service with deployed on-chain logic developed in Rust,
 objectively verifiable and irrefutable by the network,
 driven primarily by the contract code.
-- [**Protocol-agnostic**](/agnostic/getting-started):
+- [**Protocol-agnostic**](/agnostic/developer):
 Service with a contract-agnostic and/or protocol-agnostic logic (using EOA)
 that can be verified by the network,
 but not necessarily on-chain.
@@ -42,7 +42,7 @@ are **BVS Registry** and **BVS Router**.
 
 ### BVS Registry
 
-The [BVS Registry](/cosmwasm/contracts/registry) is a central record-keeping contract for all Operators and Services within the SatLayer ecosystem.
+The BVS Registry is a central record-keeping contract for all Operators and Services within the SatLayer ecosystem.
 It serves as a directory where Operators and Services can register themselves and establish mutual relationships.
 For on-chain services, the Operator can be queried and asserted to determine if it is validating a Service.
 
@@ -207,7 +207,7 @@ the next steps are different.
 <Cards num={2}>
   <Cards.Card
     title="CosmWasm Contract"
-    href="/cosmwasm/getting-started"
+    href="/cosmwasm/developer"
     icon={<CubeIcon/>}
     arrow>
     <div className="x:p-4 x:grow x:bg-white x:dark:bg-black x:leading-7">
@@ -216,7 +216,7 @@ the next steps are different.
   </Cards.Card>
   <Cards.Card
     title="Protocol-agnostic"
-    href="/agnostic/getting-started"
+    href="/agnostic/developer"
     icon={<WindowIcon/>}
     arrow>
     <div className="x:p-4 x:grow x:bg-white x:dark:bg-black x:leading-7">

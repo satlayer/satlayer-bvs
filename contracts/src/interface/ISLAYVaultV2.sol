@@ -73,7 +73,7 @@ interface ISLAYVaultV2 is IERC20Metadata, IERC4626, IERC7540Operator, IERC7540Re
      * @notice Returns the address where the vault is delegated to
      * @dev This address is the SatLayer operator that is delegated to manage the vault
      * This address cannot withdraw assets from the vault
-     * See https://build.satlayer.xyz/getting-started/operators for more information
+     * See https://build.satlayer.xyz/architecture/operators for more information
      * @return The address of the delegated operator
      */
     function delegated() external view returns (address);

@@ -28,7 +28,7 @@ It enables Services to distribute rewards to Operators and Stakers
 
 ## Rewards Workflow
 
-Refer to the [Rewards](/getting-started/rewards) section for a detailed overview of how rewards are distributed,
+Refer to the [Rewards](/architecture/rewards) section for a detailed overview of how rewards are distributed,
 and claimed in the SatLayer ecosystem.
 
 ## Important Notes
