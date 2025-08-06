@@ -1,0 +1,1 @@
+../../../../../contracts/docs/src/src/interface/ISLAYRouterSlashingV2.sol/interface.ISLAYRouterSlashingV2.md
