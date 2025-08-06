@@ -75,19 +75,24 @@ export class PolicyManager {
    */
   public async init() {
     // register service to SatLayer Registry
-    await this.api.RegistryContract.write.registerAsService(["http://the-sure-coverage.com", "The Sure Coverage"]);
+    await this.api.RegistryContract.write.registerAsService(["http://the-sure-coverage.com", "The Sure Coverage"], {
+      account: this.service,
+    });
 
     // enable slashing
-    await this.api.RegistryContract.write.enableSlashing([
-      {
-        destination: this.service,
-        maxMbips: Math.floor(this.CAPACITY_FACTOR * 10_000_000), // 80% of the vault balance can be slashed
-        resolutionWindow: 0, // immediate slashing
-      },
-    ]);
+    await this.api.RegistryContract.write.enableSlashing(
+      [
+        {
+          destination: this.service,
+          maxMbips: Math.floor(this.CAPACITY_FACTOR * 10_000_000), // 80% of the vault balance can be slashed
+          resolutionWindow: 0, // immediate slashing
+        },
+      ],
+      { account: this.service },
+    );
 
     // register operator to the service
-    await this.api.RegistryContract.write.registerOperatorToService([this.operator]);
+    await this.api.RegistryContract.write.registerOperatorToService([this.operator], { account: this.service });
     // init rewards history
     this.rewardsHistory = {
       lastUpdated: Date.now(),
