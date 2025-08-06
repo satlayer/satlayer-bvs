@@ -217,6 +217,12 @@ contract SLAYRouterV2 is SLAYBase, ReentrancyGuardUpgradeable, ISLAYRouterV2, IS
     }
 
     /// @inheritdoc ISLAYRouterSlashingV2
+    function getPendingSlashingRequestId(address service, address operator) external view override returns (bytes32) {
+        // Return the slashing request ID for the given service-operator pair
+        return _pendingSlashingRequestIds[service][operator];
+    }
+
+    /// @inheritdoc ISLAYRouterSlashingV2
     function getSlashingRequest(bytes32 slashId)
         external
         view
