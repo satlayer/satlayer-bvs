@@ -63,12 +63,12 @@ Should Services prefer, the merkle root can also be generated locally using the 
 
 ### Execute the distribution
 
-Services should call the `DistributeRewards` function on the [`bvs-rewards`](/contracts/rewards) contract
+Services should call the `DistributeRewards` function on the [`bvs-rewards`](/cosmwasm/contracts/rewards) contract
 with the generated merkle root, in order to distribute the rewards.
 
 Before executing this step, Services must ensure that:
 - The reward tokens are available in sufficient amounts
-- Appropriate allowances are granted to the [`bvs-rewards`](/contracts/rewards) contract
+- Appropriate allowances are granted to the [`bvs-rewards`](/cosmwasm/contracts/rewards) contract
 
 </Steps>
 
@@ -91,7 +91,7 @@ In reality, there may be a user interface that allows Earners to generate proofs
 
 ### Execute claim
 
-Earners call the `ClaimRewards` function on the [`bvs-rewards`](/contracts/rewards) contract.
+Earners call the `ClaimRewards` function on the [`bvs-rewards`](/cosmwasm/contracts/rewards) contract.
 This call includes the merkle proof, leaf index, and other required parameters.
 When the claim is successful, the Earners receive their rewards in the specified token as distributed by the Service.
 
