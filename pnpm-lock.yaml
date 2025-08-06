@@ -354,6 +354,34 @@ importers:
         specifier: ^3.2.4
         version: 3.2.4(@types/debug@4.1.12)(@types/node@20.17.17)(jiti@2.4.2)(lightningcss@1.30.1)(yaml@2.8.0)
 
+  examples/evm/insurance/service:
+    dependencies:
+      '@satlayer/cli':
+        specifier: workspace:*
+        version: link:../../../../packages/cli
+      '@satlayer/contracts':
+        specifier: workspace:*
+        version: link:../../../../contracts
+      '@satlayer/testcontainers':
+        specifier: workspace:*
+        version: link:../../../../packages/testcontainers
+      execa:
+        specifier: ^9.6.0
+        version: 9.6.0
+      viem:
+        specifier: ^2.33.1
+        version: 2.33.2(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.25.76)
+    devDependencies:
+      '@types/node':
+        specifier: ^20
+        version: 20.17.17
+      typescript:
+        specifier: latest
+        version: 5.9.2
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@20.17.17)(jiti@2.4.2)(lightningcss@1.30.1)(yaml@2.8.0)
+
   examples/evm/layerzero-dvn:
     dependencies:
       '@ethersproject/bytes':
