@@ -1,5 +1,5 @@
 ---
-title: Core Contracts
+title: CosmWasm Contracts
 asIndexPage: true
 ---
 

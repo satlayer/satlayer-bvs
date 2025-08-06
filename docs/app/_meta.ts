@@ -23,6 +23,10 @@ const meta: MetaRecord = {
   developers: {
     display: "children",
   },
+  _EVM: {
+    type: "separator",
+    title: "EVM (Solidity)",
+  },
   _CW: {
     type: "separator",
     title: "CosmWasm (Rust)",
