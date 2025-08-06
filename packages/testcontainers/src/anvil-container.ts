@@ -223,7 +223,7 @@ export class StartedAnvilContainer extends AbstractStartedContainer {
   }
 
   async mineBlock(n: number = 1): Promise<void> {
-    return this.client.mine({ blocks: n }); // mine 1 block
+    return this.client.mine({ blocks: n, interval: n }); // move block by n blocks and n seconds
   }
 
   getAddress(): `0x${string}` {
