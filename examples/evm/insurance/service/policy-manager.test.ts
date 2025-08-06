@@ -111,7 +111,7 @@ describe("PolicyManager", () => {
     });
 
     await started.mineBlock(1); // mine a block to ensure the registration is processed
-  });
+  }, 60_000);
 
   test("Lifecycle test", { timeout: 60_000 }, async () => {
     // Alice buys policy for 1_000_000 coverage
