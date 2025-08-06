@@ -1,5 +1,7 @@
 # SatLayer BVS
 
+For SatLayer Developer Documentation, visit the [build.satlayer.xyz](https://build.satlayer.xyz/) site.
+
 ## Getting Started & Development Guide
 
 > [!TIP]  
