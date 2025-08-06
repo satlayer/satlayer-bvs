@@ -202,12 +202,21 @@ interface ISLAYRouterSlashingV2 {
 
     /**
      * @dev Returns the most recent slashing request initiated by the specified service against the specified operator.
-     * If no active request exists, the returned request will have default values.
+     * If no pending request exists, the returned request will have default values.
      * @param service Address of the service that initiated the slashing request.
      * @param operator Address of the operator targeted by the slashing request.
-     * @return A Request struct containing the details of the current active slashing request.
+     * @return A Request struct containing the details of the current pending slashing request.
      */
     function getPendingSlashingRequest(address service, address operator) external view returns (Request memory);
+
+    /**
+     * @dev Returns the most recent slashing request id initiated by the specified service against the specified operator.
+     * If no pending request exists, the returned request id will be empty.
+     * @param service Address of the service that initiated the slashing request.
+     * @param operator Address of the operator targeted by the slashing request.
+     * @return bytes32 The unique identifier for the current pending slashing request.
+     */
+    function getPendingSlashingRequestId(address service, address operator) external view returns (bytes32);
 
     /**
      * @dev Returns the complete details of a slashing request identified by the provided slashId.
