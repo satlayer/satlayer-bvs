@@ -1,9 +1,13 @@
-# LayerZero DVN Example (EVM control plane)
+---
+title: LayerZero DVN
+---
+
+# LayerZero DVN Example (EVM)
 
 This example demonstrates how to build DVN + BVS integration with LayerZero for cross-chain packet verification
 and broadcasting leveraging on SatLayer's BVS ecosystem in EVM control plane.
 
-For CW control plane, see [layerzero-dvn](https://github.com/satlayer/satlayer-bvs/tree/main/examples/cw/layerzero-dvn).
+For CosmWasm control plane, see [cosmwasm/examples/layerzero-dvn](/cosmwasm/examples/layerzero-dvn).
 
 Typically, each DVN is responsible for verifying packets in LayerZero ecosystem,
 by integrating BVS ecosystem in SatLayer, we can leverage cryptoeconomic incentives to secure the verification process.
