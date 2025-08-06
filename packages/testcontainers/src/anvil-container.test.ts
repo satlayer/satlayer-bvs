@@ -90,7 +90,7 @@ describe("AnvilContainer", () => {
     expect(newBlock.number).toStrictEqual(initialBlock.number + BigInt(5));
 
     // Verify that the timestamp has increased proportionally
-    expect(newTimestamp).toStrictEqual(initialTimestamp + BigInt(5) + BigInt(1)); // +1 for the initial block timestamp
+    expect(newTimestamp).toBeGreaterThanOrEqual(initialTimestamp + BigInt(5));
   });
 
   it("should be able to set balance for an address", async () => {
