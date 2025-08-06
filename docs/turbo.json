@@ -5,7 +5,7 @@
     "build": {
       "inputs": ["$TURBO_DEFAULT$", "app", "public"],
       "outputs": [".next/**", "!.next/cache/**"],
-      "dependsOn": ["^build", "@satlayer/contracts#doc"]
+      "dependsOn": ["^build", "@satlayer/contracts#docs"]
     }
   }
 }

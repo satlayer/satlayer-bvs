@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "curl -L https://foundry.paradigm.xyz | bash && source /vercel/.bashrc && foundryup && pnpm install --ignore-scripts",
+  "installCommand": "pnpm install --ignore-scripts",
   "buildCommand": "turbo run build",
   "framework": "nextjs"
 }
