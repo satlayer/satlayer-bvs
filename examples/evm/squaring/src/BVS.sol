@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.20;
 
 import { RelationshipV2 } from "@satlayer/contracts/RelationshipV2.sol";
 import {SLAYRegistryV2} from "@satlayer/contracts/SLAYRegistryV2.sol";
@@ -15,39 +15,45 @@ contract BVS {
     mapping(int64 => mapping(address => int64)) responses;
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-    event requested(address indexed sender, int64 number);
-    event contractRegistered(address indexed thisContract);
-    event operatorRegistration(address indexed operator, bool indexed status);
-    event slashRequested(address indexed accusedOperator, ISLAYRouterSlashingV2.Payload params);
-    event slashEnabled(ISLAYRegistryV2.SlashParameter params);
-    event slashDisabled();
+    event Requested(address indexed sender, int64 input);
+    event Responded(address indexed operator, int64 indexed input, int64 indexed output);
+    event OperatorRegistration(address indexed operator, bool indexed status);
+    event SlashRequested(address indexed operator, ISLAYRouterSlashingV2.Payload params);
+    event SlashEnabled(ISLAYRegistryV2.SlashParameter params);
+    event SlashDisabled();
 
     error ZeroValueNotAllowed();
     error Unauthorized();
     error ResponseNotFound();
     error RequestNotFound();
     error invalidChallenge();
-    error Responded();
+    error AlreadyResponded();
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert Unauthorized();
         _;
     }
 
-    constructor(address router_, address registry_) {
-        owner = msg.sender;
+    constructor(address router_, address registry_, address owner_) {
+        owner = owner_;
         registry = registry_;
         router = router_;
 
         ISLAYRegistryV2(registry).registerAsService("www.dsquaring.com", "Decentralized Squaring");
-        emit contractRegistered(address(this));
     }
 
+    /**
+        A number is to be requested for squaring
+    */
     function request(int64 num) external {
         requests[num] = msg.sender;
-        emit requested(msg.sender, num);
+        emit Requested(msg.sender, num);
     }
 
+    /**
+        An operator should square the requested number off-chain
+        and respond to it.
+    */
     function respond(int64 input, int64 output) external {
         address operator = msg.sender;
         address eoa = requests[input];
@@ -55,26 +61,32 @@ contract BVS {
         if (eoa == address(0)) {
             revert RequestNotFound();
         }
-
+        
         RelationshipV2.Status registrationStatus = ISLAYRegistryV2(registry).getRelationshipStatus(address(this), operator);
-
+        
         if (registrationStatus != RelationshipV2.Status.Active) {
             revert Unauthorized();
         }
-
+        
         int64 prevOutput = responses[input][operator];
-
+        
         if(prevOutput != 0){
-            revert Responded();
+            revert AlreadyResponded();
         }
 
         responses[input][operator] = output;
+        emit Responded(operator, input, output);
     }
 
     function getResponse(int64 input, address operator) external view returns(int64) {
         return responses[input][operator];
     }
 
+    /**
+        Anyone can challenge a squaring respond to a number by operator.
+        In the event of incorrect squaring of a number by an operator, slashing
+        lifecycle for the operator will be initiated.
+    */
     function compute(int64 inp, address operator) external returns(bytes32) {
         int64 prevSquared = responses[inp][operator];
 
@@ -95,30 +107,58 @@ contract BVS {
             reason: "Invalid Proof"
         });
 
-        emit slashRequested(operator, payload);
+        emit SlashRequested(operator, payload);
         return SLAYRouterV2(router).requestSlashing(payload);
     }
 
-    function _expensiveComputation(int64 input) internal returns(int64){
+    /**
+        Lock the slash collateral from targeted operator to SatLayer contract
+    */
+    function lockSlashing(bytes32 slashId) external onlyOwner {
+        SLAYRouterV2(router).lockSlashing(slashId);
+    }
+
+    /**
+        Move the locked collateral from SatLayer contract to service designated address.
+    */
+    function finalizesSlashing(bytes32 slashId) external onlyOwner {
+       SLAYRouterV2(router).finalizeSlashing(slashId);
+    }
+
+    function _expensiveComputation(int64 input) internal pure returns(int64){
         return input * input;
     }
 
-    function registerOperator(address operator) public onlyOwner {
+    /**
+        Register and recognized an address to be an operator the service.
+    */
+    function registerOperator(address operator) external onlyOwner {
         SLAYRegistryV2(registry).registerOperatorToService(operator);
-        emit operatorRegistration(operator, true);
+        emit OperatorRegistration(operator, true);
     }
 
-    function deregisterOperator(address operator) public onlyOwner {
+    /**
+        Deregister an operator out of the service.
+    */
+    function deregisterOperator(address operator) external onlyOwner {
         SLAYRegistryV2(registry).deregisterOperatorFromService(operator);
-        emit operatorRegistration(operator, false);
+        emit OperatorRegistration(operator, false);
     }
 
-    function enableSlashing(ISLAYRegistryV2.SlashParameter calldata params) public onlyOwner {
+    /**
+        Enable SatLayer integrated slashing.
+        If slashing is disabled, the slashing lifecycle in the event of malicious squaring challenge
+        to an operator will result in failure.
+    */
+    function enableSlashing(ISLAYRegistryV2.SlashParameter calldata params) external onlyOwner {
         SLAYRegistryV2(registry).enableSlashing(params);
-        emit slashEnabled(params);
+        emit SlashEnabled(params);
     }
 
-    function disableSlashing() public onlyOwner {
+    /**
+        Disable SatLayer integrated slashing.
+    */
+    function disableSlashing() external onlyOwner {
         SLAYRegistryV2(registry).disableSlashing();
     }
 
