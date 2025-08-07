@@ -48,12 +48,12 @@ describe("PolicyManager", () => {
     await started.setBalance(serviceAccount.address, parseEther("1"));
     await started.setBalance(guardrailAccount.address, parseEther("1"));
 
-    // Operator register into Registry
+    // Operator register into SLAYRegistry
     await contracts.registry.write.registerAsOperator(["https://operator.com", "Operator"], {
       account: operatorAccount.address,
     });
 
-    // Init vault bank tokenized for operator
+    // Operator creates a vault with an underlying asset
     let underlyingAsset = await contracts.initERC20({ name: "wbtc", symbol: "WBTC", decimals: 8 });
     underlyingAssetContract = getContract({
       address: underlyingAsset.contractAddress,
@@ -90,7 +90,7 @@ describe("PolicyManager", () => {
     // mint underlying asset to staker
     await underlyingAssetContract.write.mint([stakerAccount.address, 100_000_000n]);
 
-    // Staker stake into vault bank
+    // Staker deposit into vault bank
     let depositAmount = 100_000_000n; // 100_000_000 underlying asset
     await underlyingAssetContract.write.approve([vaultContract.address, depositAmount], { account: stakerAccount });
     await vaultContract.write.deposit([depositAmount, stakerAccount.address], { account: stakerAccount });
@@ -129,7 +129,7 @@ describe("PolicyManager", () => {
     });
 
     // simulate time passing
-    await started.mineBlock(1000);
+    await started.mineBlock(100);
 
     // Alice proceeds to claim
     let slashingId = await policyManager.claimPolicy(res.id);

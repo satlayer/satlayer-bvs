@@ -8,6 +8,8 @@ This example demonstrates how to use the Bitcoin Validated Service (BVS) to prov
 The service implements a complete insurance policy lifecycle with automated underwriting, claims processing,
 and rewards distribution.
 
+For EVM control plane, see [evm/examples/insurance](/examples/evm/insurance).
+
 ## Overview
 
 In this example, operators serve as vault curators rather than node runners.
@@ -57,7 +59,7 @@ insurance/
 
 ### How to run
 
-Clone and copy contents of `./examples/insurance` [from GitHub](https://github.com/satlayer/satlayer-bvs/tree/main/examples/insurance) to your local machine.
+Clone and copy contents of `./examples/cw/insurance` [from GitHub](https://github.com/satlayer/satlayer-bvs/tree/main/examples/cw/insurance) to your local machine.
 Install with `npm install` and `npm run test` to set up the environment.
 
 ```sh filename="run.sh"

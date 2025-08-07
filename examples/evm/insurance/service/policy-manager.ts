@@ -47,7 +47,7 @@ export class PolicyManager {
   private rewardsHistory: DistributionHistory = {
     lastUpdated: Date.now(),
     rewards: {
-      token: "ustake",
+      token: "0x",
       earners: [],
     },
   };
@@ -74,7 +74,7 @@ export class PolicyManager {
    *  - Register the operator
    */
   public async init() {
-    // register service to SatLayer Registry
+    // register service to SLAYRegistry
     await this.api.RegistryContract.write.registerAsService(["http://the-sure-coverage.com", "The Sure Coverage"], {
       account: this.service,
     });
@@ -185,7 +185,7 @@ export class PolicyManager {
    * If the claim is verified, it will trigger a slashing request to the vault to initiate and lock the payout immediately.
    * The amount of payout is 100% of the coverage amount.
    *
-   * funds flow: vault --lockSlashing--> vault-router
+   * funds flow: SLAYVault --lockSlashing--> SLAYRouter
    *
    * Once claimed, the policy will be nulled and the insuree will not be able to claim again.
    * @param policyId The ID of the policy to claim
@@ -245,7 +245,7 @@ export class PolicyManager {
    * This function finalizes the slashing request and transfers the payout amount to the insuree.
    * It also updates the internal state to reflect the completed claim and removes the policy from active policies.
    *
-   * Funds flow: vault-router --finalizeSlashing--> service (policy manager) --transfer--> insuree
+   * Funds flow: SLAYRouter --finalizeSlashing--> service (policy manager) --transfer--> insuree
    *
    * @param claimId The ID of the claim to process
    * @returns PolicyPayout Details of the processed payout
