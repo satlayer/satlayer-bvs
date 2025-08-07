@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
 import {Test, console} from "forge-std/Test.sol";
 import {TestSuiteV2} from "./TestSuite.t.sol";
@@ -15,7 +15,7 @@ contract BVSTest is Test, TestSuiteV2 {
     function setUp() public override {
         TestSuiteV2.setUp();
         vm.prank(owner);
-        service = new BVS(address(router), address(registry));
+        service = new BVS(address(router), address(registry), owner);
 
 
         vm.startPrank(operator);
@@ -36,12 +36,13 @@ contract BVSTest is Test, TestSuiteV2 {
         vm.prank(owner);
         service.registerOperator(operator);
 
-        vm.startPrank(operator);
+        address anyone = makeAddr("anyone");
+        vm.prank(anyone);
         service.request(2);
 
+        vm.prank(operator);
         _advanceBlockBy(10);
         service.respond(2, 4);
-        vm.stopPrank();
 
         int64 out = service.getResponse(2, operator);
         assert(out == 4);
@@ -53,14 +54,15 @@ contract BVSTest is Test, TestSuiteV2 {
         vm.prank(owner);
         service.registerOperator(operator);
 
-        vm.startPrank(operator);
+        address anyone = makeAddr("anyone");
+        vm.prank(anyone);
         service.request(2);
 
         _advanceBlockBy(10);
 
         // wrong output
+        vm.prank(operator);
         service.respond(2, 8);
-        vm.stopPrank();
 
         int64 out = service.getResponse(2, operator);
 
@@ -69,7 +71,6 @@ contract BVSTest is Test, TestSuiteV2 {
 
         _advanceBlockBy(10);
 
-        address anyone = makeAddr("anyone");
         vm.prank(anyone);
         bytes32 slashId = service.compute(2, operator);
 
