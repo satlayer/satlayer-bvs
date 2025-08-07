@@ -21,6 +21,8 @@ This approach enables computational efficiency while maintaining crypto-economic
 
 ## Getting started
 
+Have a docker environment set up on the machine and follow these steps to run the example:
+
 1. Run `turbo run build` at the root of this monorepo to build the test containers this example uses.
 2. Run `pnpm install` in the `examples/evm/squaring` (the root of this project) directory to install dependencies.
 3. Run `pnpm run build:sol` to build the Solidity contract.
@@ -48,7 +50,7 @@ The general request respond lifecycle is as follows:
 
 ### On-chain Contract (Solidity)
 
-Located in the `src/contracts/BVS.sol` directory, this Rust-based smart contract:
+Located in the `src/BVS.sol` directory, this Rust-based smart contract:
 
 - Accepts computation requests from users
 - Verifies responses from operators to prove fault
@@ -57,7 +59,7 @@ Located in the `src/contracts/BVS.sol` directory, this Rust-based smart contract
 
 ### Off-chain Service (TypeScript)
 
-Located in the `src/contracts/*.ts` directory, this Node.js service:
+Located in the `src/*.ts` directory, this Node.js service:
 
 - Continuously monitors the blockchain for new computation requests
 - Performs the actual computation (i.e. squaring numbers) off-chain
