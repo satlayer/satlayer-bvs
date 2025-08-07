@@ -338,7 +338,7 @@ export class PolicyManager {
     let stakerRewardsMap = new Map<string, bigint>();
     for (let earner of stakerEarners) {
       let balance = stakerBalanceMap.get(earner) || BigInt(0);
-      let stakerRewardsAmount = (balance / totalStaked) * BigInt(stakerRewards);
+      let stakerRewardsAmount = (balance * BigInt(stakerRewards)) / totalStaked;
       stakerRewardsMap.set(earner, stakerRewardsAmount);
     }
 
