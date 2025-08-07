@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build:sol": "forge build -C src/contracts -o src/contracts/out -vvv --force",
-    "test": "vitest run --reporter verbose",
+    "test": "pnpm run build:sol && vitest run --reporter verbose",
     "test:sol": "forge test --contracts src/contracts"
   },
   "dependencies": {
