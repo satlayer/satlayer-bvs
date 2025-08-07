@@ -1,14 +1,10 @@
----
-sidebarTitle: Insurance as a BVS
----
-
-# Insurance as a BVS Example
+# Insurance as a BVS Example (EVM)
 
 This example demonstrates how to use the Bitcoin Validated Service (BVS) to provide insurance services.
 The service implements a complete insurance policy lifecycle with automated underwriting, claims processing,
 and rewards distribution.
 
-For EVM control plane, see [evm/examples/insurance](/examples/evm/insurance).
+For CosmWasm control plane, see [cosmwasm/examples/insurance](/cosmwasm/examples/insurance).
 
 ## Overview
 
@@ -41,10 +37,9 @@ These rewards are shared between operators (10%) and stakers (90%), with distrib
 
 Prerequisites for this example:
 
-1. Install Rust and Cargo: https://www.rust-lang.org/tools/install
-2. Basic understanding of [CosmWasm contracts](/cosmwasm/developer)
-3. Node.js for development of the off-chain service: https://nodejs.org/en/download/
-4. Docker to run off-chain node: https://docs.docker.com/get-docker/
+1. Basic understanding of [EVM contracts](/developers/evm)
+2. Node.js for development of the off-chain service: https://nodejs.org/en/download/
+3. Docker to run off-chain node: https://docs.docker.com/get-docker/
 
 Project structure:
 
@@ -59,23 +54,12 @@ insurance/
 
 ### How to run
 
-Clone and copy contents of `./examples/cw/insurance` [from GitHub](https://github.com/satlayer/satlayer-bvs/tree/main/examples/cw/insurance) to your local machine.
+Clone and copy contents of `./examples/evm/insurance` [from GitHub](https://github.com/satlayer/satlayer-bvs/tree/main/examples/evm/insurance) to your local machine.
 Install with `npm install` and `npm run test` to set up the environment.
 
 ```sh filename="run.sh"
 npm run install
 npm run test
-```
-
-### How to build the contract
-
-To build the CosmWasm contract, you will need to have Docker running, and then you can run the following command:
-
-```sh filename="build.sh"
-docker run --rm -v "$(pwd)":/code \
-  --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
-  --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-  cosmwasm/optimizer:0.16.0
 ```
 
 ## Core Components
@@ -116,3 +100,10 @@ The payout amount, which equals 100% of the coverage amount, is then transferred
 **Rewards Distribution**. Throughout this process, the system calculates rewards based on premiums collected from all active policies.
 These rewards are distributed between operators (10%) and stakers (90%),
 with each participant's share proportional to their staked amount.
+
+#### Difference between EVM and CW insurance examples
+
+The main logic of the insurance remains the same between EVM and CosmWasm examples.
+The only difference is in the `api.ts` file, where it caters to communication with EVM contracts instead of CosmWasm contracts.
+
+Also how EVM expects `0x` prefixes for hex strings, while CosmWasm does not.

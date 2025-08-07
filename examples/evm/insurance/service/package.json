@@ -1,0 +1,22 @@
+{
+  "name": "@examples/insurance-service-evm",
+  "private": true,
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@satlayer/cli": "workspace:*",
+    "@satlayer/contracts": "workspace:*",
+    "@satlayer/testcontainers": "workspace:*",
+    "execa": "^9.6.0",
+    "viem": "^2.33.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "typescript": "latest",
+    "vitest": "^3.2.4"
+  }
+}
