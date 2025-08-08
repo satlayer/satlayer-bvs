@@ -295,6 +295,11 @@ interface ISLAYRouterSlashingV2 {
      *
      * The guardrail serves as an additional security mechanism to prevent unauthorized slashing.
      *
+     * note: on rejection, the locked funds will not be returned to the vault due to the nature of rebasing that will cause losses to the stakers.
+     * During slashing, assets will be locked in the router which will impact the exchange rate of the vaults. If funds are reverted to the vaults,
+     * it is akin to donation to the vault which will distribute the reverted assets to all stakers including new stakers who did not get slashed.
+     * This is not the intended behaviour, hence the locked funds will not be returned to the vaults on rejection in phase 2.
+     *
      * @param slashId The unique identifier for the slashing request to approve or reject.
      * @param approve True to approve the slashing request, false to reject it.
      */
