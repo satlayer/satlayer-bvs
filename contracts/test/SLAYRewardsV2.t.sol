@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.24;
 
 import "../src/interface/ISLAYRewardsV2.sol";
 import "./MockERC20.sol";
