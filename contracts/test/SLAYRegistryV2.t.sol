@@ -462,6 +462,70 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         registry.registerServiceToOperator(service);
     }
 
+    function test_Revert_OperatorRegister_WithdrawalDelayMismatch() public {
+        {
+            vm.startPrank(service);
+            registry.registerAsService("service.com", "Service A");
+            // service sets higher min withdrawal delay
+            registry.setMinWithdrawalDelay(14 days);
+            vm.stopPrank();
+
+            vm.prank(operator);
+            registry.registerAsOperator("operator.com", "Operator X");
+        }
+
+        // Step 1: Service registers operator
+        vm.prank(service);
+        vm.expectEmit();
+        emit ISLAYRegistryV2.RelationshipUpdated(service, operator, RelationshipV2.Status.ServiceRegistered, 0);
+        registry.registerOperatorToService(operator);
+
+        assertEq(
+            uint256(registry.getRelationshipStatus(service, operator)),
+            uint256(RelationshipV2.Status.ServiceRegistered),
+            "Status should be ServiceRegistered"
+        );
+
+        // Step 2: Operator tries to register service (revert)
+        vm.prank(operator);
+        vm.expectRevert(
+            abi.encodeWithSelector(ISLAYRegistryV2.WithdrawalDelayMismatch.selector, service, operator, 7 days, 14 days)
+        );
+        registry.registerServiceToOperator(service);
+    }
+
+    function test_Revert_ServiceRegister_WithdrawalDelayMismatch() public {
+        {
+            vm.startPrank(service);
+            registry.registerAsService("service.com", "Service A");
+            // service sets higher min withdrawal delay
+            registry.setMinWithdrawalDelay(14 days);
+            vm.stopPrank();
+
+            vm.prank(operator);
+            registry.registerAsOperator("operator.com", "Operator X");
+        }
+
+        // Step 1: Operator registers service
+        vm.prank(operator);
+        vm.expectEmit();
+        emit ISLAYRegistryV2.RelationshipUpdated(service, operator, RelationshipV2.Status.OperatorRegistered, 0);
+        registry.registerServiceToOperator(service);
+
+        assertEq(
+            uint256(registry.getRelationshipStatus(service, operator)),
+            uint256(RelationshipV2.Status.OperatorRegistered),
+            "Status should be OperatorRegistered"
+        );
+
+        // Step 2: Service tries to register operator (revert)
+        vm.prank(service);
+        vm.expectRevert(
+            abi.encodeWithSelector(ISLAYRegistryV2.WithdrawalDelayMismatch.selector, service, operator, 7 days, 14 days)
+        );
+        registry.registerOperatorToService(operator);
+    }
+
     function test_WithdrawalDelay() public {
         uint32 newDelay = 8 days;
         // register operator
@@ -794,19 +858,34 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         registry.registerServiceToOperator(sixthService);
     }
 
-    function test_SetMaxActiveRelationships() public {
+    function test_SetMaxActiveRelationshipsForService() public {
         // update the max active relationships to 6
         vm.prank(owner);
         vm.expectEmit();
-        emit ISLAYRegistryV2.MaxActiveRelationshipsUpdated(5, 6);
-        registry.setMaxActiveRelationships(6);
+        emit ISLAYRegistryV2.MaxActiveRelationshipsForServiceUpdated(5, 6);
+        registry.setMaxActiveRelationshipsForService(6);
 
-        assertEq(registry.getMaxActiveRelationships(), 6, "Max active relationships should be updated");
+        assertEq(registry.getMaxActiveRelationshipsForService(), 6, "Max active relationships should be updated");
 
         // update the max active relationships back to 5 (revert)
         vm.prank(owner);
         vm.expectRevert("Max active relationships must be greater than current");
-        registry.setMaxActiveRelationships(5);
+        registry.setMaxActiveRelationshipsForService(5);
+    }
+
+    function test_SetMaxActiveRelationshipsForOperator() public {
+        // update the max active relationships to 6
+        vm.prank(owner);
+        vm.expectEmit();
+        emit ISLAYRegistryV2.MaxActiveRelationshipsForOperatorUpdated(5, 6);
+        registry.setMaxActiveRelationshipsForOperator(6);
+
+        assertEq(registry.getMaxActiveRelationshipsForOperator(), 6, "Max active relationships should be updated");
+
+        // update the max active relationships back to 5 (revert)
+        vm.prank(owner);
+        vm.expectRevert("Max active relationships must be greater than current");
+        registry.setMaxActiveRelationshipsForOperator(5);
     }
 
     function test_slashingLifecycle_but_parameterChanged() public {
@@ -1020,8 +1099,8 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         vm.prank(operator);
         registry.registerAsOperator("https://operator.com", "Operator X");
 
-        // update withdrawal delay to 8 days
-        uint32 newDelay = 8 days;
+        // update withdrawal delay to 11 days
+        uint32 newDelay = 11 days;
         vm.prank(operator);
         vm.expectEmit();
         emit ISLAYRegistryV2.WithdrawalDelayUpdated(operator, newDelay);
@@ -1044,8 +1123,8 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
             registry.registerServiceToOperator(newService);
         }
 
-        // operator updates withdrawal delay to 11 days
-        uint32 newDelay2 = 11 days;
+        // operator updates withdrawal delay to 12 days
+        uint32 newDelay2 = 12 days;
         vm.prank(operator);
         vm.expectEmit();
         emit ISLAYRegistryV2.WithdrawalDelayUpdated(operator, newDelay2);
@@ -1057,8 +1136,8 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         vm.prank(operator);
         registry.registerAsOperator("https://operator.com", "Operator X");
 
-        // update withdrawal delay to 8 days
-        uint32 newDelay = 8 days;
+        // update withdrawal delay to 11 days
+        uint32 newDelay = 11 days;
         vm.prank(operator);
         vm.expectEmit();
         emit ISLAYRegistryV2.WithdrawalDelayUpdated(operator, newDelay);
@@ -1079,8 +1158,8 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
             registry.registerServiceToOperator(newService);
         }
 
-        // operator updates withdrawal delay to 10 days (less than min withdrawal delay of a service)
-        uint32 newDelay2 = 10 days;
+        // operator updates withdrawal delay to 8 days (less than min withdrawal delay of active service)
+        uint32 newDelay2 = 8 days;
         vm.prank(operator);
         vm.expectRevert(
             "Operator withdrawal delay must be more than or equal to active service's minimum withdrawal delay"
