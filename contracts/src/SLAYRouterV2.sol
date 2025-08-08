@@ -431,9 +431,6 @@ contract SLAYRouterV2 is SLAYBase, ReentrancyGuardUpgradeable, ISLAYRouterV2, IS
     /// @inheritdoc ISLAYRouterSlashingV2
     function guardrailApprove(bytes32 slashId, bool approve) external override whenNotPaused {
         // Only guardrail can call this function
-        if (_guardrail == address(0)) {
-            revert ISLAYRouterSlashingV2.Unauthorized();
-        }
         if (_msgSender() != _guardrail) {
             revert ISLAYRouterSlashingV2.Unauthorized();
         }
@@ -447,7 +444,7 @@ contract SLAYRouterV2 is SLAYBase, ReentrancyGuardUpgradeable, ISLAYRouterV2, IS
 
         // check if the slashing id has already been approved on by guardrail.
         if (_guardrailApproval[slashId] != 0) {
-            revert ISLAYRouterSlashingV2.GuardrailAlreadyApproved();
+            revert ISLAYRouterSlashingV2.GuardrailHasDetermined();
         }
 
         // Guardrail approval are true - approve, false - reject.

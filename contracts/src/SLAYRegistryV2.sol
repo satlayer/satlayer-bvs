@@ -52,8 +52,11 @@ contract SLAYRegistryV2 is SLAYBase, ISLAYRegistryV2 {
     /// @dev Default delay for operator's vault withdrawals.
     uint32 public defaultWithdrawalDelay;
 
-    /// @dev Returns the maximum number of active relationships allowed for a service or operator.
-    uint8 private _maxActiveRelationships;
+    /// @dev Returns the maximum number of active relationships allowed for a service
+    uint8 private _maxActiveRelationshipsForService;
+
+    /// @dev Returns the maximum number of active relationships allowed for an operator
+    uint8 private _maxActiveRelationshipsForOperator;
 
     /**
      * @dev Modifier to check if the provided account is a registered service.
@@ -111,7 +114,8 @@ contract SLAYRegistryV2 is SLAYBase, ISLAYRegistryV2 {
         // Push an empty slash parameter to the array to ensure that the first service can register with a valid ID.
         _slashParameters.push();
         // Default max active relationships is set to 5.
-        _maxActiveRelationships = 5;
+        _maxActiveRelationshipsForService = 5;
+        _maxActiveRelationshipsForOperator = 5;
         // Set the default withdrawal delay for new operators's vault to 7 days.
         defaultWithdrawalDelay = 7 days;
     }
@@ -168,6 +172,7 @@ contract SLAYRegistryV2 is SLAYBase, ISLAYRegistryV2 {
         } else if (obj.status == RelationshipV2.Status.OperatorRegistered) {
             obj.status = RelationshipV2.Status.Active;
             obj.slashParameterId = _services[service].slashParameterId;
+            _validateWithdrawalDelay(service, operator);
         } else {
             // Panic as this is not an expected state.
             revert("Invalid status");
@@ -213,6 +218,7 @@ contract SLAYRegistryV2 is SLAYBase, ISLAYRegistryV2 {
         } else if (obj.status == RelationshipV2.Status.ServiceRegistered) {
             obj.status = RelationshipV2.Status.Active;
             obj.slashParameterId = _services[service].slashParameterId;
+            _validateWithdrawalDelay(service, operator);
         } else {
             // Panic as this is not an expected state.
             revert("Invalid status");
@@ -285,7 +291,7 @@ contract SLAYRegistryV2 is SLAYBase, ISLAYRegistryV2 {
                 "Operator withdrawal delay must be more than or equal to active service's minimum withdrawal delay"
             );
 
-            // unchecked because we are iterating over a fixed length array, not more than {_maxActiveRelationships}.
+            // unchecked because we are iterating over a fixed length array, not more than {_maxActiveRelationshipsForOperator}.
             unchecked {
                 ++i;
             }
@@ -426,10 +432,10 @@ contract SLAYRegistryV2 is SLAYBase, ISLAYRegistryV2 {
         // If the status is active, add the service to the operator's active relationships and vice versa.
         // If the status is inactive, remove the service from the operator's active relationships and vice versa.
         if (obj.status == RelationshipV2.Status.Active) {
-            if (_operatorsActiveRelationships[operator].length() >= _maxActiveRelationships) {
+            if (_operatorsActiveRelationships[operator].length() >= _maxActiveRelationshipsForOperator) {
                 revert ISLAYRegistryV2.OperatorRelationshipsExceeded();
             }
-            if (_servicesActiveRelationships[service].length() >= _maxActiveRelationships) {
+            if (_servicesActiveRelationships[service].length() >= _maxActiveRelationshipsForService) {
                 revert ISLAYRegistryV2.ServiceRelationshipsExceeded();
             }
 
@@ -444,17 +450,31 @@ contract SLAYRegistryV2 is SLAYBase, ISLAYRegistryV2 {
     }
 
     /// @inheritdoc ISLAYRegistryV2
-    function setMaxActiveRelationships(uint8 max) external override onlyOwner {
+    function setMaxActiveRelationshipsForService(uint8 max) external override onlyOwner {
         require(max > 0, "Max active relationships must be greater than 0");
-        uint8 oldMax = _maxActiveRelationships;
+        uint8 oldMax = _maxActiveRelationshipsForService;
         require(max > oldMax, "Max active relationships must be greater than current");
-        _maxActiveRelationships = max;
-        emit MaxActiveRelationshipsUpdated(oldMax, max);
+        _maxActiveRelationshipsForService = max;
+        emit MaxActiveRelationshipsForServiceUpdated(oldMax, max);
     }
 
     /// @inheritdoc ISLAYRegistryV2
-    function getMaxActiveRelationships() external view override returns (uint8) {
-        return _maxActiveRelationships;
+    function setMaxActiveRelationshipsForOperator(uint8 max) external override onlyOwner {
+        require(max > 0, "Max active relationships must be greater than 0");
+        uint8 oldMax = _maxActiveRelationshipsForOperator;
+        require(max > oldMax, "Max active relationships must be greater than current");
+        _maxActiveRelationshipsForOperator = max;
+        emit MaxActiveRelationshipsForOperatorUpdated(oldMax, max);
+    }
+
+    /// @inheritdoc ISLAYRegistryV2
+    function getMaxActiveRelationshipsForService() external view override returns (uint8) {
+        return _maxActiveRelationshipsForService;
+    }
+
+    /// @inheritdoc ISLAYRegistryV2
+    function getMaxActiveRelationshipsForOperator() external view override returns (uint8) {
+        return _maxActiveRelationshipsForOperator;
     }
 
     /// @inheritdoc ISLAYRegistryV2
@@ -471,7 +491,7 @@ contract SLAYRegistryV2 is SLAYBase, ISLAYRegistryV2 {
                 "Service's minimum withdrawal delay must be less than or equal to active operator's withdrawal delay"
             );
 
-            // unchecked because we are iterating over a fixed length array, not more than {_maxActiveRelationships}.
+            // unchecked because we are iterating over a fixed length array, not more than {_maxActiveRelationshipsForService}.
             unchecked {
                 ++i;
             }
@@ -505,5 +525,18 @@ contract SLAYRegistryV2 is SLAYBase, ISLAYRegistryV2 {
     /// @inheritdoc ISLAYRegistryV2
     function getActiveServiceCount(address operator) external view override returns (uint256) {
         return _operatorsActiveRelationships[operator].length();
+    }
+
+    /// @dev Internal function to check if the operator's withdrawal delay is compatible with the service's minimum withdrawal delay.
+    function _validateWithdrawalDelay(address service, address operator) internal view {
+        uint32 operatorWithdrawalDelay = _operators[operator].withdrawalDelay;
+        uint32 serviceMinWithdrawalDelay = _services[service].minWithdrawalDelay;
+
+        // Check if the operator's withdrawal delay is less than the service's minimum withdrawal delay
+        if (operatorWithdrawalDelay < serviceMinWithdrawalDelay) {
+            revert ISLAYRegistryV2.WithdrawalDelayIncompatible(
+                service, operator, operatorWithdrawalDelay, serviceMinWithdrawalDelay
+            );
+        }
     }
 }
