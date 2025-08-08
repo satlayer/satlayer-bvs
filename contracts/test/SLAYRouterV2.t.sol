@@ -1041,12 +1041,12 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         // Revert when guardrail tries to confirm slashing again
         vm.prank(guardrail);
-        vm.expectRevert(abi.encodeWithSelector(ISLAYRouterSlashingV2.GuardrailAlreadyApproved.selector));
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRouterSlashingV2.GuardrailHasDetermined.selector));
         router.guardrailApprove(slashId, true);
 
         // Revert when guardrail tries to change the confirm status on a slashId
         vm.prank(guardrail);
-        vm.expectRevert(abi.encodeWithSelector(ISLAYRouterSlashingV2.GuardrailAlreadyApproved.selector));
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRouterSlashingV2.GuardrailHasDetermined.selector));
         router.guardrailApprove(slashId, false);
     }
 
