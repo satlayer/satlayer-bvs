@@ -70,7 +70,9 @@ interface ISLAYRegistryV2 {
     error ServiceRelationshipsExceeded();
 
     /// @dev thrown when a service and operator withdrawal delay does not match.
-    error WithdrawalDelayMismatch(address service, address operator, uint32 withdrawalDelay, uint32 minWithdrawalDelay);
+    error WithdrawalDelayIncompatible(
+        address service, address operator, uint32 withdrawalDelay, uint32 minWithdrawalDelay
+    );
 
     /*//////////////////////////////////////////////////////////////
                                 EVENTS

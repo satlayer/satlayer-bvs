@@ -534,7 +534,7 @@ contract SLAYRegistryV2 is SLAYBase, ISLAYRegistryV2 {
 
         // Check if the operator's withdrawal delay is less than the service's minimum withdrawal delay
         if (operatorWithdrawalDelay < serviceMinWithdrawalDelay) {
-            revert ISLAYRegistryV2.WithdrawalDelayMismatch(
+            revert ISLAYRegistryV2.WithdrawalDelayIncompatible(
                 service, operator, operatorWithdrawalDelay, serviceMinWithdrawalDelay
             );
         }

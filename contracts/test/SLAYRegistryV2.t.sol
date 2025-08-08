@@ -489,7 +489,9 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         // Step 2: Operator tries to register service (revert)
         vm.prank(operator);
         vm.expectRevert(
-            abi.encodeWithSelector(ISLAYRegistryV2.WithdrawalDelayMismatch.selector, service, operator, 7 days, 14 days)
+            abi.encodeWithSelector(
+                ISLAYRegistryV2.WithdrawalDelayIncompatible.selector, service, operator, 7 days, 14 days
+            )
         );
         registry.registerServiceToOperator(service);
     }
@@ -521,7 +523,9 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         // Step 2: Service tries to register operator (revert)
         vm.prank(service);
         vm.expectRevert(
-            abi.encodeWithSelector(ISLAYRegistryV2.WithdrawalDelayMismatch.selector, service, operator, 7 days, 14 days)
+            abi.encodeWithSelector(
+                ISLAYRegistryV2.WithdrawalDelayIncompatible.selector, service, operator, 7 days, 14 days
+            )
         );
         registry.registerOperatorToService(operator);
     }
