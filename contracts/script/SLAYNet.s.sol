@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.24;
 
 import {SLAYDeployment} from "./Deployment.s.sol";
 import {ISLAYRegistryV2} from "../src/interface/ISLAYRegistryV2.sol";
