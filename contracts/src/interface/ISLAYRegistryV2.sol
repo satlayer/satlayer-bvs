@@ -343,7 +343,7 @@ interface ISLAYRegistryV2 {
     function setMaxActiveRelationshipsForService(uint8 maxActive) external;
 
     /**
-     * @notice Sets the maximum number of active relationships allowed for services
+     * @notice Sets the maximum number of active relationships allowed for operators
      * @dev Only the contract owner can call this function. The new maximum must be greater than zero
      * and greater than the current maximum.
      *
