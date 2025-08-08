@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.24;
 
 import {ILayerZeroUltraLightNodeV2} from
     "@layerzerolabs/lz-evm-v1-0.7/contracts/interfaces/ILayerZeroUltraLightNodeV2.sol";
