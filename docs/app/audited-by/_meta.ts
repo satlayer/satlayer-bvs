@@ -1,6 +1,11 @@
 import type { MetaRecord } from "nextra";
 
 const meta: MetaRecord = {
+  "dedaub-evm-1": {
+    title: "Dedaub (EVM)",
+    type: "doc",
+    href: "https://github.com/satlayer/satlayer-bvs/blob/main/docs/public/audits/satlayer-core-evm-1-20250809.pdf.pdf",
+  },
   "dedaub-p1": {
     title: "Dedaub P1",
     type: "doc",
