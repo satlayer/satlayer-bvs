@@ -4,7 +4,7 @@ const meta: MetaRecord = {
   "dedaub-evm-1": {
     title: "Dedaub (EVM)",
     type: "doc",
-    href: "https://github.com/satlayer/satlayer-bvs/blob/main/docs/public/audits/satlayer-core-evm-1-20250809.pdf.pdf",
+    href: "https://github.com/satlayer/satlayer-bvs/blob/main/docs/public/audits/satlayer-core-evm-1-20250809.pdf",
   },
   "dedaub-p1": {
     title: "Dedaub P1",
