@@ -20,6 +20,7 @@ export class SquaringNode {
 
   constructor(
     private readonly client: SuperTestClient,
+    private readonly anvil: StartedAnvilContainer,
     private readonly operator: Account,
     private readonly bvsContract: GetContractReturnType<typeof abi, SuperTestClient, `0x${string}`>,
   ) {}
@@ -34,6 +35,7 @@ export class SquaringNode {
       onLogs: async (logs) => {
         logs.forEach(async (log) => {
           await this.respondToRequest(Number(log.args.input));
+          await this.anvil.mineBlock(1);
         });
       },
     });
