@@ -80,6 +80,7 @@ beforeAll(async () => {
   await ethNodeStarted.mineBlock(1);
   squaringNode = new SquaringNode(
     ethNodeStarted.getClient(),
+    ethNodeStarted,
     operator,
     getContract({
       address: bvsContract.contractAddress,
@@ -88,9 +89,6 @@ beforeAll(async () => {
     }),
   );
 
-  setInterval(async () => {
-    await ethNodeStarted.mineBlock(10);
-  }, 2000);
   void squaringNode.start(BigInt(5));
 }, 120_000);
 
@@ -110,6 +108,7 @@ test("should compute off-chain and get response on-chain", async () => {
 
   // Request the squaring node to compute the square of 99
   await service.request(anyone.address, 99);
+  await ethNodeStarted.mineBlock(1);
 
   // Wait for the squaring node to compute the square and store the result on-chain
   await vi.waitFor(async () => {
