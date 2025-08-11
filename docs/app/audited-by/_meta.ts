@@ -1,10 +1,15 @@
 import type { MetaRecord } from "nextra";
 
 const meta: MetaRecord = {
+  "dedaub-token-1": {
+    title: "Dedaub (Token)",
+    type: "doc",
+    href: "https://github.com/satlayer/satlayer-bvs/blob/main/docs/public/audits/satlayer-token-dedaub-20250616.pdf",
+  },
   "dedaub-evm-1": {
     title: "Dedaub (EVM)",
     type: "doc",
-    href: "https://github.com/satlayer/satlayer-bvs/blob/main/docs/public/audits/satlayer-core-evm-1-20250809.pdf",
+    href: "https://github.com/satlayer/satlayer-bvs/blob/main/docs/public/audits/satlayer-evm-dedaub-20250809.pdf",
   },
   "dedaub-p1": {
     title: "Dedaub P1",
