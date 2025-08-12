@@ -6,15 +6,15 @@ import {SLAYRegistryV2} from "@satlayer/contracts/SLAYRegistryV2.sol";
 import { ISLAYRegistryV2 } from "@satlayer/contracts/interface/ISLAYRegistryV2.sol";
 
 /**
- * @title MultiSigWallet
- * @dev A basic multi-signature wallet contract.
+ * @title BVS
+ * @dev A basic multi-signature wallet contract using proposal terminology.
  * This contract enables a group of owners to manage assets by requiring
- * a minimum number of confirmations for every transaction.
+ * a minimum number of confirmations for every proposal.
  *
  * It does not use a governance token for voting; instead, the owners
- * themselves vote by confirming a transaction.
+ * themselves vote by confirming a proposal.
  */
-contract MultiSigFixedBVS is ReentrancyGuard {
+contract BVS is ReentrancyGuard {
     // --- State Variables ---
 
     // An array of the addresses that are owners of this wallet.
@@ -25,58 +25,58 @@ contract MultiSigFixedBVS is ReentrancyGuard {
     // A mapping to check if an address is an owner.
     mapping(address => bool) public isOwner;
 
-    // The minimum number of confirmations required for a transaction to pass.
+    // The minimum number of confirmations required for a proposal to pass.
     uint256 public threshold;
 
-    // A struct to store the details of a transaction proposal.
-    struct Transaction {
-        address destination; // The address the transaction is being sent to.
-        uint256 value;       // The amount of Ether to send with the transaction.
-        bytes data;          // The calldata for the transaction.
-        bool executed;       // A flag to check if the transaction has been executed.
+    // A struct to store the details of a proposal.
+    struct Proposal {
+        address destination; // The address the proposal is being sent to.
+        uint256 value;       // The amount of Ether to send with the proposal.
+        bytes data;          // The calldata for the proposal.
+        bool executed;       // A flag to check if the proposal has been executed.
         uint256 confirmationsCount; // Number of confirmations received.
     }
 
-    // A mapping from a transaction index to its details.
-    mapping(uint256 => Transaction) public transactions;
+    // A mapping from a proposal index to its details.
+    mapping(uint256 => Proposal) public proposals;
 
-    // A mapping to track which owners have confirmed a given transaction.
+    // A mapping to track which owners have confirmed a given proposal.
     mapping(uint256 => mapping(address => bool)) public confirmations;
 
-    // A counter for the total number of transactions submitted.
-    uint256 public transactionCount;
+    // A counter for the total number of proposals submitted.
+    uint256 public proposalCount;
 
     // --- Events ---
 
-    // Emitted when a new transaction is submitted.
-    event Submission(uint256 indexed transactionId);
+    // Emitted when a new proposal is submitted.
+    event Submission(uint256 indexed proposalId);
 
-    // Emitted when an owner confirms a transaction.
-    event Confirmation(address indexed owner, uint256 indexed transactionId);
+    // Emitted when an owner confirms a proposal.
+    event Confirmation(address indexed owner, uint256 indexed proposalId);
 
     // Emitted when an owner revokes their confirmation.
-    event Revocation(address indexed owner, uint256 indexed transactionId);
+    event Revocation(address indexed owner, uint256 indexed proposalId);
 
-    // Emitted when a transaction is successfully executed.
-    event Execution(uint256 indexed transactionId);
+    // Emitted when a proposal is successfully executed.
+    event Execution(uint256 indexed proposalId);
 
     // --- Modifiers ---
 
     // Restricts a function to be called only by an owner.
     modifier onlyOwners() {
-        require(isOwner[msg.sender], "MultiSigWallet: not an owner");
+        require(isOwner[msg.sender], "BVS: not an owner");
         _;
     }
 
-    // Ensures a transaction ID is valid.
-    modifier transactionExists(uint256 _transactionId) {
-        require(_transactionId < transactionCount, "MultiSigWallet: transaction does not exist");
+    // Ensures a proposal ID is valid.
+    modifier proposalExists(uint256 _proposalId) {
+        require(_proposalId < proposalCount, "BVS: proposal does not exist");
         _;
     }
 
-    // Ensures a transaction has not been executed yet.
-    modifier notExecuted(uint256 _transactionId) {
-        require(!transactions[_transactionId].executed, "MultiSigWallet: transaction already executed");
+    // Ensures a proposal has not been executed yet.
+    modifier notExecuted(uint256 _proposalId) {
+        require(!proposals[_proposalId].executed, "BVS: proposal already executed");
         _;
     }
 
@@ -85,14 +85,14 @@ contract MultiSigFixedBVS is ReentrancyGuard {
     /**
      * @dev Initializes the contract with a set of owners and a threshold.
      * @param _owners The list of addresses that will be the initial owners.
-     * @param _threshold The number of confirmations required to execute a transaction.
+     * @param _threshold The number of confirmations required to execute a proposal.
      */
     constructor(address[] memory _owners, uint256 _threshold, address _registryAddress, address _routerAddress) payable {
-        require(_owners.length > 0, "MultiSigWallet: owners list cannot be empty");
-        require(_threshold > 0 && _threshold <= _owners.length, "MultiSigWallet: invalid threshold");
+        require(_owners.length > 0, "BVS: owners list cannot be empty");
+        require(_threshold > 0 && _threshold <= _owners.length, "BVS: invalid threshold");
 
         for (uint256 i = 0; i < _owners.length; i++) {
-            require(_owners[i] != address(0), "MultiSigWallet: owner address cannot be zero");
+            require(_owners[i] != address(0), "BVS: owner address cannot be zero");
             isOwner[_owners[i]] = true;
             owners.push(_owners[i]);
         }
@@ -112,66 +112,66 @@ contract MultiSigFixedBVS is ReentrancyGuard {
     receive() external payable {}
 
     /**
-     * @dev Submits a new transaction proposal.
+     * @dev Submits a new proposal.
      * @param _destination The address of the contract or account to call.
-     * @param _value The amount of Ether to send with the transaction.
-     * @param _data The calldata for the transaction.
-     * @return The ID of the submitted transaction.
+     * @param _value The amount of Ether to send with the proposal.
+     * @param _data The calldata for the proposal.
+     * @return proposalId The ID of the newly created proposal.
      */
-    function submitTransaction(
+    function submitProposal(
         address _destination,
         uint256 _value,
         bytes memory _data
-    ) public onlyOwners returns (uint256 transactionId) {
-        transactionId = transactionCount;
-        transactions[transactionId] = Transaction({
+    ) public onlyOwners returns (uint256 proposalId) {
+        proposalId = proposalCount;
+        proposals[proposalId] = Proposal({
             destination: _destination,
             value: _value,
             data: _data,
             executed: false,
             confirmationsCount: 0
         });
-        transactionCount++;
+        proposalCount++;
 
-        emit Submission(transactionId);
+        emit Submission(proposalId);
 
-        // The submitter automatically confirms the transaction.
-        confirmTransaction(transactionId);
+        // The submitter automatically confirms the proposal.
+        confirmProposal(proposalId);
 
-        return transactionId;
+        return proposalId;
     }
 
     /**
-     * @dev Confirms a transaction by an owner.
-     * @param _transactionId The ID of the transaction to confirm.
+     * @dev Confirms a proposal by an owner.
+     * @param _proposalId The ID of the proposal to confirm.
      */
-    function confirmTransaction(
-        uint256 _transactionId
-    ) public onlyOwners transactionExists(_transactionId) notExecuted(_transactionId) {
-        require(!confirmations[_transactionId][msg.sender], "MultiSigWallet: transaction already confirmed by this owner");
+    function confirmProposal(
+        uint256 _proposalId
+    ) public onlyOwners proposalExists(_proposalId) notExecuted(_proposalId) {
+        require(!confirmations[_proposalId][msg.sender], "BVS: proposal already confirmed by this owner");
 
-        confirmations[_transactionId][msg.sender] = true;
-        transactions[_transactionId].confirmationsCount++;
+        confirmations[_proposalId][msg.sender] = true;
+        proposals[_proposalId].confirmationsCount++;
 
-        emit Confirmation(msg.sender, _transactionId);
+        emit Confirmation(msg.sender, _proposalId);
     }
 
     /**
-     * @dev Executes a transaction once the confirmation threshold has been met.
-     * @param _transactionId The ID of the transaction to execute.
+     * @dev Executes a proposal once the confirmation threshold has been met.
+     * @param _proposalId The ID of the proposal to execute.
      */
-    function executeTransaction(
-        uint256 _transactionId
-    ) public onlyOwners transactionExists(_transactionId) notExecuted(_transactionId) nonReentrant {
-        require(transactions[_transactionId].confirmationsCount >= threshold, "MultiSigWallet: not enough confirmations");
+    function executeProposal(
+        uint256 _proposalId
+    ) public onlyOwners proposalExists(_proposalId) notExecuted(_proposalId) nonReentrant {
+        require(proposals[_proposalId].confirmationsCount >= threshold, "BVS: not enough confirmations");
 
-        Transaction storage tx = transactions[_transactionId];
-        tx.executed = true;
+        Proposal storage p = proposals[_proposalId];
+        p.executed = true;
 
-        // Use a low-level call to execute the transaction.
-        (bool success, ) = tx.destination.call{value: tx.value}(tx.data);
-        require(success, "MultiSigWallet: transaction execution failed");
+        // Use a low-level call to execute the proposal.
+        (bool success, ) = p.destination.call{value: p.value}(p.data);
+        require(success, "BVS: proposal execution failed");
 
-        emit Execution(_transactionId);
+        emit Execution(_proposalId);
     }
 }
