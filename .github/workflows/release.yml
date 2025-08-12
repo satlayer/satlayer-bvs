@@ -45,7 +45,7 @@ jobs:
     needs:
       - version
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup
 
       - run: sed -i "s/version = \"0\.0\.0\"/version = \"${{ needs.version.outputs.crate }}\"/" crates/Cargo.toml
@@ -67,7 +67,7 @@ jobs:
     needs:
       - version
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup
 
       - run: sed -i "s/version = \"0\.0\.0\"/version = \"${{ needs.version.outputs.crate }}\"/" crates/Cargo.toml
