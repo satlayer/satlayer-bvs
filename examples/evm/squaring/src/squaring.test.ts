@@ -54,6 +54,7 @@ async function initBVS(ethNodeStarted: StartedAnvilContainer): Promise<void> {
   await ethNodeStarted.mineBlock(2);
   await bvsContract.contract.write.registerOperator([operator.address], {
     account: owner.address,
+    gas: 300_000n,
   });
   await ethNodeStarted.mineBlock(1);
 }
