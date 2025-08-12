@@ -22,7 +22,7 @@ jobs:
     name: Format [prettier]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup
 
       - run: pnpm prettier --check .
@@ -31,7 +31,7 @@ jobs:
     name: Format [cargo]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup
 
       - run: cargo fmt --all -- --check
@@ -41,7 +41,7 @@ jobs:
     name: Lint [clippy]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup
 
       - run: cargo clippy --fix --allow-dirty
@@ -68,7 +68,7 @@ jobs:
     name: Lint [forge]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup
 
       - run: forge fmt --check
@@ -78,7 +78,7 @@ jobs:
     name: Lint [eslint]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup
 
       - run: turbo run eslint
@@ -87,7 +87,7 @@ jobs:
     name: Lint [goimports]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup
 
       - name: Check goimports formatting
@@ -105,7 +105,7 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup
 
       - run: turbo run build
@@ -124,7 +124,7 @@ jobs:
     outputs:
       packages: ${{ steps.plan.outputs.packages }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: fuxingloh/turbo-plan@v2
         id: plan
         with:
@@ -141,7 +141,7 @@ jobs:
     env:
       GOTESTSUM_JUNITFILE: reports/gotestsum-junit.xml
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup
 
       - run: turbo run test --filter=${{ matrix.package }}
@@ -169,7 +169,7 @@ jobs:
     name: SLAYDeployment [dry-run]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup
 
       # Install OpenZeppelin Upgrades Core for Forge. This is missing if we use pnpm.
