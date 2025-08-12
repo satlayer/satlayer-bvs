@@ -34,6 +34,7 @@ export class SquaringNode {
       eventName: "Requested",
       onLogs: async (logs) => {
         logs.forEach(async (log) => {
+          console.log("New Request:", log);
           await this.respondToRequest(Number(log.args.input));
           await this.anvil.mineBlock(1);
         });

@@ -29,6 +29,7 @@ async function initBVS(ethNodeStarted: StartedAnvilContainer): Promise<void> {
   });
 
   await ethNodeStarted.mineBlock(1);
+
   await bvsContract.contract.write.enableSlashing([
     {
       destination: bvsContract.contractAddress,
@@ -38,15 +39,19 @@ async function initBVS(ethNodeStarted: StartedAnvilContainer): Promise<void> {
   ]);
 
   await ethNodeStarted.mineBlock(1);
-  // register operators to the BVS contract
-  await contracts.registry.write.registerAsOperator(["www.operator.com", "operator"], { account: operator.address });
 
-  await ethNodeStarted.mineBlock(1);
+  await contracts.registry.write.registerAsOperator(["www.SquaringOperator.com", "SquaringOperator"], {
+    account: operator.address,
+  });
+
+  await ethNodeStarted.mineBlock(2);
+
+  // register operators to the BVS contract
   await contracts.registry.write.registerServiceToOperator([bvsContract.contractAddress], {
     account: operator.address,
   });
 
-  await ethNodeStarted.mineBlock(1);
+  await ethNodeStarted.mineBlock(2);
   await bvsContract.contract.write.registerOperator([operator.address], {
     account: owner.address,
   });
