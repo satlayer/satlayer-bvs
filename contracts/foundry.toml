@@ -15,7 +15,11 @@ extra_output = ["storageLayout"]
 ignore = ["test/**/*"]
 
 [rpc_endpoints]
-slaynet = "${TENDERLY_RPC_URL}"
+mainnet = "https://mainnet.gateway.tenderly.co"
+sepolia = "https://sepolia.gateway.tenderly.co"
+holesky = "https://holesky.gateway.tenderly.co"
 
 [etherscan]
-slaynet = { chain = 83766589, key = "${TENDERLY_ACCESS_KEY}", url = "${TENDERLY_RPC_URL}/verify/etherscan" }
+mainnet = { chain = 1, key = "${ETHERSCAN_API_KEY}" }
+sepolia = { chain = 11155111, key = "${ETHERSCAN_API_KEY}" }
+holesky = { chain = 17000, key = "${ETHERSCAN_API_KEY}" }
