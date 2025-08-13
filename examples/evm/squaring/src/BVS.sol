@@ -121,7 +121,7 @@ contract BVS {
     /**
         Move the locked collateral from SatLayer contract to service designated address.
     */
-    function finalizesSlashing(bytes32 slashId) external onlyOwner {
+    function finalizeSlashing(bytes32 slashId) external onlyOwner {
        SLAYRouterV2(router).finalizeSlashing(slashId);
     }
 

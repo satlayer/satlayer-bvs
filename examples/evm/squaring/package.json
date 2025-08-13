@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "forge build -C src/contracts -o src/contracts/out -vvv --force",
-    "test": "pnpm run build:sol && vitest run --reporter verbose",
+    "test": "pnpm run build && vitest run --reporter verbose",
     "test:sol": "forge test --contracts src/contracts"
   },
   "dependencies": {
@@ -23,8 +23,5 @@
     "@types/node": "^20",
     "@wagmi/cli": "^2.3.2",
     "vitest": "^3.1.4"
-  },
-  "peerDependencies": {
-    "@openzeppelin/contracts": "^4.8.1 || ^5.0.0"
   }
 }
