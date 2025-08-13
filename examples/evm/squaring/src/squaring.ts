@@ -14,6 +14,7 @@ function compute(input: number): number {
 
 /**
  * A long-running process that listens for Requests and Responds to them.
+ * It is an artificial node supposed to be run by an operator.
  */
 export class SquaringNode {
   private running: boolean = true;
@@ -50,6 +51,7 @@ export class SquaringNode {
         // No new blocks, sleep for 1 second
         await setTimeout(1000);
       }
+      progress.height = currentHeight;
     }
     unwatch();
   }
@@ -68,6 +70,11 @@ export class SquaringNode {
   }
 }
 
+/**
+ * This class is used to interact with the BVS contract.
+ * An artificial (supposed) service node that can be used to request computations.
+ * Run by service
+ */
 export class ServiceNode {
   constructor(private readonly bvsContract: GetContractReturnType<typeof abi, any, `0x${string}`>) {}
 
