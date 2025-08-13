@@ -76,6 +76,7 @@ contract SLAYDeployment is Script {
 
         // Transfer ownership
         if (initialOwner != newOwner && newOwner != address(0)) {
+            console.log("Transfer Ownership:", newOwner);
             beacon.transferOwnership(newOwner);
             router.transferOwnership(newOwner);
             registry.transferOwnership(newOwner);
