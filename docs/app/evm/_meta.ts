@@ -22,6 +22,7 @@ const meta: MetaRecord = {
   contracts: {
     title: "Contract Reference",
   },
+  deployed: {},
 };
 
 export default meta;

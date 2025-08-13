@@ -21,7 +21,7 @@ contract SLAYNet is SLAYDeployment {
     function run() public virtual override {
         vm.startBroadcast();
         (SLAYRouterV2 router, SLAYRegistryV2 registry, SLAYVaultFactoryV2 vaultFactory, SLAYRewardsV2 rewards) =
-            deploy(msg.sender);
+            deploy(msg.sender, address(0));
 
         deployServices(registry);
         deployOperators(registry);
