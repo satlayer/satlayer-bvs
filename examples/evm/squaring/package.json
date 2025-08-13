@@ -2,7 +2,7 @@
   "name": "@examples/squaring-evm",
   "private": true,
   "scripts": {
-    "build:sol": "forge build -C src/contracts -o src/contracts/out -vvv --force",
+    "build": "forge build -C src/contracts -o src/contracts/out -vvv --force",
     "test": "pnpm run build:sol && vitest run --reporter verbose",
     "test:sol": "forge test --contracts src/contracts"
   },
