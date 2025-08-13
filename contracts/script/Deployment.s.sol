@@ -31,7 +31,7 @@ contract SLAYDeployment is Script {
 
     function run() public virtual {
         vm.startBroadcast();
-        deploy(msg.sender, address(0));
+        deploy(msg.sender, address(0x511913AdB7e16e449a1219a00E8c274B3CFbd754));
     }
 
     /// @dev Deploys the SatLayer Protocol core contracts.
@@ -49,14 +49,20 @@ contract SLAYDeployment is Script {
         // We use the same SLAYBase for all contracts here.
         bytes memory baseInit = abi.encodeCall(SLAYBase.initialize, (initialOwner));
 
-        router = SLAYRouterV2(create2UUPSProxy(baseImpl, baseInit));
-        registry = SLAYRegistryV2(create2UUPSProxy(baseImpl, baseInit));
-        vaultFactory = SLAYVaultFactoryV2(create2UUPSProxy(baseImpl, baseInit));
-        rewards = SLAYRewardsV2(create2UUPSProxy(baseImpl, baseInit));
+        router = SLAYRouterV2(create2UUPSProxy(keccak256("SLAYRouterV2"), baseImpl, baseInit));
+        console.log("SLAYRouterV2:", address(router));
+        registry = SLAYRegistryV2(create2UUPSProxy(keccak256("SLAYRegistryV2"), baseImpl, baseInit));
+        console.log("SLAYRegistryV2:", address(registry));
+        vaultFactory = SLAYVaultFactoryV2(create2UUPSProxy(keccak256("SLAYVaultFactoryV2"), baseImpl, baseInit));
+        console.log("SLAYVaultFactoryV2:", address(vaultFactory));
+        rewards = SLAYRewardsV2(create2UUPSProxy(keccak256("SLAYRewardsV2"), baseImpl, baseInit));
+        console.log("SLAYRewardsV2:", address(rewards));
 
         Core.validateImplementation("SLAYVaultV2.sol:SLAYVaultV2", opts);
         address vaultImpl = address(new SLAYVaultV2(router, registry));
+        console.log("SLAYVaultV2:", address(vaultImpl));
         UpgradeableBeacon beacon = new UpgradeableBeacon(vaultImpl, initialOwner);
+        console.log("UpgradeableBeacon:", address(beacon));
 
         Core.validateUpgrade("SLAYRouterV2.sol:SLAYRouterV2", opts);
         address routerImpl = address(new SLAYRouterV2(registry));
@@ -85,8 +91,7 @@ contract SLAYDeployment is Script {
         }
     }
 
-    function create2UUPSProxy(address impl, bytes memory initializerData) internal returns (address) {
-        bytes32 salt = keccak256("SatLayer");
+    function create2UUPSProxy(bytes32 salt, address impl, bytes memory initializerData) internal returns (address) {
         return address(new ERC1967Proxy{salt: salt}(impl, initializerData));
     }
 }
