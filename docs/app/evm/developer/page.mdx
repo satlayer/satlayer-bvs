@@ -1,0 +1,61 @@
+---
+asIndexPage: true
+---
+
+import { Callout, Cards } from 'nextra/components'
+import {
+    AcademicCapIcon, ArrowDownTrayIcon,
+    CommandLineIcon,
+    CubeIcon,
+    SparklesIcon,
+} from '@heroicons/react/24/outline';
+
+# Integrating with Solidity
+
+<Callout type="info">
+    This section is for building services that interact with SatLayer on EVM chains using Solidity.
+</Callout>
+
+These documentations provide quickstart guides for building services that interact with SatLayer on EVM chains using Solidity.
+If you’re looking for Rust/CosmWasm, see the CosmWasm developer docs.
+
+## Getting started with Solidity
+
+Read here to have a higher-level overview of the Solidity development environment.
+You will be able to compile, deploy, and interact with your contracts.
+
+<Cards num={3}>
+    <Cards.Card icon={<ArrowDownTrayIcon />} title="Installation" href="/evm/developer/installation" />
+    <Cards.Card icon={<SparklesIcon />} title="Integrating SatLayer" href="/evm/developer/integrating" />
+    <Cards.Card icon={<CommandLineIcon />} title="Deploying" href="/evm/developer/deploying" />
+</Cards>
+
+## Start here
+
+<Cards num={2}>
+    <Cards.Card
+        icon={<SparklesIcon />}
+        title="Integrating SatLayer"
+        href="/evm/developer/integrating"
+        arrow>
+        <div className="x:p-4 x:grow x:bg-white x:dark:bg-black x:leading-7">
+            <>Minimal examples to register services/operators and use programmable slashing.</>
+        </div>
+    </Cards.Card>
+    <Cards.Card
+        icon={<CubeIcon />}
+        title="BVS Examples"
+        href="/evm/examples/squaring"
+        arrow>
+        <div className="x:p-4 x:grow x:bg-white x:dark:bg-black x:leading-7">
+            <>Bootstrap your project with templates and examples.</>
+        </div>
+    </Cards.Card>
+</Cards>
+
+## Related
+
+<Cards num={2}>
+    <Cards.Card icon={<AcademicCapIcon />} title="Architecture: Slashing" href="/app/architecture/slashing" />
+    <Cards.Card icon={<CommandLineIcon />} title="Contracts Interfaces" href="/contracts" />
+</Cards>

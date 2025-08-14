@@ -1,0 +1,64 @@
+---
+sidebarTitle: Deploying
+---
+
+import {Callout, FileTree} from 'nextra/components'
+
+# Deploying Solidity Contracts
+
+Solidity contracts can be deployed on EVM-compatible blockchains through multiple methods.
+This page will mainly focus on deploying the contracts with forge scripts.
+
+Forge scripts are a powerful way to deploy and manage your Solidity contracts on EVM networks.
+Though it is mainly used to deploy multiple contracts at once, it can also be used to deploy a single contract.
+It allows you to write deployment scripts in Solidity, which can be executed using the Foundry toolchain.
+
+## Writing Forge Scripts
+
+Create a script directory in the root of your project and add the script file.
+
+<FileTree>
+    <FileTree.Folder name="my-bvs-service" defaultOpen>
+        <FileTree.Folder name="script" defaultOpen>
+            <FileTree.File name="Deployment.s.sol" />
+        </FileTree.Folder>
+    </FileTree.Folder>
+</FileTree>
+
+```solidity filename="Deployment.s.sol" copy
+import {Script} from "forge-std/Script.sol";
+import {console} from "forge-std/console.sol";
+
+contract DeploymentScript is Script {
+    function run() public virtual {
+        vm.startBroadcast();
+
+        MyBVSService myBVSService = new MyBVSService();
+        console.log("MyBVSService deployed at: %s", address(myBVSService));
+
+        vm.stopBroadcast();
+    }
+}
+```
+
+## Deploying
+
+To deploy a dry run of the script, you can use the following command:
+
+```bash
+forge script script/Deployment.s.sol:DeploymentScript --chain <CHAIN> --rpc-url <RPC_URL> --private-key <PRIVATE_KEY> -vvvv
+```
+
+To deploy the script, you should add `--broadcast` to the command:
+
+```bash
+forge script script/Deployment.s.sol:DeploymentScript --broadcast --chain <CHAIN> --rpc-url <RPC_URL> --private-key <PRIVATE_KEY> -vvvv
+```
+
+<Callout type="warning">
+  Make sure to set `--sender` if contracts uses Ownable or similar patterns that require a specific sender address. Else, the default Foundry sender will be used.
+</Callout>
+
+
+## References
+To read more about forge scripts, you can check the [Foundry Guide](https://getfoundry.sh/guides/scripting-with-solidity/).
