@@ -21,7 +21,13 @@ import { abi as SLAYRegistryV2Abi } from "@satlayer/contracts/out/ISLAYRegistryV
 Contract interfaces are available in the `./src/interface` directory.
 
 ```solidity
-import {ISLAYRegistryV2} from "@satlayer/contracts/src/interface/ISLAYRegistryV2.sol";
+import {ISLAYRegistryV2} from "@satlayer/contracts/interface/ISLAYRegistryV2.sol";
+```
+
+With `remappings.txt`:
+
+```txt
+@satlayer/contracts/=node_modules/@satlayer/contracts/src/
 ```
 
 ## Usage examples
