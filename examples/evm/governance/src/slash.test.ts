@@ -1,9 +1,20 @@
-import { beforeAll, expect, test, vi } from "vitest";
+import { assert, beforeAll, expect, test, vi } from "vitest";
 import { AnvilContainer, ChainName, EVMContracts, StartedAnvilContainer } from "@satlayer/testcontainers";
-import { Account, encodeFunctionData, getContract, getEventSelector, pad, padHex, parseEther } from "viem";
+import {
+  Account,
+  encodeFunctionData,
+  getContract,
+  getEventSelector,
+  pad,
+  padHex,
+  parseEther,
+  parseEventLogs,
+  toEventSelector,
+} from "viem";
 import BVS from "./contracts/out/BVS.sol/BVS.json";
 import { Committee } from "./committee";
 import { abi as slayRouterAbi } from "@satlayer/contracts/SLAYRouterV2.sol/SLAYRouterV2.json";
+import { watchContractEvent } from "viem/actions";
 
 let ethNodeStarted: StartedAnvilContainer;
 let contracts: EVMContracts;
@@ -15,6 +26,7 @@ let bvsContract: Awaited<ReturnType<typeof ethNodeStarted.deployContract>>;
 let committee: Committee;
 let token: Awaited<ReturnType<typeof contracts.initERC20>>;
 let vault: Awaited<ReturnType<typeof contracts.getVaultContractInstance>>;
+let guardrailer: Account;
 
 // Initializes the BVS contract and registers it with the registry and operators.
 async function initBVS(ethNodeStarted: StartedAnvilContainer) {
@@ -53,8 +65,6 @@ async function initBVS(ethNodeStarted: StartedAnvilContainer) {
 
   await ethNodeStarted.mineBlock(1);
 
-  console.log(await contracts.registry.read.getRelationshipStatus([bvsContract.contractAddress, operator.address]));
-
   // init vaults for operator
   token = await contracts.initERC20({
     name: "Wrapped XYZ Token",
@@ -75,8 +85,6 @@ async function initBVS(ethNodeStarted: StartedAnvilContainer) {
 
   await ethNodeStarted.mineBlock(1);
 
-  console.log("Vault whitelisted:", await contracts.router.read.isVaultWhitelisted([vaultAddress]));
-
   vault = await contracts.getVaultContractInstance(vaultAddress);
 
   await ethNodeStarted.mineBlock(1);
@@ -90,6 +98,10 @@ async function initBVS(ethNodeStarted: StartedAnvilContainer) {
   await ethNodeStarted.mineBlock(1);
 
   await vault.write.deposit([50_000, retailStaker.address], { account: retailStaker.address, gas: 300_000n });
+
+  await ethNodeStarted.mineBlock(1);
+
+  await contracts.router.write.setGuardrail([guardrailer.address], { account: ethNodeStarted.getAccount().address });
 
   await ethNodeStarted.mineBlock(1);
 }
@@ -113,10 +125,12 @@ beforeAll(async () => {
   committeeMembers[4] = ethNodeStarted.generateAccount("member5") as unknown as Account;
   operator = ethNodeStarted.generateAccount("operator") as unknown as Account;
   retailStaker = ethNodeStarted.generateAccount("retailStaker") as unknown as Account;
+  guardrailer = ethNodeStarted.generateAccount("guardrailer") as unknown as Account;
 
   // give gas
   await ethNodeStarted.setBalance(operator.address, parseEther("1"));
   await ethNodeStarted.setBalance(retailStaker.address, parseEther("1"));
+  await ethNodeStarted.setBalance(guardrailer.address, parseEther("1"));
 
   for (const member of committeeMembers) {
     await ethNodeStarted.setBalance(member.address, parseEther("1"));
@@ -128,52 +142,70 @@ beforeAll(async () => {
   await ethNodeStarted.mineBlock(1);
 }, 120_000);
 
-test("Reach a quorum to slash an operator.", async () => {
-  // reaching consensus to request slash for the operator
+test("Quorum to slash an operator.", async () => {
+  // --------------------------------------------------------
+  // Reaching consensus to request slash for the operator
+  // --------------------------------------------------------
   const calldata = encodeFunctionData({
     abi: slayRouterAbi,
     functionName: "requestSlashing",
     args: [
       {
         operator: operator.address,
-        mbips: 500_000n, // 50%
+        mbips: 5_000_000n, // 50%
         reason: "Committee deemed operator is malicious",
-        timestamp: await ethNodeStarted.getClient().getBlockNumber(), // 1000 blocks in the future
+        timestamp: (await ethNodeStarted.getClient().getBlock()).timestamp,
       },
     ],
   });
 
-  let slashId;
-  committee
-    .propose(contracts.router.address, 0n, calldata)
-    .then(async (proposalId) => {
-      await committee.allVoteYes(proposalId);
-      const receipt = await committee.executeProposal(proposalId);
-      const eventSelector = getEventSelector(
-        "SlashingRequested(address,address,bytes32,(address,uint32,uint32),string)",
-      );
-      const slashingLog = receipt.logs.find((log) => log.topics[0] === eventSelector);
-      if (!slashingLog) {
-        throw new Error(`No SlashingRequested event found in transaction: ${proposalId}`);
-      }
-      console.log(slashingLog);
-      slashId = BigInt(slashingLog.topics[2]!);
-    })
-    .catch((error) => {
-      console.error(`Failed to slash operator: ${error.message}`);
-    });
+  let slashRequest_proposalId = await committee.propose(contracts.router.address, 0n, calldata);
+  await committee.allVoteYes(slashRequest_proposalId);
+  const slashRequest_receipt = await committee.executeProposal(slashRequest_proposalId);
+  const parsedEvents = parseEventLogs({
+    abi: slayRouterAbi,
+    logs: slashRequest_receipt.logs,
+    eventName: "SlashingRequested",
+  });
+  const slashId = parsedEvents[0].args.slashId;
 
-  console.log(`Slash ID: ${slashId}`);
+  // Operator did not refute
+  // Or weren't able to refute in time
+  await ethNodeStarted.mineBlock(1000);
 
-  //----------------------------------
+  //-----------------------------------------------------------------------
   // Reaching consensus to lock the slash collateral after request slashing
-  // -----------------------------------
-  // const calldata2 = encodeFunctionData({
-  //     abi: slayRouterAbi,
-  //     functionName: "lockSlashing",
-  //     args: [operator.address]
-  // });
+  // ----------------------------------------------------------------------
+  const calldata2 = encodeFunctionData({
+    abi: slayRouterAbi,
+    functionName: "lockSlashing",
+    args: [slashId],
+  });
+  const slashLock_proposalId = await committee.propose(contracts.router.address, 0n, calldata2);
+  await committee.allVoteYes(slashLock_proposalId);
+  await committee.executeProposal(slashLock_proposalId);
+
+  //-----------------------------------------------------------------------
+  // Reaching consensus to finalize slashing to the operator
+  // ----------------------------------------------------------------------
+  const calldata3 = encodeFunctionData({
+    abi: slayRouterAbi,
+    functionName: "finalizeSlashing",
+    args: [slashId],
+  });
+  const slashFinalize_proposalId = await committee.propose(contracts.router.address, 0n, calldata3);
+  await committee.allVoteYes(slashFinalize_proposalId);
+
+  await contracts.router.write.guardrailApprove([slashId, true], { account: guardrailer.address });
+  await ethNodeStarted.mineBlock(1);
+
+  await committee.executeProposal(slashFinalize_proposalId);
 
   const balanceAfterSlash = await token.contract.read.balanceOf([vault.address]);
-  console.log(`Balance after slash: ${balanceAfterSlash}`);
+  const serviceBalanceAfterSlash = await token.contract.read.balanceOf([bvsContract.contractAddress]);
+  assert(balanceAfterSlash === 25000n, "Vault balance should be half after slashing the operator");
+  assert(
+    serviceBalanceAfterSlash === 25000n,
+    "BVS contract balance should be half of token the taken away from vault after slashing the operator",
+  );
 }, 120_000);

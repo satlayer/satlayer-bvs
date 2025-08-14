@@ -1,5 +1,15 @@
 import { AnvilContainer, EVMContracts, StartedAnvilContainer, SuperTestClient } from "@satlayer/testcontainers";
-import { Account, encodeFunctionData, GetContractReturnType, getEventSelector, TransactionReceipt } from "viem";
+import {
+  Account,
+  BaseError,
+  encodeFunctionData,
+  getAbiItem,
+  getContractError,
+  GetContractReturnType,
+  getEventSelector,
+  toFunctionSelector,
+  TransactionReceipt,
+} from "viem";
 import { abi } from "./contracts/out/BVS.sol/BVS.json";
 import { abi as slayRegistryAbi } from "@satlayer/contracts/SLAYRegistryV2.sol/SLAYRegistryV2.json";
 
@@ -57,9 +67,26 @@ export class Committee {
     const txHash = await this.bvsContract.write.executeProposal([proposal_id], { account: this.comittee[0].address });
     await this.ethNodeStarted.mineBlock(2);
     const receipt = await this.ethNodeStarted.getClient().waitForTransactionReceipt({ hash: txHash });
-    console.log(receipt);
     if (receipt.status != "success") {
-      throw new Error(`Proposal Execution failed: ${txHash}`);
+      await this.ethNodeStarted
+        .getClient()
+        .simulateContract({
+          address: this.bvsContract.address,
+          abi: this.bvsContract.abi,
+          functionName: "executeProposal",
+          args: [proposal_id],
+          account: this.comittee[0].address,
+          blockNumber: receipt.blockNumber,
+        })
+        .catch((error) => {
+          throw getContractError(error as BaseError, {
+            abi: this.bvsContract.abi,
+            address: this.bvsContract.address,
+            sender: this.comittee[0].address,
+            functionName: "executeProposal",
+            args: [proposal_id],
+          });
+        });
     }
     return receipt;
   }
@@ -68,21 +95,16 @@ export class Committee {
     const slashParameter = {
       destination: this.bvsContract.address,
       maxMbips: 10_000_000n,
-      resolutionWindow: 80_000,
+      resolutionWindow: 32,
     };
     const calldata = encodeFunctionData({
       abi: slayRegistryAbi,
       functionName: "enableSlashing",
       args: [slashParameter],
     });
-    this.propose(this.slayContracts.registry.address, 0n, calldata)
-      .then(async (proposalId) => {
-        await this.allVoteYes(proposalId);
-        await this.executeProposal(proposalId);
-      })
-      .catch((error) => {
-        console.error(`Failed to enable slashing: ${error.message}`);
-      });
+    const proposalId = await this.propose(this.slayContracts.registry.address, 0n, calldata);
+    await this.allVoteYes(proposalId);
+    await this.executeProposal(proposalId);
   }
 
   async registerOperator(operator: String): Promise<void> {
@@ -96,7 +118,6 @@ export class Committee {
       account: this.comittee[0].address,
     });
 
-    console.log(`Transaction hash: ${txHash}`);
     await this.ethNodeStarted.mineBlock(2);
 
     const receipt = await this.ethNodeStarted.getClient().waitForTransactionReceipt({ hash: txHash });

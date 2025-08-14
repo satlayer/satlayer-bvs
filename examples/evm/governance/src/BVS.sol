@@ -168,9 +168,15 @@ contract BVS is ReentrancyGuard {
         Proposal storage p = proposals[_proposalId];
         p.executed = true;
 
-        // Use a low-level call to execute the proposal.
-        (bool success, ) = p.destination.call{value: p.value}(p.data);
-        require(success, "BVS: proposal execution failed");
+        // Use a low-level call to execute the proposal and capture the return data.
+        (bool success, bytes memory returnData) = p.destination.call{value: p.value}(p.data);
+
+        if (!success) {
+            // revert with the exact bytes returned by the callee
+            assembly {
+                revert(add(returnData, 0x20), mload(returnData))
+            }
+        }
 
         emit Execution(_proposalId);
     }
