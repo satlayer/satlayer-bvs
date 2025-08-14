@@ -1,21 +1,33 @@
 # @satlayer/contracts
 
 Artifact bundle for SatLayer EVM smart contracts.
-This package ships the compiled Foundry artifacts (ABIs, bytecode, metadata) so you can easily integrate SatLayer contracts in your dapps, scripts, and SDKs.
-
-Because of the package exports mapping, you can import artifacts directly without referencing the `out/` folder.
+This package ships the compiled Foundry artifacts (ABIs, bytecode, metadata, and interfaces) so you can easily
+integrate SatLayer contracts in your dapps, scripts, and SDKs.
 
 ## Installation
 
 ```bash
 npm install @satlayer/contracts
+# You will need OpenZeppelin contracts as a peer dependency if you're interacting with ISLAYVault
+npm install @openzeppelin/contracts
 ```
 
-Compiled artifacts for the core SatLayer contracts (ABI, bytecode, devdoc, userdoc) are under the export paths.
-So importing `@satlayer/contracts/<Interface>.sol/<Interface>.json` resolves automatically to the Foundry `out/` directory at runtime.
+Compiled artifacts for the core SatLayer contracts (ABI, bytecode) are under the `./out` export paths.
 
 ```ts
-import { abi as SLAYRegistryV2Abi } from "@satlayer/contracts/ISLAYRegistryV2.sol/ISLAYRegistryV2.json";
+import { abi as SLAYRegistryV2Abi } from "@satlayer/contracts/out/ISLAYRegistryV2.sol/ISLAYRegistryV2.json";
+```
+
+Contract interfaces are available in the `./src/interface` directory.
+
+```solidity
+import {ISLAYRegistryV2} from "@satlayer/contracts/interface/ISLAYRegistryV2.sol";
+```
+
+With `remappings.txt`:
+
+```txt
+@satlayer/contracts/=node_modules/@satlayer/contracts/src/
 ```
 
 ## Usage examples
@@ -25,7 +37,7 @@ import { abi as SLAYRegistryV2Abi } from "@satlayer/contracts/ISLAYRegistryV2.so
 ```ts
 import { createPublicClient, http, getContract } from "viem";
 import { mainnet } from "viem/chains";
-import { abi as SLAYRegistryV2Abi } from "@satlayer/contracts/ISLAYRegistryV2.sol/ISLAYRegistryV2.json";
+import { abi as SLAYRegistryV2Abi } from "@satlayer/contracts/out/ISLAYRegistryV2.sol/ISLAYRegistryV2.json";
 
 const client = createPublicClient({ chain: mainnet, transport: http() });
 
@@ -43,7 +55,7 @@ const maxForService = await registry.read.maxActiveRelationshipsForService();
 
 ```ts
 import { ethers } from "ethers";
-import SLAYRegistryV2Artifact from "@satlayer/contracts/ISLAYRegistryV2.sol/ISLAYRegistryV2.json" with { type: "json" };
+import SLAYRegistryV2Artifact from "@satlayer/contracts/out/ISLAYRegistryV2.sol/ISLAYRegistryV2.json" with { type: "json" };
 
 const provider = new ethers.JsonRpcProvider(process.env.RPC_URL!);
 const registry = new ethers.Contract("0x...registryAddress", SLAYRegistryV2Artifact.abi, provider);

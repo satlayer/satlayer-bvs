@@ -11,7 +11,7 @@ import {
 } from "@satlayer/testcontainers";
 import { execa } from "execa";
 import { Account, getContract, GetContractReturnType, parseEther } from "viem";
-import slayvault from "@satlayer/contracts/SLAYVaultV2.sol/SLAYVaultV2.json";
+import slayvault from "@satlayer/contracts/out/SLAYVaultV2.sol/SLAYVaultV2.json";
 
 let policyManager: PolicyManager;
 let api: Api;
