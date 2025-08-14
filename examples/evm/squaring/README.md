@@ -25,7 +25,7 @@ Have a docker environment set up on the machine and follow these steps to run th
 
 1. Run `turbo run build` at the root of this monorepo to build the test containers this example uses.
 2. Run `pnpm install` in the `examples/evm/squaring` (the root of this project) directory to install dependencies.
-3. Run `pnpm run build:sol` to build the Solidity contract.
+3. Run `pnpm run build` to build the Solidity contract.
 4. Run `pnpm run test` to start the off-chain service tests.
 5. Optionally run `pnpm run test:sol` to run solidity specific tests.
 
