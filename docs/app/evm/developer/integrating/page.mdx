@@ -32,7 +32,7 @@ It serves as a directory where Operators and Services can register themselves an
 Register an address as a Service with optional metadata.
 Services are entities that Operators can run.
 
-```solidity filename="contract.sol" copy
+```solidity filename="MyBVSService.sol" copy
 function registerService() external {
     SLAYRegistryV2(REGISTRY_CONTRACT_ADDR).registerAsService("https://service.example.com", "Service Name");
 }
@@ -49,7 +49,7 @@ If the Service has enabled slashing,
 the Operator will automatically opt in to the slashing parameters during registration.
 This method is essential for creating the network of trusted Operators that can run a Service.
 
-```solidity filename="contract.sol" copy
+```solidity filename="MyBVSService.sol" copy
 function registerOperatorToService(address operator) external {
     SLAYRegistryV2(REGISTRY_CONTRACT_ADDR).registerOperatorToService(operator);
 }
@@ -59,7 +59,7 @@ function registerOperatorToService(address operator) external {
 
 Update a Service's metadata (name, URI) to reflect changes in the Service's branding.
 
-```solidity filename="contract.sol" copy
+```solidity filename="MyBVSService.sol" copy
 function updateMetadata(string calldata uri, string calldata name) external {
     SLAYRegistryV2(REGISTRY_CONTRACT_ADDR).updateMetadata(uri, name);
 }
@@ -70,7 +70,7 @@ function updateMetadata(string calldata uri, string calldata name) external {
 Service removes an Operator from its list of registered operators.
 This is effectively ending the relationship between the Service and the Operator.
 
-```solidity filename="contract.sol" copy
+```solidity filename="MyBVSService.sol" copy
 function deregisterOperator(address operator) external {
     SLAYRegistryV2(REGISTRY_CONTRACT_ADDR).deregisterOperatorFromService(operator);
 }
@@ -93,7 +93,7 @@ When a Service enables or updates slashing parameters, Operators must explicitly
 providing a safeguard against malicious changes.
 This mechanism is crucial for maintaining security and accountability in the SatLayer ecosystem.
 
-```solidity filename="contract.sol" copy
+```solidity filename="MyBVSService.sol" copy
 function enableSlashing() external {
     SLAYRegistryV2(REGISTRY_CONTRACT_ADDR).enableSlashing(
         ISLAYRegistryV2.SlashParameter({
@@ -109,7 +109,7 @@ function enableSlashing() external {
 
 Disable slashing for a Service.
 
-```solidity filename="contract.sol" copy
+```solidity filename="MyBVSService.sol" copy
 function disableSlashing() external {
     SLAYRegistryV2(REGISTRY_CONTRACT_ADDR).disableSlashing();
 }
@@ -139,7 +139,7 @@ When successful,
 this creates a slashing request with an expiry time based on the resolution window parameter
 and returns a unique slashing request ID.
 
-```solidity filename="contract.sol" copy
+```solidity filename="MyBVSService.sol" copy
 function slashOperator(address operator) external {
     ISLAYRouterSlashingV2.Payload memory payload = ISLAYRouterSlashingV2.Payload({
         operator: operator,
@@ -162,7 +162,7 @@ If the issue is promptly addressed and resolved,
 the Service should cancel the slashing process using this method.
 The definition of "resolved" is up to the Service to define.
 
-```solidity filename="contract.sol" copy
+```solidity filename="MyBVSService.sol" copy
 function cancelSlash(bytes32 slashId) external {
     SLAYRouterV2(ROUTER_CONTRACT_ADDR).cancelSlashing(slashId);
 }
@@ -175,7 +175,7 @@ the Service can execute this method to lock the specified proportion of the Oper
 After executing the slash, the Vault Router will rebase all affected vaults to reflect the new exchange rate,
 ensuring that new deposits will mint a higher share ratio and will not be affected by the slashing.
 
-```solidity filename="contract.sol" copy
+```solidity filename="MyBVSService.sol" copy
 function lockSlashing(bytes32 slashId) external {
     SLAYRouterV2(ROUTER_CONTRACT_ADDR).lockSlashing(slashId);
 }
@@ -185,7 +185,7 @@ function lockSlashing(bytes32 slashId) external {
 
 Move funds from the locked state to the final destination specified in the slashing parameters.
 
-```solidity filename="contract.sol" copy
+```solidity filename="MyBVSService.sol" copy
 function finalizeSlashing(bytes32 slashId) external {
     SLAYRouterV2(ROUTER_CONTRACT_ADDR).finalizeSlashing(slashId);
 }
