@@ -5,8 +5,8 @@ import {IBVS} from "./interface/IBVS.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {EnumerableMap} from "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {ISLAYRegistryV2} from "@satlayer/contracts/interface/ISLAYRegistryV2.sol";
-import {RelationshipV2} from "@satlayer/contracts/RelationshipV2.sol";
+import {ISLAYRegistryV2} from "@satlayer/contracts/src/interface/ISLAYRegistryV2.sol";
+import {RelationshipV2} from "@satlayer/contracts/src/RelationshipV2.sol";
 
 contract BVS is Ownable, IBVS {
     using EnumerableMap for EnumerableMap.AddressToBytes32Map;

@@ -1,10 +1,10 @@
 import { StartedAnvilContainer, SuperTestClient } from "@satlayer/testcontainers";
 import { getContract, GetContractReturnType } from "viem";
 
-import vaultAbi from "@satlayer/contracts/SLAYVaultV2.sol/SLAYVaultV2.json";
-import registryAbi from "@satlayer/contracts/SLAYRegistryV2.sol/SLAYRegistryV2.json";
-import routerAbi from "@satlayer/contracts/SLAYRouterV2.sol/SLAYRouterV2.json";
-import rewardsAbi from "@satlayer/contracts/SLAYRewardsV2.sol/SLAYRewardsV2.json";
+import vaultAbi from "@satlayer/contracts/out/SLAYVaultV2.sol/SLAYVaultV2.json";
+import registryAbi from "@satlayer/contracts/out/SLAYRegistryV2.sol/SLAYRegistryV2.json";
+import routerAbi from "@satlayer/contracts/out/SLAYRouterV2.sol/SLAYRouterV2.json";
+import rewardsAbi from "@satlayer/contracts/out/SLAYRewardsV2.sol/SLAYRewardsV2.json";
 
 interface ApiServiceOptions {
   startedContainer: StartedAnvilContainer;
