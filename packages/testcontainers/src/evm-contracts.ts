@@ -1,11 +1,11 @@
 import UpgradeableBeacon from "@openzeppelin/upgrades-core/artifacts/@openzeppelin/contracts-v5/proxy/beacon/UpgradeableBeacon.sol/UpgradeableBeacon.json";
 import ERC1967Proxy from "@openzeppelin/upgrades-core/artifacts/@openzeppelin/contracts-v5/proxy/ERC1967/ERC1967Proxy.sol/ERC1967Proxy.json";
-import slayBase from "@satlayer/contracts/SLAYBase.sol/SLAYBase.json";
-import slayRegistry from "@satlayer/contracts/SLAYRegistryV2.sol/SLAYRegistryV2.json";
-import slayRewards from "@satlayer/contracts/SLAYRewardsV2.sol/SLAYRewardsV2.json";
-import slayRouter from "@satlayer/contracts/SLAYRouterV2.sol/SLAYRouterV2.json";
-import slayVaultFactory from "@satlayer/contracts/SLAYVaultFactoryV2.sol/SLAYVaultFactoryV2.json";
-import slayVault from "@satlayer/contracts/SLAYVaultV2.sol/SLAYVaultV2.json";
+import slayBase from "@satlayer/contracts/out/SLAYBase.sol/SLAYBase.json";
+import slayRegistry from "@satlayer/contracts/out/SLAYRegistryV2.sol/SLAYRegistryV2.json";
+import slayRewards from "@satlayer/contracts/out/SLAYRewardsV2.sol/SLAYRewardsV2.json";
+import slayRouter from "@satlayer/contracts/out/SLAYRouterV2.sol/SLAYRouterV2.json";
+import slayVaultFactory from "@satlayer/contracts/out/SLAYVaultFactoryV2.sol/SLAYVaultFactoryV2.json";
+import slayVault from "@satlayer/contracts/out/SLAYVaultV2.sol/SLAYVaultV2.json";
 import { Account, encodeFunctionData, getContract, GetContractReturnType } from "viem";
 
 import { StartedAnvilContainer, SuperTestClient } from "./anvil-container";

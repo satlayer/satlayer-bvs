@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
-import {IERC7540Redeem, IERC7540Operator} from "forge-std/interfaces/IERC7540.sol";
+import {IERC7540Redeem, IERC7540Operator} from "./IERC7540.sol";
 
 /**
  * @title SatLayer Vault Interface

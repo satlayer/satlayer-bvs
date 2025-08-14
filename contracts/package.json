@@ -1,11 +1,9 @@
 {
   "name": "@satlayer/contracts",
   "private": false,
-  "exports": {
-    "./*": "./out/*"
-  },
   "files": [
-    "out"
+    "out",
+    "src"
   ],
   "scripts": {
     "build": "forge build",
@@ -23,11 +21,11 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.4.0",
-    "@openzeppelin/contracts-upgradeable": "^5.4.0",
-    "@openzeppelin/foundry-upgrades": "^0.4.0",
-    "forge-std": "https://github.com/foundry-rs/forge-std/tarball/v1.9.7"
+    "@openzeppelin/contracts-upgradeable": "^5.4.0"
   },
   "devDependencies": {
-    "@metamask/foundryup": "^1.0.1"
+    "@metamask/foundryup": "^1.0.1",
+    "@openzeppelin/foundry-upgrades": "^0.4.0",
+    "forge-std": "https://github.com/foundry-rs/forge-std/tarball/v1.9.7"
   }
 }

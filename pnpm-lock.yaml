@@ -56,16 +56,16 @@ importers:
       '@openzeppelin/contracts-upgradeable':
         specifier: ^5.4.0
         version: 5.4.0(@openzeppelin/contracts@5.4.0)
+    devDependencies:
+      '@metamask/foundryup':
+        specifier: ^1.0.1
+        version: 1.0.1
       '@openzeppelin/foundry-upgrades':
         specifier: ^0.4.0
         version: 0.4.0(@openzeppelin/defender-deploy-client-cli@0.0.1-alpha.10)(@openzeppelin/upgrades-core@1.44.1)
       forge-std:
         specifier: https://github.com/foundry-rs/forge-std/tarball/v1.9.7
         version: https://github.com/foundry-rs/forge-std/tarball/v1.9.7
-    devDependencies:
-      '@metamask/foundryup':
-        specifier: ^1.0.1
-        version: 1.0.1
 
   crates: {}
 
