@@ -6,12 +6,9 @@ import {Callout, FileTree} from 'nextra/components'
 
 # Deploying Solidity Contracts
 
-Solidity contracts can be deployed on EVM-compatible blockchains through multiple methods.
-This page will mainly focus on deploying the contracts with forge scripts.
+You can deploy Solidity contracts to EVM-compatible chains in several ways. This page focuses on Foundry forge scripts for a concise, repeatable workflow.
 
-Forge scripts are a powerful way to deploy and manage your Solidity contracts on EVM networks.
-Though it is mainly used to deploy multiple contracts at once, it can also be used to deploy a single contract.
-It allows you to write deployment scripts in Solidity, which can be executed using the Foundry toolchain.
+Forge scripts let you write deployments in Solidity and execute them with the Foundry toolchain. They work for single or multiple contracts.
 
 ## Writing Forge Scripts
 
@@ -28,6 +25,7 @@ Create a script directory in the root of your project and add the script file.
 ```solidity filename="Deployment.s.sol" copy
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
+import {MyBVSService} from "../src/MyBVSService.sol";
 
 contract DeploymentScript is Script {
     function run() public virtual {
@@ -43,22 +41,22 @@ contract DeploymentScript is Script {
 
 ## Deploying
 
-To deploy a dry run of the script, you can use the following command:
+Dry run the script (no transactions are sent):
 
 ```bash
 forge script script/Deployment.s.sol:DeploymentScript --chain <CHAIN> --rpc-url <RPC_URL> --private-key <PRIVATE_KEY> -vvvv
 ```
 
-To deploy the script, you should add `--broadcast` to the command:
+Broadcast transactions by adding `--broadcast`:
 
 ```bash
 forge script script/Deployment.s.sol:DeploymentScript --broadcast --chain <CHAIN> --rpc-url <RPC_URL> --private-key <PRIVATE_KEY> -vvvv
 ```
 
 <Callout type="warning">
-  Make sure to set `--sender` if contracts uses Ownable or similar patterns that require a specific sender address. Else, the default Foundry sender will be used.
+  Set `--sender` if your contracts use Ownable or similar patterns that require a specific deployer address; otherwise the Foundry default sender is used.
 </Callout>
 
 
 ## References
-To read more about forge scripts, you can check the [Foundry Guide](https://getfoundry.sh/guides/scripting-with-solidity/).
+Read more about forge scripts in the [Foundry Guide](https://getfoundry.sh/guides/scripting-with-solidity/).

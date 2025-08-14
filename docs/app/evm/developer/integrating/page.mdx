@@ -3,7 +3,7 @@ import {Callout} from 'nextra/components';
 # Integrating with SatLayer
 
 ## Prerequisites
-Read through [SatLayer's EVM core contracts](/evm/contracts) and understand how [Services](/architecture/services) works.
+Read through [SatLayer's EVM core contracts](/evm/contracts) and understand how [Services](/app/architecture/services) work.
 
 ## Getting Started
 
@@ -71,7 +71,7 @@ Service removes an Operator from its list of registered operators.
 This is effectively ending the relationship between the Service and the Operator.
 
 ```solidity filename="contract.sol" copy
-function updateMetadata(address operator) external {
+function deregisterOperator(address operator) external {
     SLAYRegistryV2(REGISTRY_CONTRACT_ADDR).deregisterOperatorFromService(operator);
 }
 ```
@@ -86,7 +86,7 @@ the maximum percentage of tokens that can be slashed (in milli basis points, whe
 and the resolution window (in seconds) during which an Operator can resolve issues before slashing is executed.
 
 <Callout type="warning">
-  Note that the maximum slashing percentage has a different unit in CW's enable slashing function. In EVM, we use milli bips, while in cosmwasm we use bips.
+  Note that the maximum slashing percentage has a different unit in CW's enable slashing function. In EVM, we use milli bips, while in CosmWasm we use bips.
 </Callout>
 
 When a Service enables or updates slashing parameters, Operators must explicitly opt in to the new parameters,
@@ -117,14 +117,14 @@ function disableSlashing() external {
 
 ## SLAYRouter
 
-The [SLAYRouterV2](/evm/contracts/ISLAYVaultV2.sol) is a central contract
+The [SLAYRouterV2](/evm/contracts/ISLAYRouterV2.sol) is a central contract
 that manages the interaction between vaults and other contracts in the SatLayer ecosystem.
 As a BVS,
 the SLAYRouter coordinates the programmable slashing of vaults,
 serving as the execution layer for the slashing logic.
 
 <Callout type="info">
-  See [Programmable Slashing](/architecture/slashing) for more information on how slashing works.
+  See [Programmable Slashing](/app/architecture/slashing) for more information on how slashing works.
 </Callout>
 
 ### Request Slashing
@@ -147,7 +147,7 @@ function slashOperator(address operator) external {
         timestamp: uint32(block.timestamp) - 100, // offending timestamp
         reason: "Missing Blocks" // reason for slashing
     });
-    bytes32 slashId = SLAYRouterV2(REGISTRY_CONTRACT_ADDR).requestSlashing(payload);
+    bytes32 slashId = SLAYRouterV2(ROUTER_CONTRACT_ADDR).requestSlashing(payload);
 }
 ```
 
@@ -164,7 +164,7 @@ The definition of "resolved" is up to the Service to define.
 
 ```solidity filename="contract.sol" copy
 function cancelSlash(bytes32 slashId) external {
-    SLAYRouterV2(REGISTRY_CONTRACT_ADDR).cancelSlashing(slashId);
+    SLAYRouterV2(ROUTER_CONTRACT_ADDR).cancelSlashing(slashId);
 }
 ```
 
@@ -177,7 +177,7 @@ ensuring that new deposits will mint a higher share ratio and will not be affect
 
 ```solidity filename="contract.sol" copy
 function lockSlashing(bytes32 slashId) external {
-    SLAYRouterV2(REGISTRY_CONTRACT_ADDR).lockSlashing(slashId);
+    SLAYRouterV2(ROUTER_CONTRACT_ADDR).lockSlashing(slashId);
 }
 ```
 
@@ -187,7 +187,7 @@ Move funds from the locked state to the final destination specified in the slash
 
 ```solidity filename="contract.sol" copy
 function finalizeSlashing(bytes32 slashId) external {
-    SLAYRouterV2(REGISTRY_CONTRACT_ADDR).finalizeSlashing(slashId);
+    SLAYRouterV2(ROUTER_CONTRACT_ADDR).finalizeSlashing(slashId);
 }
 ```
 
