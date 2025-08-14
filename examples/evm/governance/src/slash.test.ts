@@ -196,6 +196,9 @@ test("Quorum to slash an operator.", async () => {
   const slashFinalize_proposalId = await committee.propose(contracts.router.address, 0n, calldata3);
   await committee.allVoteYes(slashFinalize_proposalId);
 
+  // Although in the example the guardrailer is just an EOA account,
+  // in practice it should be a contract that implements the guardrail logic or
+  // even independent committee separate from governance committee in this example.
   await contracts.router.write.guardrailApprove([slashId, true], { account: guardrailer.address });
   await ethNodeStarted.mineBlock(1);
 
