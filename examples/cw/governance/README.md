@@ -2,7 +2,7 @@
 sidebarTitle: Governance as a BVS
 ---
 
-# Governance as a BVS Example
+# [Governance as a BVS Example](https://github.com/satlayer/satlayer-bvs/blob/main/examples/cw/governance/README.md)
 
 ## Overview
 

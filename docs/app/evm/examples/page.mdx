@@ -1,0 +1,82 @@
+---
+asIndexPage: true
+---
+
+import { Callout, Cards } from 'nextra/components'
+import {
+  CubeIcon,
+  CommandLineIcon,
+  RocketLaunchIcon,
+  ShieldCheckIcon,
+  BookOpenIcon,
+} from '@heroicons/react/24/outline'
+
+# Examples (EVM)
+
+Explore end-to-end examples that show how to build Bitcoin Validated Services
+(BVS) that integrate with SatLayer on EVM chains for various use cases.
+
+## Overview
+
+These examples are designed to help you:
+
+- Understand how Services interact with SLAY contracts (Registry, Router, Vaults, Rewards).
+- See how off‑chain nodes/operators participate in verification and reward flows.
+- Learn typical patterns for broadcasting work, quorum/verification, and finalization.
+
+They are intentionally minimal and link to full README guides for details.
+
+## Available examples
+
+<Callout type="warning">
+    These examples are not production ready.
+    They are meant to be used as a reference for learning how to build BVSs.
+    They are not meant to be used in production.
+</Callout>
+
+<Cards num={2}>
+  <Cards.Card
+    icon={<ShieldCheckIcon />}
+    title="Insurance as a BVS"
+    href="https://github.com/satlayer/satlayer-bvs/tree/main/examples/evm/insurance"
+    arrow
+  >
+      <div className="x:p-4 x:grow x:bg-white x:dark:bg-black x:leading-7">
+          <>Off‑chain policy manager + EVM integration that underwrites policies, processes claims, triggers slashing, and distributes rewards to operators and stakers.</>
+      </div>
+
+  </Cards.Card>
+
+  <Cards.Card
+    icon={<RocketLaunchIcon />}
+    title="LayerZero DVN + BVS"
+    href="https://github.com/satlayer/satlayer-bvs/tree/main/examples/evm/layerzero-dvn"
+    arrow
+  >
+      <div className="x:p-4 x:grow x:bg-white x:dark:bg-black x:leading-7">
+          <>Demonstrates a custom DVN that routes packets through a BVS for operator‑secured verification in cross‑chain messaging.</>
+      </div>
+  </Cards.Card>
+</Cards>
+
+## Prerequisites
+
+- Familiarity with Solidity and EVM tooling.
+- Node.js and a package manager (pnpm or npm).
+- Foundry (for projects that compile Solidity) and/or Docker where noted by the example.
+- Access to an EVM RPC (for live deployments) — examples default to local tests.
+
+## Lifecycle
+
+Every examples comes with a README that explains the premise of the example.
+Lookout for the test file where most of the lifecycle is demonstrated.
+The lifecycle test will bring through the setup, registration, and main core lifecycle.
+Slashing and Rewards flows will also be demonstrated in some examples.
+
+## See also
+
+<Cards num={3}>
+  <Cards.Card icon={<BookOpenIcon />} title="Integrating with Solidity" href="/evm/developer/integrating" />
+  <Cards.Card icon={<CommandLineIcon />} title="Deploying" href="/evm/developer/deploying" />
+  <Cards.Card icon={<CubeIcon />} title="SLAY Contracts (EVM)" href="/evm/contracts" />
+</Cards>

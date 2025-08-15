@@ -4,7 +4,7 @@ asIndexPage: true
 
 import { Callout, Cards } from 'nextra/components'
 import {
-    AcademicCapIcon, ArrowDownTrayIcon,
+    ArrowDownTrayIcon,
     CommandLineIcon,
     CubeIcon,
     SparklesIcon,
@@ -28,34 +28,6 @@ You will be able to compile, deploy, and interact with your contracts.
     <Cards.Card icon={<ArrowDownTrayIcon />} title="Installation" href="/evm/developer/installation" />
     <Cards.Card icon={<SparklesIcon />} title="Integrating SatLayer" href="/evm/developer/integrating" />
     <Cards.Card icon={<CommandLineIcon />} title="Deploying" href="/evm/developer/deploying" />
+    <Cards.Card icon={<CubeIcon />} title="Examples" href="/evm/examples" />
 </Cards>
 
-## Start here
-
-<Cards num={2}>
-    <Cards.Card
-        icon={<SparklesIcon />}
-        title="Integrating SatLayer"
-        href="/evm/developer/integrating"
-        arrow>
-        <div className="x:p-4 x:grow x:bg-white x:dark:bg-black x:leading-7">
-            <>Minimal examples to register services/operators and use programmable slashing.</>
-        </div>
-    </Cards.Card>
-    <Cards.Card
-        icon={<CubeIcon />}
-        title="BVS Examples"
-        href="/evm/examples/squaring"
-        arrow>
-        <div className="x:p-4 x:grow x:bg-white x:dark:bg-black x:leading-7">
-            <>Bootstrap your project with templates and examples.</>
-        </div>
-    </Cards.Card>
-</Cards>
-
-## Related
-
-<Cards num={2}>
-    <Cards.Card icon={<AcademicCapIcon />} title="Architecture: Slashing" href="/app/architecture/slashing" />
-    <Cards.Card icon={<CommandLineIcon />} title="Contract Interfaces" href="/evm/contracts" />
-</Cards>
