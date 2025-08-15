@@ -1,0 +1,109 @@
+import {Callout, Cards, FileTree} from 'nextra/components'
+import { AcademicCapIcon, SparklesIcon } from '@heroicons/react/24/outline';
+
+# Installation
+
+To start developing with Solidity, you will need to install the following and its dependencies:
+- [foundry](https://getfoundry.sh/introduction/installation)
+- [pnpm](https://pnpm.io/installation)
+
+Verify that foundry is installed and working:
+```sh
+foundryup
+forge --version
+```
+
+## Solidity Quickstart
+
+### Create a new project
+
+<Callout type="info">
+    We are using pnpm to manage dependencies, to use git submodules to manage dependencies do read the foundry guide
+</Callout>
+
+Use the template to create a new project:
+
+```bash filename="Create project" copy
+git clone git@github.com:satlayer/my-bvs-service.git --depth 1
+```
+
+```bash filename="Enter project" copy
+cd my-bvs-service
+```
+
+Simplified project structure:
+<FileTree>
+    <FileTree.Folder name="my-bvs-service" defaultOpen>
+        <FileTree.Folder name="script" defaultOpen>
+            <FileTree.File name="Deployment.s.sol" />
+        </FileTree.Folder>
+        <FileTree.Folder name="src" defaultOpen>
+            <FileTree.File name="MyBVSService.sol" />
+        </FileTree.Folder>
+        <FileTree.Folder name="test" defaultOpen>
+            <FileTree.File name="MyBVSService.t.sol" />
+        </FileTree.Folder>
+        <FileTree.File name="foundry.toml" />
+        <FileTree.File name="package.json" />
+        <FileTree.File name="remappings.txt" />
+    </FileTree.Folder>
+</FileTree>
+
+- `src`: your contracts (e.g., src/MyBVSService.sol)
+- `test`: Forge tests (e.g., test/MyBVSService.t.sol)
+- `foundry.toml`: configuration file for Foundry
+- `package.json`: manage dependencies with pnpm
+- `remappings.txt`: list of remappings for dependencies
+
+### Build and test
+
+```bash filename="Build & Test" copy
+pnpm install
+forge build
+forge test -vvv
+```
+
+### Add common dependencies (optional)
+
+Install dependencies as needed. For example, to install OpenZeppelin:
+
+```bash filename="Install deps" copy
+pnpm install @openzeppelin/contracts
+```
+
+<Callout type="info">
+    To use submodules to manage dependencies, you will need to install deps with `forge install`.
+</Callout>
+
+### Configure networks (optional)
+
+Add or edit `foundry.toml` to include RPC endpoints and other settings for your preferred EVM chain:
+
+```toml filename="foundry.toml" copy
+[profile.default]
+src = "src"
+out = "out"
+tests = "test"
+libs = ["node_modules"]
+solc = "0.8.24"
+optimizer = true
+optimizer_runs = 20_000
+
+[rpc_endpoints]
+# Replace with your endpoints
+sepolia = "https://sepolia.infura.io/v3/${INFURA_KEY}"
+```
+
+## Next Steps
+
+<Cards num={1}>
+  <Cards.Card
+    icon={<SparklesIcon/>}
+    title="Integrating with SatLayer"
+    href="/evm/developer/integrating"
+    arrow>
+    <div className="x:p-4 x:grow x:bg-white x:dark:bg-black x:leading-7">
+      <>Already understand how to write EVM contracts? Learn how to integrate with SatLayer.</>
+    </div>
+  </Cards.Card>
+</Cards>
