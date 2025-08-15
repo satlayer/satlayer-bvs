@@ -1,0 +1,197 @@
+import {Callout} from 'nextra/components';
+
+# Integrating with SatLayer
+
+## Prerequisites
+Read through [SatLayer's EVM core contracts](/evm/contracts) and understand how [Services](/app/architecture/services) work.
+
+## Getting Started
+
+Install the SatLayer Contracts into your dependency:
+
+```sh filename="install contracts" copy
+pnpm install @satlayer/contracts
+```
+Add into `remappings.txt`
+
+```text filename="remappings.txt" copy
+@satlayer/contracts/=node_modules/@satlayer/contracts/src/
+```
+
+<Callout type="info">
+    Head over to [Deployed SLAY contracts](/evm/deployed) to get the deployed contract addresses.
+</Callout>
+
+## SLAYRegistry
+
+The [SLAYRegistry](/evm/contracts/ISLAYRegistryV2.sol) is a central record-keeping contract for all Operators and Services within the SatLayer EVM ecosystem.
+It serves as a directory where Operators and Services can register themselves and establish mutual relationships.
+
+### Register as Service
+
+Register an address as a Service with optional metadata.
+Services are entities that Operators can run.
+
+```solidity filename="MyBVSService.sol" copy
+function registerService() external {
+    SLAYRegistryV2(REGISTRY_CONTRACT_ADDR).registerAsService("https://service.example.com", "Service Name");
+}
+```
+
+### Register Operator to Service
+
+Service registers an Operator to run it.
+This establishes a relationship between the Service and the Operator.
+For a fully active relationship, both the Service and Operator must register with each other.
+When both parties have registered, the relationship status becomes "Active" in the Registry.
+
+If the Service has enabled slashing,
+the Operator will automatically opt in to the slashing parameters during registration.
+This method is essential for creating the network of trusted Operators that can run a Service.
+
+```solidity filename="MyBVSService.sol" copy
+function registerOperatorToService(address operator) external {
+    SLAYRegistryV2(REGISTRY_CONTRACT_ADDR).registerOperatorToService(operator);
+}
+```
+
+### Update Service Metadata
+
+Update a Service's metadata (name, URI) to reflect changes in the Service's branding.
+
+```solidity filename="MyBVSService.sol" copy
+function updateMetadata(string calldata uri, string calldata name) external {
+    SLAYRegistryV2(REGISTRY_CONTRACT_ADDR).updateMetadata(uri, name);
+}
+```
+
+### Deregister Operator from Service
+
+Service removes an Operator from its list of registered operators.
+This is effectively ending the relationship between the Service and the Operator.
+
+```solidity filename="MyBVSService.sol" copy
+function deregisterOperator(address operator) external {
+    SLAYRegistryV2(REGISTRY_CONTRACT_ADDR).deregisterOperatorFromService(operator);
+}
+```
+
+### Enable Slashing
+
+This method enables programmable slashing for a Service,
+establishing the rules for penalizing Operators who violate service agreements.
+
+The slashing parameters define the destination address for slashed funds,
+the maximum percentage of tokens that can be slashed (in milli basis points, where 10,000,000 = 100%),
+and the resolution window (in seconds) during which an Operator can resolve issues before slashing is executed.
+
+<Callout type="warning">
+  Note that the maximum slashing percentage has a different unit in CW's enable slashing function. In EVM, we use milli bips, while in CosmWasm we use bips.
+</Callout>
+
+When a Service enables or updates slashing parameters, Operators must explicitly opt in to the new parameters,
+providing a safeguard against malicious changes.
+This mechanism is crucial for maintaining security and accountability in the SatLayer ecosystem.
+
+```solidity filename="MyBVSService.sol" copy
+function enableSlashing() external {
+    SLAYRegistryV2(REGISTRY_CONTRACT_ADDR).enableSlashing(
+        ISLAYRegistryV2.SlashParameter({
+            destination: destination, // destination address for slashed funds
+            maxMbips: 5_000_000, // = 50%
+            resolutionWindow: 86400 // = 1 day in seconds
+        })
+    );
+}
+```
+
+### Disable Slashing
+
+Disable slashing for a Service.
+
+```solidity filename="MyBVSService.sol" copy
+function disableSlashing() external {
+    SLAYRegistryV2(REGISTRY_CONTRACT_ADDR).disableSlashing();
+}
+```
+
+## SLAYRouter
+
+The [SLAYRouterV2](/evm/contracts/ISLAYRouterV2.sol) is a central contract
+that manages the interaction between vaults and other contracts in the SatLayer ecosystem.
+As a BVS,
+the SLAYRouter coordinates the programmable slashing of vaults,
+serving as the execution layer for the slashing logic.
+
+<Callout type="info">
+  See [Programmable Slashing](/app/architecture/slashing) for more information on how slashing works.
+</Callout>
+
+### Request Slashing
+
+Start the slashing process for an operator.
+The Service must be actively registered with the Operator at the specified timestamp,
+and the Operator must have opted in to slashing.
+The slashing amount (in milli basis points) cannot exceed the maximum set in the slashing parameters.
+The timestamp must be within the allowable slashing window (not too old or in the future),
+and the Service must not have another active slashing request against the same Operator.
+When successful,
+this creates a slashing request with an expiry time based on the resolution window parameter
+and returns a unique slashing request ID.
+
+```solidity filename="MyBVSService.sol" copy
+function slashOperator(address operator) external {
+    ISLAYRouterSlashingV2.Payload memory payload = ISLAYRouterSlashingV2.Payload({
+        operator: operator,
+        mbips: 1_000_000, // 10%
+        timestamp: uint32(block.timestamp) - 100, // offending timestamp
+        reason: "Missing Blocks" // reason for slashing
+    });
+    bytes32 slashId = SLAYRouterV2(ROUTER_CONTRACT_ADDR).requestSlashing(payload);
+}
+```
+
+### Cancel Slashing
+
+Cancel an in-progress slashing request if the operator has resolved the issue.
+Typically, when the Operator has resolved the issue that prompted the slashing.
+
+After the request slashing message is sent,
+the Operator has a resolution window (in seconds, as defined in the slashing parameters) to respond.
+If the issue is promptly addressed and resolved,
+the Service should cancel the slashing process using this method.
+The definition of "resolved" is up to the Service to define.
+
+```solidity filename="MyBVSService.sol" copy
+function cancelSlash(bytes32 slashId) external {
+    SLAYRouterV2(ROUTER_CONTRACT_ADDR).cancelSlashing(slashId);
+}
+```
+
+### Lock Slashing
+
+After the request slashing message is sent, if the Operator does not respond or fails to resolve the issue,
+the Service can execute this method to lock the specified proportion of the Operator's staked tokens.
+After executing the slash, the Vault Router will rebase all affected vaults to reflect the new exchange rate,
+ensuring that new deposits will mint a higher share ratio and will not be affected by the slashing.
+
+```solidity filename="MyBVSService.sol" copy
+function lockSlashing(bytes32 slashId) external {
+    SLAYRouterV2(ROUTER_CONTRACT_ADDR).lockSlashing(slashId);
+}
+```
+
+### Finalize Slashing
+
+Move funds from the locked state to the final destination specified in the slashing parameters.
+
+```solidity filename="MyBVSService.sol" copy
+function finalizeSlashing(bytes32 slashId) external {
+    SLAYRouterV2(ROUTER_CONTRACT_ADDR).finalizeSlashing(slashId);
+}
+```
+
+## Reference
+To learn more about integrating with SatLayer EVM Contracts, check out the [examples](/evm/examples)
+
+

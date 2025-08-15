@@ -1,0 +1,62 @@
+---
+sidebarTitle: Deploying
+---
+
+import {Callout, FileTree} from 'nextra/components'
+
+# Deploying Solidity Contracts
+
+You can deploy Solidity contracts to EVM-compatible chains in several ways. This page focuses on Foundry forge scripts for a concise, repeatable workflow.
+
+Forge scripts let you write deployments in Solidity and execute them with the Foundry toolchain. They work for single or multiple contracts.
+
+## Writing Forge Scripts
+
+Create a script directory in the root of your project and add the script file.
+
+<FileTree>
+    <FileTree.Folder name="my-bvs-service" defaultOpen>
+        <FileTree.Folder name="script" defaultOpen>
+            <FileTree.File name="Deployment.s.sol" />
+        </FileTree.Folder>
+    </FileTree.Folder>
+</FileTree>
+
+```solidity filename="Deployment.s.sol" copy
+import {Script} from "forge-std/Script.sol";
+import {console} from "forge-std/console.sol";
+import {MyBVSService} from "../src/MyBVSService.sol";
+
+contract DeploymentScript is Script {
+    function run() public virtual {
+        vm.startBroadcast();
+
+        MyBVSService myBVSService = new MyBVSService();
+        console.log("MyBVSService deployed at: %s", address(myBVSService));
+
+        vm.stopBroadcast();
+    }
+}
+```
+
+## Deploying
+
+Dry run the script (no transactions are sent):
+
+```bash
+forge script script/Deployment.s.sol:DeploymentScript --chain <CHAIN> --rpc-url <RPC_URL> --private-key <PRIVATE_KEY> -vvvv
+```
+
+Broadcast transactions by adding `--broadcast`:
+
+```bash
+forge script script/Deployment.s.sol:DeploymentScript --broadcast --chain <CHAIN> --rpc-url <RPC_URL> --private-key <PRIVATE_KEY> -vvvv
+```
+
+<Callout type="warning">
+  Set `--sender` if your contracts use Ownable or similar patterns that require a specific deployer address; otherwise the Foundry default sender is used.
+</Callout>
+
+
+## References
+Read more about forge scripts in the [Foundry Guide](https://getfoundry.sh/guides/scripting-with-solidity/).
