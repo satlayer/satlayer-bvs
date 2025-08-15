@@ -1,4 +1,8 @@
-# Insurance as a BVS Example (EVM)
+---
+title: Insurance as a BVS
+---
+
+# [Insurance as a BVS Example (EVM)](https://github.com/satlayer/satlayer-bvs/blob/main/examples/evm/insurance/README.md)
 
 This example demonstrates how to use the Bitcoin Validated Service (BVS) to provide insurance services.
 The service implements a complete insurance policy lifecycle with automated underwriting, claims processing,
