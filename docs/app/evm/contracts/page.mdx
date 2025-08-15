@@ -1,0 +1,47 @@
+---
+asIndexPage: true
+---
+
+import {Callout, Cards} from 'nextra/components'
+import { CubeIcon, LinkIcon, ShieldCheckIcon } from '@heroicons/react/24/outline'
+
+# SLAY Contracts (EVM)
+
+SLAY contracts provide a simple, modular set of contracts to connect [Services](/architecture/services) and [Operators](/architecture/operators), manage vault-based restaking, and coordinate slashing. At a glance:
+
+### SLAY Registry ([ISLAYRegistryV2](/evm/contracts/ISLAYRegistryV2.sol))
+- Single source of truth for Services and Operators registration.
+- Establishes Service ↔ Operator relationships (two-sided consent).
+- Holds slashing parameters per Service and requires Operator approval to activate them.
+- Enforces limits (max active relationships) and withdrawal-delay compatibility.
+
+### SLAY Router ([ISLAYRouterV2](/evm/contracts/ISLAYRouterV2.sol), [ISLAYRouterSlashingV2](/evm/contracts/ISLAYRouterSlashingV2.sol))
+- Central gate for pausing and whitelisting vaults across the system.
+- Entrypoint for Services to interact with the vaults.
+- Manages Vault whitelisting.
+- Provides slashing related functionality.
+
+### SLAY Rewards ([ISLAYRewardsV2](/evm/contracts/ISLAYRewardsV2.sol))
+- Services rewards the Operators and Stakers for their contributions in the shared security.
+- Earners will be able to claim rewards.
+- Uses Merkle proofs to verify claims.
+
+### SLAY VaultFactory ([ISLAYVaultFactoryV2](/evm/contracts/ISLAYVaultFactoryV2.sol))
+- Factory for creating SLAY Vaults.
+- Delegated to Operators to manage the vaults.
+
+### SLAY Vault ([ISLAYVaultV2](/evm/contracts/ISLAYVaultV2.sol))
+- ERC-4626 tokenized vault with async redemption following ERC-7540 patterns.
+- Integrates with Registry for operator withdrawal delays used in claim windows.
+- Delegated to Operators to manage the vaults.
+
+<Callout type="info">
+    To learn more about integrating with the SLAY Contracts, check out the [Integrating](/evm/developer/integrating) section.
+</Callout>
+
+## Start building
+
+<Cards num={3}>
+  <Cards.Card icon={<CubeIcon />} title="Integrating SatLayer" href="/evm/developer/integrating" />
+  <Cards.Card icon={<ShieldCheckIcon />} title="Deploying" href="/evm/developer/deploying" />
+</Cards>

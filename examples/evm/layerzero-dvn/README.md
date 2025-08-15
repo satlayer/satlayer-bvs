@@ -2,7 +2,7 @@
 title: LayerZero DVN
 ---
 
-# LayerZero DVN Example (EVM)
+# [LayerZero DVN Example (EVM)](https://github.com/satlayer/satlayer-bvs/blob/main/examples/evm/layerzero-dvn/README.md)
 
 This example demonstrates how to build DVN + BVS integration with LayerZero for cross-chain packet verification
 and broadcasting leveraging on SatLayer's BVS ecosystem in EVM control plane.
