@@ -302,6 +302,95 @@ contract SLAYRewardsV2Test is Test, TestSuiteV2 {
         rewards.claimRewards(claimRewardsParams);
     }
 
+    function test_revert_claimRewards() public {
+        // mint some rewards tokens to the service
+        rewardToken.mint(service, 13_500_000_000 * rewardTokenMinorUnit); // 13.5 Billion WBTC
+
+        // service distributes rewards
+        vm.startPrank(service);
+        rewardToken.approve(address(rewards), 12_500_000_000 * rewardTokenMinorUnit);
+        rewards.distributeRewards(address(rewardToken), 12_500_000_000 * rewardTokenMinorUnit, merkleRoot);
+        vm.stopPrank();
+
+        address earner = address(0x86d6Fda2f439537da03a5b76D5aE26412F4c4235);
+
+        bytes32[] memory proof = new bytes32[](3);
+        proof[0] = bytes32(0xc5d11bcf5b13a6839acbf0f57fe1b202fe159e5b5b3bbbd3b9dd1a69e1aa84dc);
+        proof[1] = bytes32(0x8d25a6cb91e258d097872c7e37477e311da5fcd048037a7d729d9eac13903882);
+
+        // create a claimable proof for the earner
+
+        ISLAYRewardsV2.ClaimableRewardProof memory bad_claimRewardsParams1 = ISLAYRewardsV2.ClaimableRewardProof({
+            provider: service,
+            token: address(0),
+            amount: 2_000_000_000 * rewardTokenMinorUnit, // 2 billion WBTC,
+            recipient: earner,
+            merkleRoot: merkleRoot,
+            proof: proof,
+            leafIndex: 3,
+            totalLeaves: 5
+        });
+        vm.prank(earner);
+        vm.expectRevert("Token address cannot be zero");
+        rewards.claimRewards(bad_claimRewardsParams1);
+
+        ISLAYRewardsV2.ClaimableRewardProof memory bad_claimRewardsParams2 = ISLAYRewardsV2.ClaimableRewardProof({
+            provider: service,
+            token: address(rewardToken),
+            amount: 0,
+            recipient: earner,
+            merkleRoot: merkleRoot,
+            proof: proof,
+            leafIndex: 3,
+            totalLeaves: 5
+        });
+
+        vm.prank(earner);
+        vm.expectRevert("Amount must be greater than zero");
+        rewards.claimRewards(bad_claimRewardsParams2);
+
+        ISLAYRewardsV2.ClaimableRewardProof memory bad_claimRewardsParams3 = ISLAYRewardsV2.ClaimableRewardProof({
+            provider: service,
+            token: address(rewardToken),
+            amount: 2_000_000_000 * rewardTokenMinorUnit, // 2 billion WBTC,
+            recipient: earner,
+            merkleRoot: merkleRoot,
+            proof: proof,
+            leafIndex: 3,
+            totalLeaves: 5
+        });
+
+        vm.prank(earner);
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRewardsV2.InvalidMerkleProof.selector));
+        rewards.claimRewards(bad_claimRewardsParams3);
+
+        // To test insuffcient balance revert
+        // Need to manipulate storage slots
+        // Typical mocking is tricky to create bad scenario like that without storage slot manipulation.
+        bytes32 outer = keccak256(abi.encode(service, uint256(1)));
+        bytes32 finalSlot = keccak256(abi.encode(address(rewardToken), outer));
+
+        uint256 newBalance = 100;
+        vm.store(address(rewards), finalSlot, bytes32(newBalance));
+
+        ISLAYRewardsV2.ClaimableRewardProof memory bad_claimRewardsParams4 = ISLAYRewardsV2.ClaimableRewardProof({
+            provider: service,
+            token: address(rewardToken),
+            amount: 2_000_000_000 * rewardTokenMinorUnit, // 2 billion WBTC,
+            recipient: earner,
+            merkleRoot: merkleRoot,
+            proof: proof,
+            leafIndex: 3,
+            totalLeaves: 5
+        });
+
+        vm.prank(earner);
+        vm.expectRevert(
+            abi.encodeWithSelector(ISLAYRewardsV2.InsufficientBalance.selector, address(service), address(rewardToken))
+        );
+        rewards.claimRewards(bad_claimRewardsParams4);
+    }
+
     // init struct to prevent stack too deep errors
     struct TestLifecycleVars {
         address earner1;
