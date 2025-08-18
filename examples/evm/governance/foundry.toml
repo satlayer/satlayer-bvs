@@ -1,8 +1,5 @@
 [profile.default]
 src = "contracts"
 out = "contracts/out"
-libs = ["node_modules", "lib"]
-solc = "0.8.22"
-optimizer = true
-optimizer_runs = 20_000
-# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
+libs = ["node_modules"]
+solc = "0.8.24"
