@@ -45,7 +45,7 @@ squaring/
 
 ### How to run
 
-Clone and copy contents of `./examples/squaring` [from GitHub](https://github.com/satlayer/satlayer-bvs/tree/main/examples/squaring) to your local machine.
+Clone and copy contents of `./examples/squaring` [from GitHub](https://github.com/satlayer/satlayer-bvs/tree/main/examples/cw/squaring) to your local machine.
 Install with `npm install` and `npm run test` to set up the environment.
 
 ```sh filename="run.sh"
@@ -75,13 +75,41 @@ Squaring is `n^2`, where `n` is the input number, and the result is the square o
 While this example is simple and not meant for production,
 it illustrates the principles of off-chain computation and on-chain verification.
 
-The general request respond lifecycle is as follows:
+The general request-response lifecycle is as follows:
+
+```mermaid
+sequenceDiagram
+    participant S as Bitcoin Validated Service (BVS)
+    participant V as Verifier
+    participant C as Smart Contract (On-chain)
+    participant O as Operator (Off-chain)
+
+    S->>C: Submit computation request (e.g. square n)
+    Note right of C: Request stored on-chain
+
+    O->>C: Polls for new requests
+    C-->>O: Returns pending requests
+
+    O->>O: Performs off-chain computation (n^2)
+    O->>C: Submit result to contract
+    V-->>C: Verify result
+
+    alt Correct Result
+        V-->>C: Accept result
+    else Incorrect Result
+        V->>C: Trigger slashing
+        C-->>O: Slash operator stake
+    end
+```
 
 1. Users submit computation requests to the contract
 2. Operators (running the off-chain service) detect these requests
 3. Operators perform the computation off-chain
 4. Operators submit the results back to the contract
-5. The contract verifies the results and slashes operators who submit incorrect answers
+5. Verifiers (generally, anyone can be a verifier) verify the results and can initiate slashing on operators who submit incorrect answers
+
+Should slashing occur, this will follow the existing slashing mechanism in the SatLayer ecosystem, where there are
+guardrails in place to prevent abuse and ensure slashing is only triggered in cases of clear misbehavior, wherever defined.
 
 ### On-chain Contract (CosmWasm)
 
