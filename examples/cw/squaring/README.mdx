@@ -13,8 +13,6 @@ generalizes to more complex use cases involving cryptographic proofs, simulation
 The key idea is to offload heavy computation from the blockchain, while still enabling trustless, verifiable
 results that can trigger slashing if misbehavior occurs.
 
-The example below is for our CosmWasm contracts, but the principles apply to our EVM contracts as well.
-
 ## Lifecycle Overview
 
 The example follows a simple lifecycle:
@@ -34,7 +32,6 @@ Prerequisites for this example:
 2. Basic understanding of [CosmWasm contracts](/cosmwasm/developer)
 3. Node.js for development of the off-chain service: https://nodejs.org/en/download/
 4. Docker to run off-chain node: https://docs.docker.com/get-docker/
-5. Install pnpm: https://pnpm.io/installation
 
 Project structure:
 
@@ -49,12 +46,11 @@ squaring/
 ### How to run
 
 Clone and copy contents of `./examples/squaring` [from GitHub](https://github.com/satlayer/satlayer-bvs/tree/main/examples/cw/squaring) to your local machine.
-Install with `pnpm install` and `pnpm run test` to set up the environment.
+Install with `npm install` and `npm run test` to set up the environment.
 
 ```sh filename="run.sh"
-cd ./examples/squaring/contract/
-pnpm run install
-pnpm run test
+npm run install
+npm run test
 ```
 
 ### How to build the contract

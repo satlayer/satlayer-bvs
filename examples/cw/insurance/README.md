@@ -45,7 +45,6 @@ Prerequisites for this example:
 2. Basic understanding of [CosmWasm contracts](/cosmwasm/developer)
 3. Node.js for development of the off-chain service: https://nodejs.org/en/download/
 4. Docker to run off-chain node: https://docs.docker.com/get-docker/
-5. Install pnpm: https://pnpm.io/installation
 
 Project structure:
 
@@ -61,11 +60,11 @@ insurance/
 ### How to run
 
 Clone and copy contents of `./examples/cw/insurance` [from GitHub](https://github.com/satlayer/satlayer-bvs/tree/main/examples/cw/insurance) to your local machine.
-Install with `pnpm install` and `pnpm run test` to set up the environment.
+Install with `npm install` and `npm run test` to set up the environment.
 
 ```sh filename="run.sh"
-pnpm run install
-pnpm run test
+npm run install
+npm run test
 ```
 
 ### How to build the contract
