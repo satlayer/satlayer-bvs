@@ -364,7 +364,7 @@ contract SLAYRewardsV2Test is Test, TestSuiteV2 {
         vm.expectRevert(abi.encodeWithSelector(ISLAYRewardsV2.InvalidMerkleProof.selector));
         rewards.claimRewards(bad_claimRewardsParams3);
 
-        // To test insuffcient balance revert
+        // To test insufficient balance revert
         // Need to manipulate storage slots
         // Typical mocking is tricky to create bad scenario like that without storage slot manipulation.
         bytes32 outer = keccak256(abi.encode(service, uint256(1)));
