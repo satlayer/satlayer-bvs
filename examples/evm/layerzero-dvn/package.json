@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "@types/node": "^20",
-    "@wagmi/cli": "^2.3.2",
+    "@wagmi/cli": "^2.4.0",
     "vitest": "^3.1.4"
   },
   "peerDependencies": {
