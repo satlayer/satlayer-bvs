@@ -2,5 +2,5 @@
 @openzeppelin/contracts-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable/
 @openzeppelin/foundry-upgrades/=node_modules/@openzeppelin/foundry-upgrades/src/
 @satlayer/contracts/=node_modules/@satlayer/contracts/src/
-forge-std/=lib/forge-std/src/
+forge-std/=node_modules/forge-std/src/
 solidity-bytes-utils/=node_modules/solidity-bytes-utils/
