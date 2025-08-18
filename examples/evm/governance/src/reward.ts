@@ -1,7 +1,7 @@
 import { execa } from "execa";
 import * as path from "node:path";
 import * as fs from "node:fs";
-import { Account, GetContractReturnType } from "viem";
+import { Account } from "viem";
 
 /**
  * Rewards are calculated and scheduled off-chain.
