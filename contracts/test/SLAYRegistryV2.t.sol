@@ -197,6 +197,10 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         emit ISLAYRegistryV2.RelationshipUpdated(service, operator, RelationshipV2.Status.ServiceRegistered, 0);
         registry.registerOperatorToService(operator);
 
+        vm.prank(service);
+        vm.expectRevert("Already initiated");
+        registry.registerOperatorToService(operator);
+
         assertEq(
             uint256(registry.getRelationshipStatus(service, operator)),
             uint256(RelationshipV2.Status.ServiceRegistered),
@@ -232,6 +236,10 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         vm.prank(operator);
         vm.expectEmit();
         emit ISLAYRegistryV2.RelationshipUpdated(service, operator, RelationshipV2.Status.OperatorRegistered, 0);
+        registry.registerServiceToOperator(service);
+
+        vm.prank(operator);
+        vm.expectRevert("Already initiated");
         registry.registerServiceToOperator(service);
 
         assertEq(
@@ -286,6 +294,10 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
             uint256(RelationshipV2.Status.Inactive),
             "Status should be Inactive after deregistration"
         );
+
+        vm.prank(service);
+        vm.expectRevert("Already inactive");
+        registry.deregisterOperatorFromService(operator);
     }
 
     function test_DeregisterServiceFromOperator() public {
@@ -301,6 +313,10 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
             uint256(RelationshipV2.Status.Inactive),
             "Status should be Inactive after deregistration"
         );
+
+        vm.prank(operator);
+        vm.expectRevert("Already inactive");
+        registry.deregisterServiceFromOperator(service);
     }
 
     function test_Deregister_Paused() public {
@@ -869,6 +885,10 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         emit ISLAYRegistryV2.MaxActiveRelationshipsForServiceUpdated(5, 6);
         registry.setMaxActiveRelationshipsForService(6);
 
+        vm.prank(owner);
+        vm.expectRevert("Max active relationships must be greater than 0");
+        registry.setMaxActiveRelationshipsForService(0);
+
         assertEq(registry.getMaxActiveRelationshipsForService(), 6, "Max active relationships should be updated");
 
         // update the max active relationships back to 5 (revert)
@@ -883,6 +903,10 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         vm.expectEmit();
         emit ISLAYRegistryV2.MaxActiveRelationshipsForOperatorUpdated(5, 6);
         registry.setMaxActiveRelationshipsForOperator(6);
+
+        vm.prank(owner);
+        vm.expectRevert("Max active relationships must be greater than 0");
+        registry.setMaxActiveRelationshipsForOperator(0);
 
         assertEq(registry.getMaxActiveRelationshipsForOperator(), 6, "Max active relationships should be updated");
 
@@ -952,6 +976,10 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
 
         vm.startPrank(service);
         registry.registerAsService("service.com", "Service A");
+
+        vm.expectRevert("Slashing not enabled");
+        registry.getSlashParameterAt(service, operator, uint32(block.timestamp));
+
         registry.enableSlashing(
             ISLAYRegistryV2.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_000, resolutionWindow: 3600})
         );
@@ -1027,6 +1055,10 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         registry.setMinWithdrawalDelay(newDelay);
 
         assertEq(registry.getMinWithdrawalDelay(service), newDelay, "Min withdrawal delay should be updated");
+
+        vm.prank(service);
+        vm.expectRevert("Delay must be more than 0");
+        registry.setMinWithdrawalDelay(0);
 
         // register multiple operators with different delays
         for (uint256 i = 0; i < 4; i++) {
@@ -1245,5 +1277,15 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         registry.registerServiceToOperator(lastService);
 
         assertEq(registry.getActiveServiceCount(operator), 5, "Active service count should be 5");
+    }
+
+    function test_setDefaultWithdrawalDelay() public {
+        vm.startPrank(owner);
+        vm.expectEmit(true, true, false, false);
+        emit ISLAYRegistryV2.DefaultWithdrawalDelayUpdated(0, 7 days);
+        registry.setDefaultWithdrawalDelay(7 days);
+
+        vm.expectRevert("Delay must be at least more than or equal to 1 day");
+        registry.setDefaultWithdrawalDelay(0.5 days);
     }
 }
