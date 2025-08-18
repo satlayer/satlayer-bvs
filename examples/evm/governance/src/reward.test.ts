@@ -145,7 +145,7 @@ beforeAll(async () => {
   await ethNodeStarted.mineBlock(1);
 }, 120_000);
 
-async function multiSigRewardDistrbution(merkleRoot: string, distributionData: DistributionRewards) {
+async function multiSigRewardDistribution(merkleRoot: string, distributionData: DistributionRewards) {
   // console.log("MultiSig reward distribution started...", merkleRoot);
   await ethNodeStarted.setBalance(bvsContract.contractAddress, parseEther("1"));
 
@@ -174,7 +174,7 @@ test("Reward distribution lifecycle", async () => {
     token.contract.address,
     bvsContract.contractAddress,
     earners,
-    multiSigRewardDistrbution,
+    multiSigRewardDistribution,
   );
 
   const distDir = `/dist/eth-mainnet/${bvsContract.contractAddress}/${token.contractAddress}/distribution.json`;
@@ -195,7 +195,7 @@ test("Reward distribution lifecycle", async () => {
   );
   let proofRes = JSON.parse(stdout.trim()).claim_rewards_proof;
 
-  let cliamableProof = {
+  let claimableProof = {
     provider: bvsContract.contractAddress,
     token: token.contractAddress,
     amount: distributionData.earners[0].reward,
@@ -206,7 +206,7 @@ test("Reward distribution lifecycle", async () => {
     recipient: distributionData.earners[0].earner,
   };
 
-  await contracts.rewards.write.claimRewards([cliamableProof], { account: retailStakers[0].address, gas: 300_000n });
+  await contracts.rewards.write.claimRewards([claimableProof], { account: retailStakers[0].address, gas: 300_000n });
   await ethNodeStarted.mineBlock(1);
 
   const balance = await token.contract.read.balanceOf([retailStakers[0].address]);
