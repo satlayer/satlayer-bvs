@@ -60,7 +60,7 @@ beforeAll(async () => {
 
   ethNodeStarted = await ethNode.start();
 
-  // setup local evm node with satlayer contracts
+  // setup local evm node with SLAY contracts
   contracts = await EVMContracts.bootstrap(ethNodeStarted);
 
   owner = ethNodeStarted.getAccount() as unknown as Account;
