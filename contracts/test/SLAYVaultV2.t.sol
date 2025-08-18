@@ -1476,6 +1476,63 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         skip(7 days);
 
         vm.expectRevert(ISLAYVaultV2.NotControllerOrOperator.selector);
-        vault.redeem(depositAmount, makeAddr("receiver"), vm.randomAddress());
+        vault.redeem(depositAmount, makeAddr("receiver"), makeAddr("not_controller"));
+    }
+
+    function test_revert_setZeroedAddressOperator() public {
+        address zeroOperator = address(0);
+
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        vm.prank(owner);
+        router.setVaultWhitelist(address(vault), true);
+
+        address staker1 = makeAddr("staker/1");
+
+        // staker1 approves operator
+        vm.prank(staker1);
+        vm.expectRevert("Operator is not a valid account");
+        vault.setOperator(zeroOperator, true);
+    }
+
+    function test_revert_zeroed_delegatorAddress() public {
+        address zeroOperator = address(0);
+        vm.startPrank(zeroOperator);
+        registry.registerAsOperator(" ", " ");
+        vm.expectRevert("Delegated is not a valid account");
+        vaultFactory.create(underlying);
+        vm.stopPrank();
+    }
+
+    // this is actually tested in other test
+    // but foundry is still reporting as uncovered code branch
+    // this test for 100% test coverage badge - vanity reason
+    function test_revert_onControllerOrOperator() public {
+        vm.warp(block.timestamp + 100);
+
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        address controller = makeAddr("controller");
+
+        vm.startPrank(owner);
+        router.setVaultWhitelist(address(vault), true);
+        vm.stopPrank();
+
+        vm.mockCall(
+            address(vault),
+            abi.encodeWithSelector(
+                vault.pendingRedeemRequest.selector,
+                0, // REQUEST_ID
+                controller
+            ),
+            abi.encode(100) // Return 100 shares
+        );
+
+        vm.prank(makeAddr("not_controller"));
+        vm.expectRevert(ISLAYVaultV2.NotControllerOrOperator.selector);
+
+        vault.withdraw(100, address(this), controller);
     }
 }
