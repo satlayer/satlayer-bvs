@@ -1,17 +1,15 @@
-import { AnvilContainer, EVMContracts, StartedAnvilContainer, SuperTestClient } from "@satlayer/testcontainers";
+import { EVMContracts, StartedAnvilContainer } from "@satlayer/testcontainers";
 import {
   Account,
   BaseError,
   encodeFunctionData,
-  getAbiItem,
   getContractError,
   GetContractReturnType,
   getEventSelector,
-  toFunctionSelector,
   TransactionReceipt,
 } from "viem";
 import { abi } from "./contracts/out/BVS.sol/BVS.json";
-import { abi as slayRegistryAbi } from "@satlayer/contracts/SLAYRegistryV2.sol/SLAYRegistryV2.json";
+import { abi as slayRegistryAbi } from "@satlayer/contracts/out/SLAYRegistryV2.sol/SLAYRegistryV2.json";
 
 export class Committee {
   private readonly ethNodeStarted: StartedAnvilContainer;

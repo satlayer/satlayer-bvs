@@ -1,20 +1,9 @@
-import { assert, beforeAll, expect, test, vi } from "vitest";
+import { assert, beforeAll, test } from "vitest";
 import { AnvilContainer, ChainName, EVMContracts, StartedAnvilContainer } from "@satlayer/testcontainers";
-import {
-  Account,
-  encodeFunctionData,
-  getContract,
-  getEventSelector,
-  pad,
-  padHex,
-  parseEther,
-  parseEventLogs,
-  toEventSelector,
-} from "viem";
+import { Account, encodeFunctionData, getContract, parseEther, parseEventLogs } from "viem";
 import BVS from "./contracts/out/BVS.sol/BVS.json";
 import { Committee } from "./committee";
-import { abi as slayRouterAbi } from "@satlayer/contracts/SLAYRouterV2.sol/SLAYRouterV2.json";
-import { watchContractEvent } from "viem/actions";
+import { abi as slayRouterAbi } from "@satlayer/contracts/out/SLAYRouterV2.sol/SLAYRouterV2.json";
 
 let ethNodeStarted: StartedAnvilContainer;
 let contracts: EVMContracts;
