@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { setTimeout } from "node:timers/promises";
 import { StartedAnvilContainer, SuperTestClient } from "@satlayer/testcontainers";
-import { Account, decodeEventLog, getContract, GetContractReturnType, Log } from "viem";
+import { Account, GetContractReturnType } from "viem";
 import { abi } from "../src/contracts/out/BVS.sol/BVS.json";
 
 /**
