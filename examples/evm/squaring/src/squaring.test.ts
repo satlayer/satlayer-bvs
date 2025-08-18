@@ -6,9 +6,8 @@ import {
   SuperTestClient,
 } from "@satlayer/testcontainers";
 import { abi, bytecode } from "./contracts/out/BVS.sol/BVS.json";
-import { Account, encodeFunctionData, getContract, pad, padHex, parseEther } from "viem";
+import { Account, getContract, parseEther } from "viem";
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
-import { randomBytes } from "node:crypto";
 import { ServiceNode, SquaringNode } from "./squaring";
 
 let ethNodeStarted: StartedAnvilContainer;
