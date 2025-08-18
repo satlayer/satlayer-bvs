@@ -1539,4 +1539,134 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         );
         assertEq(id, expectedId, "SlashingRequestId hash does not match expected value");
     }
+
+    function test_revert_PrematureSlashRequest_whilePriorPendingSlashRequestExist() public {
+        _advanceBlockBy(20000000);
+        address operator = makeAddr("Operator X");
+        address service = makeAddr("Service X");
+        address destination = makeAddr("Destination");
+
+        // register operator
+        vm.prank(operator);
+        registry.registerAsOperator("operator", "Operator X");
+
+        // create a vault for operator and fund it
+        MockERC20 underlying = new MockERC20("Token", "TKN", 18);
+        uint8 underlyingDecimal = underlying.decimals();
+        uint256 underlyingMinorUnit = 10 ** underlyingDecimal;
+        vm.prank(operator);
+        address vault = address(vaultFactory.create(underlying));
+        vm.prank(owner);
+        router.setVaultWhitelist(vault, true);
+        underlying.mint(vault, 1_000_000 * underlyingMinorUnit); // mint 1m to the vault
+
+        // register service and enable slashing
+        vm.startPrank(service);
+        registry.registerAsService("service", "Service A");
+        registry.enableSlashing(
+            ISLAYRegistryV2.SlashParameter({destination: destination, maxMbips: 1_000_000, resolutionWindow: 3600})
+        );
+        vm.stopPrank();
+
+        // register service to operator and vice versa
+        vm.prank(operator);
+        registry.registerServiceToOperator(service);
+        vm.prank(service);
+        registry.registerOperatorToService(operator);
+
+        // advance time to allow slashing
+        _advanceBlockBy(100);
+
+        // Service initiates slashing request
+        ISLAYRouterSlashingV2.Payload memory requestPayload = ISLAYRouterSlashingV2.Payload({
+            mbips: 1_000_000, // 10%
+            timestamp: uint32(block.timestamp) - 100,
+            operator: operator,
+            reason: "Missing Blocks"
+        });
+        vm.prank(service);
+        bytes32 slashId = router.requestSlashing(requestPayload);
+
+        vm.prank(service);
+        vm.expectRevert("Previous slashing request lifecycle not completed");
+        router.requestSlashing(requestPayload);
+
+        // fast forward to after resolution window
+        _advanceBlockBySeconds(3600);
+
+        // Service locks slashing
+        vm.prank(service);
+        router.lockSlashing(slashId);
+
+        _advanceBlockBy(10);
+
+        vm.prank(service);
+        vm.expectRevert("Previous slashing request lifecycle not completed");
+        router.requestSlashing(requestPayload);
+    }
+
+    function test_slashRequest_implicitCancelWhenPriorIsExpired() public {
+        _advanceBlockBy(20000000);
+        address operator = makeAddr("Operator X");
+        address service = makeAddr("Service X");
+        address destination = makeAddr("Destination");
+
+        // register operator
+        vm.prank(operator);
+        registry.registerAsOperator("operator", "Operator X");
+
+        // create a vault for operator and fund it
+        MockERC20 underlying = new MockERC20("Token", "TKN", 18);
+        uint8 underlyingDecimal = underlying.decimals();
+        uint256 underlyingMinorUnit = 10 ** underlyingDecimal;
+        vm.prank(operator);
+        address vault = address(vaultFactory.create(underlying));
+        vm.prank(owner);
+        router.setVaultWhitelist(vault, true);
+        underlying.mint(vault, 1_000_000 * underlyingMinorUnit); // mint 1m to the vault
+
+        // register service and enable slashing
+        vm.startPrank(service);
+        registry.registerAsService("service", "Service A");
+        registry.enableSlashing(
+            ISLAYRegistryV2.SlashParameter({destination: destination, maxMbips: 1_000_000, resolutionWindow: 3600})
+        );
+        vm.stopPrank();
+
+        // register service to operator and vice versa
+        vm.prank(operator);
+        registry.registerServiceToOperator(service);
+        vm.prank(service);
+        registry.registerOperatorToService(operator);
+
+        // advance time to allow slashing
+        _advanceBlockBy(100);
+
+        // Service initiates slashing request
+        ISLAYRouterSlashingV2.Payload memory requestPayload = ISLAYRouterSlashingV2.Payload({
+            mbips: 1_000_000, // 10%
+            timestamp: uint32(block.timestamp) - 100,
+            operator: operator,
+            reason: "Missing Blocks"
+        });
+        vm.prank(service);
+        bytes32 slashId = router.requestSlashing(requestPayload);
+
+        // fast forward to let it expired
+        _advanceBlockBySeconds(3600 + 8 days);
+
+        vm.prank(service);
+        ISLAYRouterSlashingV2.Payload memory requestPayload2 = ISLAYRouterSlashingV2.Payload({
+            mbips: 1_000_000, // 10%
+            timestamp: uint32(block.timestamp) - 100,
+            operator: operator,
+            reason: "Missing Blocks"
+        });
+        vm.expectEmit(true, true, true, false);
+        emit ISLAYRouterSlashingV2.SlashingCanceled(service, operator, slashId);
+        bytes32 slashId2 = router.requestSlashing(requestPayload2);
+
+        bytes32 id = router.getPendingSlashingRequestId(service, operator);
+        assertEq(id, slashId2);
+    }
 }
