@@ -26,6 +26,9 @@ export class SquaringNode {
     private readonly bvsContract: GetContractReturnType<typeof abi, SuperTestClient, `0x${string}`>,
   ) {}
 
+  /**
+   * Operator listen for request event and respond the squared number.
+   */
   public async start(startFrom: bigint) {
     let progress = { height: startFrom };
 

@@ -1,10 +1,4 @@
-import {
-  AnvilContainer,
-  ChainName,
-  EVMContracts,
-  StartedAnvilContainer,
-  SuperTestClient,
-} from "@satlayer/testcontainers";
+import { AnvilContainer, ChainName, EVMContracts, StartedAnvilContainer } from "@satlayer/testcontainers";
 import { abi, bytecode } from "./contracts/out/BVS.sol/BVS.json";
 import { Account, getContract, parseEther } from "viem";
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
@@ -66,7 +60,7 @@ beforeAll(async () => {
 
   ethNodeStarted = await ethNode.start();
 
-  // setup local cosmos node with satlayer contracts
+  // setup local evm node with satlayer contracts
   contracts = await EVMContracts.bootstrap(ethNodeStarted);
 
   owner = ethNodeStarted.getAccount() as unknown as Account;
