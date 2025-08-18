@@ -50,7 +50,7 @@ The general request respond lifecycle is as follows:
 
 ### On-chain Contract (Solidity)
 
-Located in the `src/BVS.sol` directory, this Rust-based smart contract:
+Located in the `src/BVS.sol` directory, the solidity smart contract:
 
 - Accepts computation requests from users
 - Verifies responses from operators to prove fault
