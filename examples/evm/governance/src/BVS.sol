@@ -7,7 +7,7 @@ import { ISLAYRegistryV2 } from "@satlayer/contracts/interface/ISLAYRegistryV2.s
 
 /**
  * @title BVS
- * @dev A basic multi-signature wallet contract committe based execution.
+ * @dev A basic multi-signature wallet contract committee based execution.
  * This contract enables a group of owners to manage transactions by requiring
  * a minimum number of confirmations for every proposal.
  *
