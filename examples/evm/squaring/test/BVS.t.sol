@@ -10,7 +10,6 @@ import { ISLAYRegistryV2 } from "@satlayer/contracts/interface/ISLAYRegistryV2.s
 contract BVSTest is Test, TestSuiteV2 {
     BVS public service;
     address public immutable operator = makeAddr("operator");
-    address public immutable onlyOwner = makeAddr("owner");
 
     function setUp() public override {
         TestSuiteV2.setUp();
