@@ -1,0 +1,66 @@
+---
+sidebarTitle: Using Viem
+---
+
+import {Cards} from 'nextra/components';
+import {CubeIcon} from "@heroicons/react/24/outline";
+
+# Integrate using viem
+
+To integrate evm contracts through [Viem](https://viem.sh/):
+
+```bash filename="viem" copy
+npm i viem
+```
+Also add `@satlayer/contracts` which provide abi for SatLayer EVM contracts to the project. 
+
+```bash filename="SLAYContracts" copy
+npm i @satlayer/contracts
+```
+
+## Interacting with contracts
+
+In this example,
+we set up a wallet client using a private key.
+
+```js filename="wallet.js" copy
+import { createWalletClient, http, publicActions } from 'viem'
+import { privateKeyToAccount } from 'viem/accounts'
+import { mainnet } from 'viem/chains'
+ 
+const account = privateKeyToAccount('0x...')
+ 
+const client = createWalletClient({ 
+  account,
+  chain: mainnet,
+  transport: http()
+}).extend(publicActions) 
+ 
+```
+
+Executing a transaction is also fairly straightforward, the following snippet will demonstrate interacting with SLAYRegistry contract to register yourself (or more accurately your EOA) as an operator:
+
+```js filename="execute.js" copy
+import { createWalletClient, http, publicActions } from 'viem'
+import { privateKeyToAccount } from 'viem/accounts'
+import { mainnet } from 'viem/chains'
+import { abi } from '@satlayer/contracts/out/SLAYRegistryV2.sol/SLAYRegistryV2.json'
+ 
+const account = privateKeyToAccount('0x...') // replace the content inside double quote with actual private key
+ 
+const client = createWalletClient({ 
+  account,
+  chain: mainnet,
+  transport: http()
+}).extend(publicActions) 
+
+const contractAddress = "0x.."; // replace the content inside double quote with live/testnet SLAYRegistryV2 contract address.
+const transactionHash = await client.writeContract({
+  address: contractAddress,
+  abi: abi,
+  functionName: 'registerAsOperator', 
+  args: ['www.exmapleOperator.com', 'A example operator'], 
+  account: account 
+});
+```
+
