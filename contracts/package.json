@@ -21,7 +21,8 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.4.0",
-    "@openzeppelin/contracts-upgradeable": "^5.4.0"
+    "@openzeppelin/contracts-upgradeable": "^5.4.0",
+    "@pythnetwork/pyth-sdk-solidity": "^4.2.0"
   },
   "devDependencies": {
     "@metamask/foundryup": "^1.0.1",

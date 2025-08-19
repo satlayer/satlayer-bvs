@@ -56,6 +56,9 @@ importers:
       '@openzeppelin/contracts-upgradeable':
         specifier: ^5.4.0
         version: 5.4.0(@openzeppelin/contracts@5.4.0)
+      '@pythnetwork/pyth-sdk-solidity':
+        specifier: ^4.2.0
+        version: 4.2.0
     devDependencies:
       '@metamask/foundryup':
         specifier: ^1.0.1
@@ -2189,6 +2192,9 @@ packages:
 
   '@protobufjs/utf8@1.1.0':
     resolution: {integrity: sha512-Vvn3zZrhQZkkBE8LSuW3em98c0FwgO4nxzv6OdSxPKJIEKY2bGbHn+mhGIPerzI4twdxaP8/0+06HBpwf345Lw==}
+
+  '@pythnetwork/pyth-sdk-solidity@4.2.0':
+    resolution: {integrity: sha512-IO4pRqloqEXdbWqFbiNqthpaA5Dktl+t5GXckwdReEti90H4zcgxvINFLrSfRp7ylN2cP/LVgoCRHGEJGYlwKg==}
 
   '@react-aria/focus@3.21.0':
     resolution: {integrity: sha512-7NEGtTPsBy52EZ/ToVKCu0HSelE3kq9qeis+2eEq90XSuJOMaDHUQrA7RC2Y89tlEwQB31bud/kKRi9Qme1dkA==}
@@ -10168,6 +10174,8 @@ snapshots:
   '@protobufjs/pool@1.1.0': {}
 
   '@protobufjs/utf8@1.1.0': {}
+
+  '@pythnetwork/pyth-sdk-solidity@4.2.0': {}
 
   '@react-aria/focus@3.21.0(react-dom@19.1.1(react@19.1.1))(react@19.1.1)':
     dependencies:
