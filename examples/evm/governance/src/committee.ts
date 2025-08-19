@@ -21,11 +21,11 @@ export class Committee {
     ethNodeStarted: StartedAnvilContainer,
     bvsContract: GetContractReturnType<typeof abi, any, `0x${string}`>,
     slayContracts: EVMContracts,
-    comittee: Account[],
+    committee: Account[],
   ) {
     this.ethNodeStarted = ethNodeStarted;
     this.bvsContract = bvsContract;
-    this.committee = comittee;
+    this.committee = committee;
     this.slayContracts = slayContracts;
   }
 
