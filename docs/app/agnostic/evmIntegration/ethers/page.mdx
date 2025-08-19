@@ -7,5 +7,69 @@ import {CubeIcon} from "@heroicons/react/24/outline";
 
 # Integrate using Ethers.js
 
-To integrate EVM contracts through [Ethers.js](https://docs.ethers.org/v6/):
+To integrate EVM contracts through [Ethers.js (v6)](https://docs.ethers.org/v6/):
 
+```bash filename="deps" copy
+npm i ethers
+```
+Also add `@satlayer/contracts` which provide abi for SatLayer EVM contracts to the project
+
+```bash filename="SLAYContracts" copy
+npm i @satlayer/contracts
+```
+
+## Creating programmatic wallet clients.
+
+In this example,
+we set up a wallet client using a private key.
+
+```js filename="privateKeyBasedWalletClient.js" copy
+import { JsonRpcProvider, Wallet } from 'ethers'
+
+const provider = new JsonRpcProvider(process.env.RPC_URL)
+
+// 2) Load your wallet from a private key (NEVER hardcode in codebases)
+const wallet = new Wallet(process.env.PRIVATE_KEY, provider)
+
+// 3) (Optional) Show the address
+console.log('Using wallet:', await wallet.getAddress())
+```
+
+Create a client by providing mnemonics
+
+```js filename="mnemonicBasedWalletClient.js" copy
+import { JsonRpcProvider, Wallet } from 'ethers'
+
+const provider = new JsonRpcProvider(process.env.RPC_URL)
+
+const mnemonic = process.env.MNEMONIC
+
+const wallet = Wallet.fromPhrase(mnemonic, provider)
+
+console.log('Using wallet:', await wallet.getAddress())
+```
+
+## Interacting with contracts
+
+Executing a transaction is also fairly straightforward, the following snippet will demonstrate interacting with SLAYRegistry contract to register yourself (or more accurately your EOA) as an operator:
+
+```js filename="execute.js" copy
+import { Contract, JsonRpcProvider, Wallet } from 'ethers'
+import { abi } from '@satlayer/contracts/out/SLAYRegistryV2.sol/SLAYRegistryV2.json'
+
+const provider = new JsonRpcProvider(process.env.RPC_URL)
+const wallet = new Wallet(process.env.PRIVATE_KEY, provider)
+
+const contractAddress = '0x...' // Replace with live/testnet SLAYRegistryV2 address
+const registry = new Contract(contractAddress, abi, wallet)
+
+const tx = await registry.registerAsOperator(
+  'www.exampleOperator.com',
+  'An example operator'
+)
+
+console.log('Tx sent:', tx.hash)
+const receipt = await tx.wait()
+console.log('Mined in block:', receipt.blockNumber)
+```
+For more in-depth guide to creating software using Ethers.js please refer to [Ethers.js official documentation](https://docs.ethers.org/v6/).
