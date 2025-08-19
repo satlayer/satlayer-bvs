@@ -1,13 +1,12 @@
-// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.20;
 
 import {Test, console} from "forge-std/Test.sol";
 import {TestSuiteV2} from "./TestSuite.t.sol";
 import {BVS} from "../src/BVS.sol";
-import { ISLAYRouterSlashingV2 } from "@satlayer/contracts/interface/ISLAYRouterSlashingV2.sol";
-import { ISLAYRegistryV2 } from "@satlayer/contracts/interface/ISLAYRegistryV2.sol";
-import { SLAYRegistryV2 } from "@satlayer/contracts/SLAYRegistryV2.sol";
-import { RelationshipV2 } from "@satlayer/contracts/RelationshipV2.sol";
+import {ISLAYRouterSlashingV2} from "@satlayer/contracts/interface/ISLAYRouterSlashingV2.sol";
+import {ISLAYRegistryV2} from "@satlayer/contracts/interface/ISLAYRegistryV2.sol";
+import {SLAYRegistryV2} from "@satlayer/contracts/SLAYRegistryV2.sol";
+import {RelationshipV2} from "@satlayer/contracts/RelationshipV2.sol";
 
 contract BVSTest is Test, TestSuiteV2 {
     BVS public service;
@@ -30,27 +29,18 @@ contract BVSTest is Test, TestSuiteV2 {
         vm.prank(member1);
         service = new BVS(members, 4, address(registry), address(router));
 
-
         vm.startPrank(operator);
-        registry.registerAsOperator("www.uri.com","A name");
+        registry.registerAsOperator("www.uri.com", "A name");
         registry.registerServiceToOperator(address(service));
         registry.setWithdrawalDelay(10 days);
         vm.stopPrank();
-
     }
 
     function test_registerOperator_quorum() public {
-        bytes memory data = abi.encodeWithSelector(
-            SLAYRegistryV2.registerOperatorToService.selector,
-            operator
-        );
+        bytes memory data = abi.encodeWithSelector(SLAYRegistryV2.registerOperatorToService.selector, operator);
 
         vm.prank(member1);
-        uint256 transactionId = service.submitProposal(
-            address(registry),
-            0,
-            data
-        );
+        uint256 transactionId = service.submitProposal(address(registry), 0, data);
 
         for (uint256 i = 1; i < members.length - 1; i++) {
             vm.prank(members[i]);
@@ -59,7 +49,6 @@ contract BVSTest is Test, TestSuiteV2 {
 
         vm.prank(member1);
         service.executeProposal(transactionId);
-
 
         RelationshipV2.Status status = registry.getRelationshipStatus(address(service), operator);
         assertEq(uint8(status), uint8(RelationshipV2.Status.Active));
@@ -76,11 +65,7 @@ contract BVSTest is Test, TestSuiteV2 {
         );
 
         vm.prank(member1);
-        uint256 id = service.submitProposal(
-            address(registry),
-            0,
-            data
-        );
+        uint256 id = service.submitProposal(address(registry), 0, data);
 
         for (uint256 i = 1; i < members.length - 1; i++) {
             vm.prank(members[i]);
@@ -90,9 +75,7 @@ contract BVSTest is Test, TestSuiteV2 {
         vm.prank(member1);
         service.executeProposal(id);
 
-
         ISLAYRegistryV2.SlashParameter memory param = registry.getSlashParameter(address(service));
         assertEq(param.destination, address(service));
     }
-
 }
