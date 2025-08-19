@@ -49,12 +49,11 @@ export class SquaringNode {
       const currentHeight = await this.client.getBlockNumber({ cacheTime: 0 });
 
       if (progress.height <= currentHeight) {
-        continue;
+        progress.height = currentHeight;
       } else {
         // No new blocks, sleep for 1 second
         await setTimeout(1000);
       }
-      progress.height = currentHeight;
     }
     unwatch();
   }
