@@ -4,8 +4,8 @@ pragma solidity ^0.8.20;
 import {Test, console} from "forge-std/Test.sol";
 import {TestSuiteV2} from "./TestSuite.t.sol";
 import {BVS} from "../src/BVS.sol";
-import { ISLAYRouterSlashingV2 } from "@satlayer/contracts/interface/ISLAYRouterSlashingV2.sol";
-import { ISLAYRegistryV2 } from "@satlayer/contracts/interface/ISLAYRegistryV2.sol";
+import {ISLAYRouterSlashingV2} from "@satlayer/contracts/interface/ISLAYRouterSlashingV2.sol";
+import {ISLAYRegistryV2} from "@satlayer/contracts/interface/ISLAYRegistryV2.sol";
 
 contract BVSTest is Test, TestSuiteV2 {
     BVS public service;
@@ -16,19 +16,16 @@ contract BVSTest is Test, TestSuiteV2 {
         vm.prank(owner);
         service = new BVS(address(router), address(registry), owner);
 
-
         vm.startPrank(operator);
-        registry.registerAsOperator("www.uri.com","A name");
+        registry.registerAsOperator("www.uri.com", "A name");
         registry.registerServiceToOperator(address(service));
         registry.setWithdrawalDelay(10 days);
         vm.stopPrank();
 
         vm.prank(owner);
-        service.enableSlashing(ISLAYRegistryV2.SlashParameter({
-            destination: address(service),
-            maxMbips: 100_000,
-            resolutionWindow: 10 days
-        }));
+        service.enableSlashing(
+            ISLAYRegistryV2.SlashParameter({destination: address(service), maxMbips: 100_000, resolutionWindow: 10 days})
+        );
     }
 
     function test_request_respond() public {
@@ -47,7 +44,7 @@ contract BVSTest is Test, TestSuiteV2 {
         assert(out == 4);
     }
 
-    function test_invalid_proof_being_requested_slashing() public returns(bytes32) {
+    function test_invalid_proof_being_requested_slashing() public returns (bytes32) {
         _advanceBlockBy(100_000_000);
 
         vm.prank(owner);
@@ -74,7 +71,8 @@ contract BVSTest is Test, TestSuiteV2 {
         bytes32 slashId = service.compute(2, operator);
 
         vm.prank(anyone);
-        ISLAYRouterSlashingV2.Request memory pendingSlashRequest = router.getPendingSlashingRequest(address(service), operator);
+        ISLAYRouterSlashingV2.Request memory pendingSlashRequest =
+            router.getPendingSlashingRequest(address(service), operator);
         ISLAYRouterSlashingV2.Request memory slashRequestById = router.getSlashingRequest(slashId);
 
         assert(pendingSlashRequest.operator == slashRequestById.operator);
