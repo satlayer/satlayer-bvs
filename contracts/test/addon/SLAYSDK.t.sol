@@ -3,11 +3,14 @@ pragma solidity ^0.8.24;
 
 import {SLAYSDK} from "../../src/addon/SLAYSDK.sol";
 import {TestSuiteV2} from "../TestSuiteV2.sol";
+import {MockERC20} from "../MockERC20.sol";
 import {MockPyth} from "@pythnetwork/pyth-sdk-solidity/MockPyth.sol";
+import {IPyth} from "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
+import {ISLAYVaultV2} from "../../src/interface/ISLAYVaultV2.sol";
 import {Test, console} from "forge-std/Test.sol";
 
 contract SLAYSDKTest is Test, TestSuiteV2 {
-    SLAYSDK public slayOracle;
+    SLAYSDK public slaySDK;
 
     MockPyth public mockPyth;
 
@@ -25,10 +28,10 @@ contract SLAYSDKTest is Test, TestSuiteV2 {
         mockPyth = new MockPyth(60, 1);
 
         // init SLAYOracle with the router address
-        slayOracle = new SLAYOracle(address(router), address(mockPyth));
+        slaySDK = new SLAYSDK(address(router), address(mockPyth));
 
         // set mapping of asset address to Pyth price ID
-        slayOracle.setPythPriceId(address(underlying), priceID);
+        slaySDK.setPythPriceId(address(underlying), priceID);
 
         // update pyth with mock data
         bytes[] memory updateData = new bytes[](1);
@@ -84,7 +87,7 @@ contract SLAYSDKTest is Test, TestSuiteV2 {
             vm.stopPrank();
         }
 
-        uint256 aum = slayOracle.getOperatorAUM(operator);
+        uint256 aum = slaySDK.getOperatorAUM(operator);
         assertEq(aum, 5_000_000 * 1e18); // 5 vaults * 10 wbtc * 100_000 usd/wbtc
     }
 }
