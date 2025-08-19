@@ -2,13 +2,11 @@
   "name": "@examples/squaring-evm",
   "private": true,
   "scripts": {
-    "build": "forge build -C src/contracts -o src/contracts/out -vvv --force",
+    "build": "forge build -vvv --force",
     "test": "pnpm run build && vitest run --reporter verbose",
-    "test:sol": "forge test --contracts src/contracts"
+    "test:sol": "forge test"
   },
   "dependencies": {
-    "@ethersproject/bytes": "^5.8.0",
-    "@ethersproject/solidity": "^5.8.0",
     "@openzeppelin/contracts": "^5.4.0",
     "@openzeppelin/contracts-upgradeable": "^5.4.0",
     "@openzeppelin/foundry-upgrades": "^0.4.0",
