@@ -14,7 +14,7 @@ import { abi as slayRegistryAbi } from "@satlayer/contracts/out/SLAYRegistryV2.s
 export class Committee {
   private readonly ethNodeStarted: StartedAnvilContainer;
   private readonly bvsContract: GetContractReturnType<typeof abi, any, `0x${string}`>;
-  private readonly comittee: Account[];
+  private readonly committee: Account[];
   private readonly slayContracts: EVMContracts;
 
   constructor(
@@ -25,13 +25,13 @@ export class Committee {
   ) {
     this.ethNodeStarted = ethNodeStarted;
     this.bvsContract = bvsContract;
-    this.comittee = comittee;
+    this.committee = comittee;
     this.slayContracts = slayContracts;
   }
 
   async propose(destination: string, value: BigInt, calldata: `0x${string}`): Promise<BigInt> {
     const txHash = await this.bvsContract.write.submitProposal([destination, value, calldata], {
-      account: this.comittee[0].address,
+      account: this.committee[0].address,
     });
 
     await this.ethNodeStarted.mineBlock(2);
@@ -51,8 +51,10 @@ export class Committee {
   }
 
   async allVoteYes(proposal_id: BigInt): Promise<void> {
-    for (let i = 1; i < this.comittee.length; i++) {
-      const txHash = await this.bvsContract.write.confirmProposal([proposal_id], { account: this.comittee[i].address });
+    for (let i = 1; i < this.committee.length; i++) {
+      const txHash = await this.bvsContract.write.confirmProposal([proposal_id], {
+        account: this.committee[i].address,
+      });
       await this.ethNodeStarted.mineBlock(2);
       const receipt = await this.ethNodeStarted.getClient().waitForTransactionReceipt({ hash: txHash });
       if (receipt.status != "success") {
@@ -62,7 +64,7 @@ export class Committee {
   }
 
   async executeProposal(proposal_id: BigInt): Promise<TransactionReceipt> {
-    const txHash = await this.bvsContract.write.executeProposal([proposal_id], { account: this.comittee[0].address });
+    const txHash = await this.bvsContract.write.executeProposal([proposal_id], { account: this.committee[0].address });
     await this.ethNodeStarted.mineBlock(2);
     const receipt = await this.ethNodeStarted.getClient().waitForTransactionReceipt({ hash: txHash });
     if (receipt.status != "success") {
@@ -73,14 +75,14 @@ export class Committee {
           abi: this.bvsContract.abi,
           functionName: "executeProposal",
           args: [proposal_id],
-          account: this.comittee[0].address,
+          account: this.committee[0].address,
           blockNumber: receipt.blockNumber,
         })
         .catch((error) => {
           throw getContractError(error as BaseError, {
             abi: this.bvsContract.abi,
             address: this.bvsContract.address,
-            sender: this.comittee[0].address,
+            sender: this.committee[0].address,
             functionName: "executeProposal",
             args: [proposal_id],
           });
@@ -113,7 +115,7 @@ export class Committee {
     });
     const destination = this.slayContracts.registry.address;
     const txHash = await this.bvsContract.write.submitProposal([destination, 0, calldata], {
-      account: this.comittee[0].address,
+      account: this.committee[0].address,
     });
 
     await this.ethNodeStarted.mineBlock(2);
