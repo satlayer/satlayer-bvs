@@ -1,5 +1,5 @@
 [profile.default]
-src = "contracts"
-out = "contracts/out"
+src = "src"
+out = "src/out"
 libs = ["node_modules"]
 solc = "0.8.24"
