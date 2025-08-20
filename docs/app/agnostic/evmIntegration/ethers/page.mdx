@@ -2,40 +2,35 @@
 sidebarTitle: Using Ethers.js
 ---
 
-import {Cards} from 'nextra/components';
-import {CubeIcon} from "@heroicons/react/24/outline";
-
 # Integrate using Ethers.js
+SatLayer's smart contracts are built for EVM compatibility, allowing them to integrate with the existing EVM developer ecosystem.
+This means that standard EVM frameworks, libraries, and tools—such as Ethers.js, and Viem can be used without modification, enabling developers to leverage familiar workflows and infrastructure.
 
 To integrate EVM contracts through [Ethers.js (v6)](https://docs.ethers.org/v6/):
 
 ```bash filename="deps" copy
 npm i ethers
 ```
-Also add `@satlayer/contracts` which provides abi for SatLayer EVM contracts to the project
+Also, add `@satlayer/contracts` which provide abi for SatLayer EVM contracts to the project.
 
 ```bash filename="SLAYContracts" copy
 npm i @satlayer/contracts
 ```
 
 ## Creating programmatic wallet clients.
-
-In this example,
-we set up a wallet client using a private key.
+In this example, we set up a wallet client using a private key.
 
 ```js filename="privateKeyBasedWalletClient.js" copy
 import { JsonRpcProvider, Wallet } from 'ethers'
 
 const provider = new JsonRpcProvider(process.env.RPC_URL)
 
-// 2) Load your wallet from a private key (NEVER hardcode in codebases)
 const wallet = new Wallet(process.env.PRIVATE_KEY, provider)
 
-// 3) (Optional) Show the address
 console.log('Using wallet:', await wallet.getAddress())
 ```
 
-Create a client by providing mnemonics
+Create a client by providing mnemonics:
 
 ```js filename="mnemonicBasedWalletClient.js" copy
 import { JsonRpcProvider, Wallet } from 'ethers'
