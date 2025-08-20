@@ -12,4 +12,6 @@ docs/
 
 # Dotenv file
 .env
+
+# artifacts
 soljson-latest.js
