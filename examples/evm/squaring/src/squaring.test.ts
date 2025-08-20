@@ -1,5 +1,5 @@
 import { AnvilContainer, ChainName, EVMContracts, StartedAnvilContainer } from "@satlayer/testcontainers";
-import { abi, bytecode } from "./contracts/out/BVS.sol/BVS.json";
+import { abi, bytecode } from "./out/BVS.sol/BVS.json";
 import { Account, getContract, parseEther } from "viem";
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
 import { ServiceNode, SquaringNode } from "./squaring";
