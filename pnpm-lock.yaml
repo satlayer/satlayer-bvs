@@ -311,8 +311,8 @@ importers:
         specifier: ^20
         version: 20.17.17
       '@wagmi/cli':
-        specifier: ^2.4.0
-        version: 2.4.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)
+        specifier: ^2.5.0
+        version: 2.5.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)
       vitest:
         specifier: ^3.1.4
         version: 3.2.4(@types/debug@4.1.12)(@types/node@20.17.17)(jiti@2.5.1)(lightningcss@1.30.1)(yaml@2.8.1)
@@ -443,8 +443,8 @@ importers:
         specifier: ^20
         version: 20.17.17
       '@wagmi/cli':
-        specifier: ^2.4.0
-        version: 2.4.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)
+        specifier: ^2.5.0
+        version: 2.5.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)
       vitest:
         specifier: ^3.1.4
         version: 3.2.4(@types/debug@4.1.12)(@types/node@20.17.17)(jiti@2.5.1)(lightningcss@1.30.1)(yaml@2.8.1)
@@ -3186,8 +3186,8 @@ packages:
   '@vitest/utils@3.2.4':
     resolution: {integrity: sha512-fB2V0JFrQSMsCo9HiSq3Ezpdv4iYaXRG1Sx8edX3MwxfyNn83mKiGzOcH+Fkxt4MHxr3y42fQi1oeAInqgX2QA==}
 
-  '@wagmi/cli@2.4.0':
-    resolution: {integrity: sha512-SVaUbq+M6XDCVR7IdFFxILqxYax+CsUmqqmTiO9XJJcM8fDgTXFZF318l+n7bodgoCMlmcJvpl3eED5Pbws9bg==}
+  '@wagmi/cli@2.5.0':
+    resolution: {integrity: sha512-UjHG7XXt15ISjVwUX/tO1ihK+ZEtszyKz6XW5XNAzxfBKsMWimG7A2kkNm6QpT3uPQRPgkVBD+EEL5MrpTjjUA==}
     hasBin: true
     peerDependencies:
       typescript: '>=5.0.4'
@@ -11399,7 +11399,7 @@ snapshots:
       loupe: 3.1.4
       tinyrainbow: 2.0.0
 
-  '@wagmi/cli@2.4.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)':
+  '@wagmi/cli@2.5.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)':
     dependencies:
       abitype: 1.0.8(typescript@5.9.2)(zod@3.25.76)
       bundle-require: 5.1.0(esbuild@0.25.9)
