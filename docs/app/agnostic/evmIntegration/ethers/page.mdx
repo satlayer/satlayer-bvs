@@ -4,14 +4,14 @@ sidebarTitle: Using Ethers.js
 
 # Integrate using Ethers.js
 SatLayer's smart contracts are built for EVM compatibility, allowing them to integrate with the existing EVM developer ecosystem.
-This means that standard EVM frameworks, libraries, and tools—such as Ethers.js, and Viem can be used without modification, enabling developers to leverage familiar workflows and infrastructure.
+This means that standard EVM frameworks, libraries, and tools—such as Ethers.js and Viem—can be used without modification, enabling developers to leverage familiar workflows and infrastructure.
 
 To integrate EVM contracts through [Ethers.js (v6)](https://docs.ethers.org/v6/):
 
 ```bash filename="deps" copy
 npm i ethers
 ```
-Also, add `@satlayer/contracts` which provide abi for SatLayer EVM contracts to the project.
+Also, add `@satlayer/contracts` which provides ABI for SatLayer EVM contracts to the project.
 
 ```bash filename="SLAYContracts" copy
 npm i @satlayer/contracts
@@ -46,7 +46,7 @@ console.log('Using wallet:', await wallet.getAddress())
 
 ## Interacting with contracts
 
-Executing a transaction is also fairly straightforward, the following snippet will demonstrate interacting with SLAYRegistry contract to register yourself (or more accurately your EOA) as an operator:
+Executing a transaction is also fairly straightforward; the following snippet will demonstrate interacting with the SLAYRegistry contract to register yourself (or, more accurately, your EOA) as an operator:
 
 ```js filename="execute.js" copy
 import { Contract, JsonRpcProvider, Wallet } from 'ethers'
@@ -67,4 +67,4 @@ console.log('Tx sent:', tx.hash)
 const receipt = await tx.wait()
 console.log('Mined in block:', receipt.blockNumber)
 ```
-For more in-depth guide to creating software using Ethers.js please refer to [Ethers.js official documentation](https://docs.ethers.org/v6/).
+For a more in-depth guide to creating software using Ethers.js, please refer to [Ethers.js official documentation](https://docs.ethers.org/v6/).
