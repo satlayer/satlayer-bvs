@@ -1,7 +1,7 @@
 import { beforeAll, expect, test } from "vitest";
 import { AnvilContainer, ChainName, EVMContracts, StartedAnvilContainer } from "@satlayer/testcontainers";
 import { Account, encodeFunctionData, getContract, parseEther } from "viem";
-import BVS from "./contracts/out/BVS.sol/BVS.json";
+import BVS from "./out/BVS.sol/BVS.json";
 import { Committee } from "./committee";
 import { DistributionRewards, Earner, findProjectRoot, offChainRewardTrigger } from "./reward";
 import { execa } from "execa";

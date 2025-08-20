@@ -1,7 +1,7 @@
 import { assert, beforeAll, test } from "vitest";
 import { AnvilContainer, ChainName, EVMContracts, StartedAnvilContainer } from "@satlayer/testcontainers";
 import { Account, encodeFunctionData, getContract, parseEther, parseEventLogs } from "viem";
-import BVS from "./contracts/out/BVS.sol/BVS.json";
+import BVS from "./out/BVS.sol/BVS.json";
 import { Committee } from "./committee";
 import { abi as slayRouterAbi } from "@satlayer/contracts/out/SLAYRouterV2.sol/SLAYRouterV2.json";
 
