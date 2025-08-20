@@ -1669,4 +1669,33 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         bytes32 id = router.getPendingSlashingRequestId(service, operator);
         assertEq(id, slashId2);
     }
+
+    function test_GetOperatorVaults() public {
+        address operator = makeAddr("Operator X");
+
+        // register operator
+        vm.prank(operator);
+        registry.registerAsOperator("operator", "Operator X");
+
+        // create multiple vault for operator
+        MockERC20 underlying = new MockERC20("Token", "TKN", 18);
+
+        address[] memory vaultsCreated = new address[](5);
+        for (uint256 i = 0; i < 5; i++) {
+            vm.prank(operator);
+            address vaultI = address(vaultFactory.create(underlying));
+            vaultsCreated[i] = vaultI;
+
+            vm.prank(owner);
+            router.setVaultWhitelist(vaultI, true);
+        }
+
+        // Get operator vaults
+        vm.startSnapshotGas("SLAYRouterV2", "getOperatorVaults");
+        address[] memory operatorVaults = router.getOperatorVaults(operator);
+        vm.stopSnapshotGas();
+
+        assertEq(operatorVaults.length, 5, "Operator should have 5 vaults");
+        assertEq(operatorVaults, vaultsCreated);
+    }
 }
