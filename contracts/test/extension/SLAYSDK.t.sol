@@ -1,16 +1,20 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
-import {SLAYSDK} from "../../src/addon/SLAYSDK.sol";
-import {TestSuiteV2} from "../TestSuiteV2.sol";
-import {MockERC20} from "../MockERC20.sol";
-import {MockPyth} from "@pythnetwork/pyth-sdk-solidity/MockPyth.sol";
+import {SLAYOracle} from "../../src/extension/SLAYOracle.sol";
+import {SLAYBase} from "../../src/SLAYBase.sol";
 import {IPyth} from "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
 import {ISLAYVaultV2} from "../../src/interface/ISLAYVaultV2.sol";
+import {MockERC20} from "../MockERC20.sol";
+import {MockPyth} from "@pythnetwork/pyth-sdk-solidity/MockPyth.sol";
+import {SLAYSDK} from "../../src/extension/SLAYSDK.sol";
 import {Test, console} from "forge-std/Test.sol";
+import {TestSuiteV2} from "../TestSuiteV2.sol";
+import {UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 
 contract SLAYSDKTest is Test, TestSuiteV2 {
     SLAYSDK public slaySDK;
+    SLAYOracle public slayOracle;
 
     MockPyth public mockPyth;
 
@@ -27,11 +31,27 @@ contract SLAYSDKTest is Test, TestSuiteV2 {
         // and 1 wei fee for updating the price.
         mockPyth = new MockPyth(60, 1);
 
-        // init SLAYOracle with the router address
-        slaySDK = new SLAYSDK(address(router), address(mockPyth));
+        // base init
+        bytes memory baseInit = abi.encodeCall(SLAYBase.initialize, (owner));
+        // init SLAYSDK and SLAYOracle
+        slaySDK = SLAYSDK(UnsafeUpgrades.deployUUPSProxy(baseImpl, baseInit));
+        slayOracle = SLAYOracle(UnsafeUpgrades.deployUUPSProxy(baseImpl, baseInit));
+
+        // upgrade
+        vm.startPrank(owner);
+        UnsafeUpgrades.upgradeProxy(
+            address(slaySDK),
+            address(new SLAYSDK()),
+            abi.encodeCall(SLAYSDK.initialize2, (address(router), address(slayOracle)))
+        );
+        UnsafeUpgrades.upgradeProxy(
+            address(slayOracle), address(new SLAYOracle()), abi.encodeCall(SLAYOracle.initialize2, (address(mockPyth)))
+        );
+        vm.stopPrank();
 
         // set mapping of asset address to Pyth price ID
-        slaySDK.setPythPriceId(address(underlying), priceID);
+        vm.prank(owner);
+        slayOracle.setPriceId(address(underlying), priceID);
 
         // update pyth with mock data
         bytes[] memory updateData = new bytes[](1);
@@ -89,5 +109,28 @@ contract SLAYSDKTest is Test, TestSuiteV2 {
 
         uint256 aum = slaySDK.getOperatorAUM(operator);
         assertEq(aum, 5_000_000 * 1e18); // 5 vaults * 10 wbtc * 100_000 usd/wbtc
+    }
+
+    function test_GetVaultAUM() public {
+        address operator = makeAddr("Operator");
+        address staker = makeAddr("Staker");
+
+        vm.prank(operator);
+        registry.registerAsOperator("www.operator.com", "Operator");
+
+        vm.prank(operator);
+        address vault = address(vaultFactory.create(underlying));
+        vm.prank(owner);
+        router.setVaultWhitelist(vault, true);
+
+        // mint tokens to staker
+        underlying.mint(staker, 99 * underlyingMinorUnit);
+        vm.startPrank(staker);
+        underlying.approve(vault, 99 * underlyingMinorUnit);
+        ISLAYVaultV2(vault).deposit(99 * underlyingMinorUnit, staker);
+        vm.stopPrank();
+
+        uint256 aum = slaySDK.getVaultAUM(vault);
+        assertEq(aum, 9_900_000 * 1e18); // 99 wbtc * 100_000 usd/wbtc
     }
 }
