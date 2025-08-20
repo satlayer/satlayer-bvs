@@ -1695,7 +1695,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         address[] memory operatorVaults = router.getOperatorVaults(operator);
         vm.stopSnapshotGas();
 
-        assertEq(operatorVaults.length, 5, "Operator should have 5 vault");
+        assertEq(operatorVaults.length, 5, "Operator should have 5 vaults");
         assertEq(operatorVaults, vaultsCreated);
     }
 }
