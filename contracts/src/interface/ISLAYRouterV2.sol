@@ -79,4 +79,14 @@ interface ISLAYRouterV2 {
      * @param guardrail The address of the new guardrail contract.
      */
     function setGuardrail(address guardrail) external;
+
+    /**
+     * @notice Get the list of vaults addresses managed by the operator.
+     *
+     * @dev This function copies all vaults addresses into memory bounded by the maximum number of vaults per operator.
+     *
+     * @param operator The address of the operator for which to retrieve the vaults.
+     * @return The list of vault addresses managed by the operator.
+     */
+    function getOperatorVaults(address operator) external view returns (address[] memory);
 }

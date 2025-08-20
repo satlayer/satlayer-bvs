@@ -452,4 +452,9 @@ contract SLAYRouterV2 is SLAYBase, ReentrancyGuardUpgradeable, ISLAYRouterV2, IS
 
         emit ISLAYRouterSlashingV2.GuardrailApproval(slashId, approve);
     }
+
+    /// @inheritdoc ISLAYRouterV2
+    function getOperatorVaults(address operator) external view override returns (address[] memory) {
+        return _operatorVaults[operator].values();
+    }
 }
