@@ -2,7 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { setTimeout } from "node:timers/promises";
 import { StartedAnvilContainer, SuperTestClient } from "@satlayer/testcontainers";
 import { Account, GetContractReturnType } from "viem";
-import { abi } from "../src/contracts/out/BVS.sol/BVS.json";
+import { abi } from "./out/BVS.sol/BVS.json";
 
 /**
  * This function is an example of an expensive computation.
