@@ -359,12 +359,6 @@ importers:
 
   examples/evm/governance:
     dependencies:
-      '@ethersproject/bytes':
-        specifier: ^5.8.0
-        version: 5.8.0
-      '@ethersproject/solidity':
-        specifier: ^5.8.0
-        version: 5.8.0
       '@openzeppelin/contracts':
         specifier: ^5.4.0
         version: 5.4.0
