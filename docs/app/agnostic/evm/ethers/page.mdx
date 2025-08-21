@@ -2,6 +2,8 @@
 sidebarTitle: Using Ethers.js
 ---
 
+import { Callout } from 'nextra/components'
+
 # Integrate using Ethers.js
 SatLayer's smart contracts are built for EVM compatibility, allowing them to integrate with the existing EVM developer ecosystem.
 This means that standard EVM frameworks, libraries, and tools—such as Ethers.js and Viem—can be used without modification, enabling developers to leverage familiar workflows and infrastructure.
@@ -71,7 +73,7 @@ console.log('Mined in block:', receipt.blockNumber)
 ```
 
 <Callout type="warning">
-    In a actual production software, sensitive information like private keys and mnemonic key words should not be hardcoded.
-Callout>
+    In a actual production software, sensitive information like private keys and mnemonic sequence should not be hardcoded.
+</Callout>
 
 For a more in-depth guide to creating software using Ethers.js, please refer to [Ethers.js official documentation](https://docs.ethers.org/v6/).
