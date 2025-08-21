@@ -56,7 +56,7 @@ import { Contract, JsonRpcProvider, Wallet } from 'ethers'
 import { abi } from '@satlayer/contracts/out/SLAYRegistryV2.sol/SLAYRegistryV2.json'
 
 const provider = new JsonRpcProvider(process.env.RPC_URL)
-const privateKey = "0x" // replace with your private key
+const privateKey = "0x..." // replace with your private key
 const wallet = new Wallet(privateKey, provider)
 
 const contractAddress = '0x...' // Replace with live/testnet SLAYRegistryV2 address
