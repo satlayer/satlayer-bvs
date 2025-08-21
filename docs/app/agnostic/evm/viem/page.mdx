@@ -1,6 +1,7 @@
 ---
 sidebarTitle: Using Viem
 ---
+import { Callout } from 'nextra/components'
 
 # Integrate using viem
 
@@ -25,7 +26,8 @@ import { createWalletClient, http, publicActions } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { mainnet } from 'viem/chains'
 
-const account = privateKeyToAccount(process.env.PRIVATE_KEY)
+const privateKey = "0x..." // replace with your private key.
+const account = privateKeyToAccount(privateKey)
 
 const client = createWalletClient({
   account,
@@ -40,8 +42,8 @@ import { mnemonicToAccount } from 'viem/accounts';
 import { mainnet } from 'viem/chains';
 import { createWalletClient, http, publicActions } from 'viem'
 
-// Your 12-word or 24-word mnemonic phrase
-const mnemonic = process.env.mnemonic;
+// Replace with your 12-word or 24-word mnemonic phrase
+const mnemonic = "your mnemonic sequence here";
 
 // Derive the account from the mnemonic
 const account = mnemonicToAccount(mnemonic);
@@ -61,7 +63,8 @@ import { createWalletClient, http, publicActions } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { abi } from '@satlayer/contracts/out/SLAYRegistryV2.sol/SLAYRegistryV2.json'
 
-const account = privateKeyToAccount(process.env.PRIVATE_KEY)
+const privateKey = "0x..." // replace with your private key
+const account = privateKeyToAccount(privateKey)
 
 const client = createWalletClient({
   account,
@@ -81,6 +84,10 @@ const transactionHash = await client.writeContract({
 });
 
 ```
+
+<Callout type="warning">
+   In a actual production software, sensitive information like private keys and mnemonic key words should not be hardcoded.
+</Callout>
 
 For a more in-depth guide to creating software using Viem, please refer to the [Viem official documentation](https://viem.sh/docs/getting-started).
 
