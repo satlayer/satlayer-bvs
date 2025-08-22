@@ -55,8 +55,7 @@ contract BVS is Ownable {
             revert RequestNotFound();
         }
 
-        RelationshipV2.Status registrationStatus =
-            registry.getRelationshipStatus(address(this), operator);
+        RelationshipV2.Status registrationStatus = registry.getRelationshipStatus(address(this), operator);
 
         if (registrationStatus != RelationshipV2.Status.Active) {
             revert Unauthorized();
