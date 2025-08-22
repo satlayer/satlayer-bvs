@@ -18,7 +18,7 @@ async function initBVS(ethNodeStarted: StartedAnvilContainer): Promise<void> {
     abi: abi,
     salt: "squaring-contract",
     bytecode: bytecode.object as unknown as `0x${string}`,
-    constructorArgs: [contracts.router.address, contracts.registry.address],
+    constructorArgs: [contracts.router.address, contracts.registry.address, owner.address],
   });
 
   await ethNodeStarted.mineBlock(1);
@@ -52,7 +52,20 @@ async function initBVS(ethNodeStarted: StartedAnvilContainer): Promise<void> {
     account: owner.address,
     gas: 300_000n,
   });
+  await ethNodeStarted.getClient().simulateContract({
+    address: bvsContract.contractAddress,
+    abi: abi,
+    functionName: "registerOperator",
+    args: [operator.address],
+    account: owner.address,
+  });
   await ethNodeStarted.mineBlock(1);
+
+  await contracts.registry.read
+    .getRelationshipStatus([bvsContract.contractAddress, operator.address])
+    .then((status) => {
+      console.log("Registration Status:", status);
+    });
 }
 
 beforeAll(async () => {

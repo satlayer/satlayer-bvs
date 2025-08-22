@@ -28,7 +28,7 @@ contract BVS is Ownable {
     error invalidChallenge();
     error AlreadyResponded();
 
-    constructor(SLAYRouterV2 router_, SLAYRegistryV2 registry_) Ownable(msg.sender) {
+    constructor(SLAYRouterV2 router_, SLAYRegistryV2 registry_, address owner) Ownable(owner) {
         registry = registry_;
         router = router_;
 
