@@ -14,7 +14,7 @@ contract BVSTest is Test, TestSuiteV2 {
     function setUp() public override {
         TestSuiteV2.setUp();
         vm.prank(owner);
-        service = new BVS(address(router), address(registry), owner);
+        service = new BVS(router, registry);
 
         vm.startPrank(operator);
         registry.registerAsOperator("www.uri.com", "A name");

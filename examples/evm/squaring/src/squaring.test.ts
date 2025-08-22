@@ -18,18 +18,21 @@ async function initBVS(ethNodeStarted: StartedAnvilContainer): Promise<void> {
     abi: abi,
     salt: "squaring-contract",
     bytecode: bytecode.object as unknown as `0x${string}`,
-    constructorArgs: [contracts.router.address, contracts.registry.address, owner.address],
+    constructorArgs: [contracts.router.address, contracts.registry.address],
   });
 
   await ethNodeStarted.mineBlock(1);
 
-  await bvsContract.contract.write.enableSlashing([
-    {
-      destination: bvsContract.contractAddress,
-      maxMbips: 100_000,
-      resolutionWindow: 864000, // 10 days;
-    },
-  ]);
+  await bvsContract.contract.write.enableSlashing(
+    [
+      {
+        destination: bvsContract.contractAddress,
+        maxMbips: 100_000,
+        resolutionWindow: 864000, // 10 days;
+      },
+    ],
+    { account: owner.address },
+  );
 
   await ethNodeStarted.mineBlock(1);
 
