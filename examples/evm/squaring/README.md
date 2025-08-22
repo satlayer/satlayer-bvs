@@ -1,3 +1,7 @@
+---
+title: Squaring
+---
+
 # Computational Squaring Example
 
 This example demonstrates how to use off-chain computation with on-chain verification through a
