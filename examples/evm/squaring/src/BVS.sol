@@ -45,7 +45,7 @@ contract BVS is Ownable {
 
     /**
      * An operator should square the requested number off-chain
-     *     and respond to it.
+     * and respond to it.
      */
     function respond(int64 input, int64 output) external {
         address operator = msg.sender;
@@ -80,8 +80,8 @@ contract BVS is Ownable {
 
     /**
      * Anyone can challenge a squaring respond to a number by operator.
-     *     In the event of incorrect squaring of a number by an operator, slashing
-     *     lifecycle for the operator will be initiated.
+     * In the event of incorrect squaring of a number by an operator, slashing
+     * lifecycle for the operator will be initiated.
      */
     function compute(int64 inp, address operator) external returns (bytes32) {
         int64 prevSquared = responses[inp][operator];
@@ -152,8 +152,8 @@ contract BVS is Ownable {
 
     /**
      * Enable SatLayer integrated slashing.
-     *     If slashing is disabled, the slashing lifecycle in the event of malicious squaring challenge
-     *     to an operator will result in failure.
+     * If slashing is disabled, the slashing lifecycle in the event of malicious squaring challenge
+     * to an operator will result in failure.
      */
     function enableSlashing(ISLAYRegistryV2.SlashParameter calldata params) external onlyOwner {
         registry.enableSlashing(params);
