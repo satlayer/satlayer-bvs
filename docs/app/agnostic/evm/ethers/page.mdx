@@ -1,0 +1,79 @@
+---
+sidebarTitle: Using Ethers.js
+---
+
+import { Callout } from 'nextra/components'
+
+# Integrate using Ethers.js
+SatLayer's smart contracts are built for EVM compatibility, allowing them to integrate with the existing EVM developer ecosystem.
+This means that standard EVM frameworks, libraries, and tools—such as Ethers.js and Viem—can be used without modification, enabling developers to leverage familiar workflows and infrastructure.
+
+To integrate EVM contracts through [Ethers.js (v6)](https://docs.ethers.org/v6/):
+
+```bash filename="deps" copy
+npm i ethers
+```
+Also, add `@satlayer/contracts`, which provides ABI for SatLayer EVM contracts to the project.
+
+```bash filename="SLAYContracts" copy
+npm i @satlayer/contracts
+```
+
+## Create wallet clients
+In this example, we set up a wallet client using a private key.
+
+```js filename="privateKeyBasedWalletClient.js" copy
+import { JsonRpcProvider, Wallet } from 'ethers'
+
+const provider = new JsonRpcProvider(process.env.RPC_URL)
+
+const privateKey = "0x..." // Replace with your private key
+const wallet = new Wallet(privateKey, provider)
+
+console.log('Using wallet:', await wallet.getAddress())
+```
+
+Create a client by providing mnemonics:
+
+```js filename="mnemonicBasedWalletClient.js" copy
+import { JsonRpcProvider, Wallet } from 'ethers'
+
+const provider = new JsonRpcProvider(process.env.RPC_URL)
+
+const mnemonic = "your mnemonic sequence here" // replace with your mnemonic phrases
+
+const wallet = Wallet.fromPhrase(mnemonic, provider)
+
+console.log('Using wallet:', await wallet.getAddress())
+```
+
+## Interacting with contracts
+
+Executing a transaction is also fairly straightforward; the following snippet will demonstrate interacting with the SLAYRegistry contract to register yourself (or, more accurately, your EOA) as an operator:
+
+```js filename="execute.js" copy
+import { Contract, JsonRpcProvider, Wallet } from 'ethers'
+import { abi } from '@satlayer/contracts/out/SLAYRegistryV2.sol/SLAYRegistryV2.json'
+
+const provider = new JsonRpcProvider(process.env.RPC_URL)
+const privateKey = "0x..." // replace with your private key
+const wallet = new Wallet(privateKey, provider)
+
+const contractAddress = '0x...' // Replace with live/testnet SLAYRegistryV2 address
+const registry = new Contract(contractAddress, abi, wallet)
+
+const tx = await registry.registerAsOperator(
+  'www.exampleOperator.com',
+  'An example operator'
+)
+
+console.log('Tx sent:', tx.hash)
+const receipt = await tx.wait()
+console.log('Mined in block:', receipt.blockNumber)
+```
+
+<Callout type="warning">
+    In an actual production software, sensitive information like private keys and mnemonic sequence should not be hardcoded.
+</Callout>
+
+For a more in-depth guide to creating software using Ethers.js, please refer to [Ethers.js official documentation](https://docs.ethers.org/v6/).

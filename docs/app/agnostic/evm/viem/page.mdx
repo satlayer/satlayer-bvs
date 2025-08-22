@@ -1,0 +1,92 @@
+---
+sidebarTitle: Using Viem
+---
+import { Callout } from 'nextra/components'
+
+# Integrate using viem
+
+SatLayer's smart contracts are built for EVM compatibility, allowing them to integrate with the existing EVM developer ecosystem.
+This means that standard EVM frameworks, libraries, and tools—such as Ethers.js and Viem—can be used without modification, enabling developers to leverage familiar workflows and infrastructure.
+
+To integrate EVM contracts through [Viem](https://viem.sh/):
+
+```bash filename="viem" copy
+npm i viem
+```
+Also, add `@satlayer/contracts`, which provides ABI for SatLayer EVM contracts to the project.
+```bash filename="SLAYContracts" copy
+npm i @satlayer/contracts
+```
+## Create wallet clients
+In this example, we set up a wallet client using a private key:
+
+```js filename="privateKeyBasedWalletClient.js" copy
+import { createWalletClient, http, publicActions } from 'viem'
+import { privateKeyToAccount } from 'viem/accounts'
+import { mainnet } from 'viem/chains'
+
+const privateKey = "0x..." // replace with your private key.
+const account = privateKeyToAccount(privateKey)
+
+const client = createWalletClient({
+  account,
+  chain: mainnet,
+  transport: http()
+}).extend(publicActions)
+```
+Or create a client by providing mnemonics
+
+```js filename="mnemonicBasedWalletClient.js" copy
+import { mnemonicToAccount } from 'viem/accounts';
+import { mainnet } from 'viem/chains';
+import { createWalletClient, http, publicActions } from 'viem'
+
+// Replace with your 12-word or 24-word mnemonic phrase
+const mnemonic = "your mnemonic sequence here";
+
+// Derive the account from the mnemonic
+const account = mnemonicToAccount(mnemonic);
+
+
+const client = createWalletClient({
+  account,
+  chain: mainnet,
+  transport: http()
+}).extend(publicActions)
+```
+## Interacting with contracts
+Executing a transaction is also fairly straightforward. The following snippet will demonstrate interacting with the SLAYRegistry contract to register yourself (or more accurately, your EOA) as an operator:
+```js filename="execute.js" copy
+import { createWalletClient, http, publicActions } from 'viem'
+import { privateKeyToAccount } from 'viem/accounts'
+import { abi } from '@satlayer/contracts/out/SLAYRegistryV2.sol/SLAYRegistryV2.json'
+
+const privateKey = "0x..." // replace with your private key
+const account = privateKeyToAccount(privateKey)
+
+const client = createWalletClient({
+  account,
+  chain: mainnet,
+  transport: http()
+}).extend(publicActions)
+
+
+const contractAddress = "0x.."; // replace the content inside double quotes with live/testnet SLAYRegistryV2 contract address.
+
+const transactionHash = await client.writeContract({
+  address: contractAddress,
+  abi: abi,
+  functionName: 'registerAsOperator',
+  args: ['www.exampleOperator.com', 'An example operator'],
+  account: account
+});
+```
+
+<Callout type="warning">
+   In an actual production software, sensitive information like private keys and mnemonic sequence should not be hardcoded.
+</Callout>
+
+For a more in-depth guide to creating software using Viem, please refer to the [Viem official documentation](https://viem.sh/docs/getting-started).
+
+
+

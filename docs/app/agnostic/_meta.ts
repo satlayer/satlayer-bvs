@@ -2,8 +2,11 @@ import type { MetaRecord } from "nextra";
 
 const meta: MetaRecord = {
   developer: {},
-  languages: {
+  cosmwasm: {
     title: "Integrate on CosmWasm",
+  },
+  evm: {
+    title: "Integrate on EVM",
   },
 };
 
