@@ -6,15 +6,14 @@ import {SLAYRegistryV2} from "@satlayer/contracts/SLAYRegistryV2.sol";
 import {SLAYRouterV2} from "@satlayer/contracts/SLAYRouterV2.sol";
 import {ISLAYRouterSlashingV2} from "@satlayer/contracts/interface/ISLAYRouterSlashingV2.sol";
 import {ISLAYRegistryV2} from "@satlayer/contracts/interface/ISLAYRegistryV2.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract BVS {
-    address owner;
-    address immutable registry;
-    address immutable router;
+contract BVS is Ownable {
+    SLAYRegistryV2 immutable registry;
+    SLAYRouterV2 immutable router;
     mapping(int64 => address) requests;
     mapping(int64 => mapping(address => int64)) responses;
 
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     event Requested(address indexed sender, int64 input);
     event Responded(address indexed operator, int64 indexed input, int64 indexed output);
     event OperatorRegistration(address indexed operator, bool indexed status);
@@ -29,17 +28,11 @@ contract BVS {
     error invalidChallenge();
     error AlreadyResponded();
 
-    modifier onlyOwner() {
-        if (msg.sender != owner) revert Unauthorized();
-        _;
-    }
-
-    constructor(address router_, address registry_, address owner_) {
-        owner = owner_;
+    constructor(SLAYRouterV2 router_, SLAYRegistryV2 registry_) Ownable(msg.sender) {
         registry = registry_;
         router = router_;
 
-        ISLAYRegistryV2(registry).registerAsService("www.dsquaring.com", "Decentralized Squaring");
+        registry.registerAsService("www.dsquaring.com", "Decentralized Squaring");
     }
 
     /**
@@ -56,14 +49,14 @@ contract BVS {
      */
     function respond(int64 input, int64 output) external {
         address operator = msg.sender;
-        address eoa = requests[input];
+        address requester = requests[input];
 
-        if (eoa == address(0)) {
+        if (requester == address(0)) {
             revert RequestNotFound();
         }
 
         RelationshipV2.Status registrationStatus =
-            ISLAYRegistryV2(registry).getRelationshipStatus(address(this), operator);
+            registry.getRelationshipStatus(address(this), operator);
 
         if (registrationStatus != RelationshipV2.Status.Active) {
             revert Unauthorized();
@@ -79,6 +72,9 @@ contract BVS {
         emit Responded(operator, input, output);
     }
 
+    /**
+     * Get a squared value responded by an operator for a particular input
+     */
     function getResponse(int64 input, address operator) external view returns (int64) {
         return responses[input][operator];
     }
@@ -101,6 +97,8 @@ contract BVS {
             revert invalidChallenge();
         }
 
+        responses[inp][operator] = newSquared;
+
         ISLAYRouterSlashingV2.Payload memory payload = ISLAYRouterSlashingV2.Payload({
             operator: operator,
             mbips: 1000,
@@ -109,23 +107,30 @@ contract BVS {
         });
 
         emit SlashRequested(operator, payload);
-        return SLAYRouterV2(router).requestSlashing(payload);
+        return router.requestSlashing(payload);
     }
 
     /**
      * Lock the slash collateral from targeted operator to SatLayer contract
      */
     function lockSlashing(bytes32 slashId) external onlyOwner {
-        SLAYRouterV2(router).lockSlashing(slashId);
+        router.lockSlashing(slashId);
     }
 
     /**
      * Move the locked collateral from SatLayer contract to service designated address.
      */
     function finalizeSlashing(bytes32 slashId) external onlyOwner {
-        SLAYRouterV2(router).finalizeSlashing(slashId);
+        router.finalizeSlashing(slashId);
     }
 
+    /**
+     * This function is an example of an expensive computation with
+     * off-chain computing and on-chain objectively verifiable slashing.
+     * You want to perform this off-chain to reduce gas costs.
+     * When a malicious operator tries to cheat,
+     * the on-chain verification can objectively verify the result by recomputing it on-chain.
+     */
     function _expensiveComputation(int64 input) internal pure returns (int64) {
         return input * input;
     }
@@ -134,7 +139,7 @@ contract BVS {
      * Register and recognized an address to be an operator the service.
      */
     function registerOperator(address operator) external onlyOwner {
-        SLAYRegistryV2(registry).registerOperatorToService(operator);
+        registry.registerOperatorToService(operator);
         emit OperatorRegistration(operator, true);
     }
 
@@ -142,7 +147,7 @@ contract BVS {
      * Deregister an operator out of the service.
      */
     function deregisterOperator(address operator) external onlyOwner {
-        SLAYRegistryV2(registry).deregisterOperatorFromService(operator);
+        registry.deregisterOperatorFromService(operator);
         emit OperatorRegistration(operator, false);
     }
 
@@ -152,7 +157,7 @@ contract BVS {
      *     to an operator will result in failure.
      */
     function enableSlashing(ISLAYRegistryV2.SlashParameter calldata params) external onlyOwner {
-        SLAYRegistryV2(registry).enableSlashing(params);
+        registry.enableSlashing(params);
         emit SlashEnabled(params);
     }
 
@@ -160,12 +165,7 @@ contract BVS {
      * Disable SatLayer integrated slashing.
      */
     function disableSlashing() external onlyOwner {
-        SLAYRegistryV2(registry).disableSlashing();
-    }
-
-    function transferOwnership(address newOwner) external onlyOwner {
-        require(newOwner != address(0), "New owner is zero address");
-        emit OwnershipTransferred(owner, newOwner);
-        owner = newOwner;
+        registry.disableSlashing();
+        emit SlashDisabled();
     }
 }

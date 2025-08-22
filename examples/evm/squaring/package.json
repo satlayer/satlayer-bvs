@@ -2,8 +2,8 @@
   "name": "@examples/squaring-evm",
   "private": true,
   "scripts": {
-    "build": "forge build -vvv --force",
-    "test": "pnpm run build && vitest run --reporter verbose",
+    "build": "forge build",
+    "test": "vitest run --reporter verbose",
     "test:sol": "forge test"
   },
   "dependencies": {
@@ -12,12 +12,12 @@
     "@openzeppelin/foundry-upgrades": "^0.4.0",
     "@satlayer/contracts": "workspace:*",
     "@satlayer/testcontainers": "workspace:*",
-    "forge-std": "https://github.com/foundry-rs/forge-std/tarball/v1.9.6",
-    "typescript": "latest",
     "viem": "2.33.1"
   },
   "devDependencies": {
     "@types/node": "^20",
+    "forge-std": "https://github.com/foundry-rs/forge-std/tarball/v1.9.6",
+    "typescript": "latest",
     "vitest": "^3.1.4"
   }
 }
