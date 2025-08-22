@@ -17,11 +17,10 @@ Also, add `@satlayer/contracts`, which provides ABI for SatLayer EVM contracts t
 ```bash filename="SLAYContracts" copy
 npm i @satlayer/contracts
 ```
-## Creating programmatic wallet clients.
+## Create wallet clients
 In this example, we set up a wallet client using a private key:
 
 ```js filename="privateKeyBasedWalletClient.js" copy
-
 import { createWalletClient, http, publicActions } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { mainnet } from 'viem/chains'
@@ -54,7 +53,6 @@ const client = createWalletClient({
   chain: mainnet,
   transport: http()
 }).extend(publicActions)
-
 ```
 ## Interacting with contracts
 Executing a transaction is also fairly straightforward. The following snippet will demonstrate interacting with the SLAYRegistry contract to register yourself (or more accurately, your EOA) as an operator:
@@ -82,7 +80,6 @@ const transactionHash = await client.writeContract({
   args: ['www.exampleOperator.com', 'An example operator'],
   account: account
 });
-
 ```
 
 <Callout type="warning">
