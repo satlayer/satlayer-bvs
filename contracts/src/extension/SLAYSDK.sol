@@ -41,7 +41,7 @@ contract SLAYSDK is ISLAYSDK, SLAYBase {
         // get the vault's total assets
         uint256 vaultAssets = vault.totalAssets();
         // get conversion rate
-        uint256 wbtcUSDPrice = _slayOracle.getPrice(vault.asset());
+        uint256 wbtcUSDPrice = _slayOracle.getPrice(address(vault));
         // convert asset to USD
         return (vaultAssets * wbtcUSDPrice) / 1e18;
     }

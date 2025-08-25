@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {SLAYOracle} from "../../src/extension/SLAYOracle.sol";
+import {ISLAYOracle} from "../../src/extension/interface/ISLAYOracle.sol";
 import {SLAYBase} from "../../src/SLAYBase.sol";
 import {IPyth} from "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
 import {ISLAYVaultV2} from "../../src/interface/ISLAYVaultV2.sol";
@@ -25,8 +26,15 @@ contract SLAYOracleTest is Test, TestSuiteV2 {
     uint8 public underlyingDecimal = underlying.decimals();
     uint256 public underlyingMinorUnit = 10 ** underlyingDecimal;
 
+    address public operator;
+    ISLAYVaultV2 public vault;
+
     function setUp() public override {
         TestSuiteV2.setUp();
+        operator = makeAddr("Operator");
+        // register operator
+        vm.prank(operator);
+        registry.registerAsOperator("www.operator.com", "operator");
 
         // Creating a mock of Pyth contract with 60 seconds validTimePeriod (for staleness)
         // and 1 wei fee for updating the price.
@@ -44,9 +52,14 @@ contract SLAYOracleTest is Test, TestSuiteV2 {
         );
         vm.stopPrank();
 
+        // operator creates a vault
+        vm.prank(operator);
+        address vaultI = address(vaultFactory.create(underlying));
+        vault = ISLAYVaultV2(vaultI);
+
         // set mapping of asset address to Pyth price ID
-        vm.prank(owner);
-        slayOracle.setPriceId(address(underlying), priceID);
+        vm.prank(operator);
+        slayOracle.setPriceId(address(vault), priceID);
 
         // update pyth with mock data
         bytes[] memory updateData = new bytes[](1);
@@ -72,33 +85,36 @@ contract SLAYOracleTest is Test, TestSuiteV2 {
     }
 
     function test_GetPriceId() public {
-        bytes32 fetchedPriceId = slayOracle.getPriceId(address(underlying));
+        bytes32 fetchedPriceId = slayOracle.getPriceId(address(vault));
         assertEq(fetchedPriceId, priceID, "Fetched price ID does not match the expected one");
     }
 
     function test_SetPriceId() public {
         bytes32 newPriceId = 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef;
-        vm.prank(owner);
-        slayOracle.setPriceId(address(underlying), newPriceId);
+        vm.prank(operator);
+        vm.expectEmit();
+        emit ISLAYOracle.PriceIdSet(address(vault), newPriceId);
+        slayOracle.setPriceId(address(vault), newPriceId);
 
-        bytes32 fetchedPriceId = slayOracle.getPriceId(address(underlying));
+        bytes32 fetchedPriceId = slayOracle.getPriceId(address(vault));
         assertEq(fetchedPriceId, newPriceId, "Fetched price ID does not match the new one");
     }
 
-    function test_revert_SetPriceId_NotOwner() public {
+    function test_revert_SetPriceId_NotDelegated() public {
         bytes32 newPriceId = 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef;
-        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, address(this)));
-        slayOracle.setPriceId(address(underlying), newPriceId);
+        vm.expectRevert("Only vault's delegated operator can set price ID");
+        slayOracle.setPriceId(address(vault), newPriceId);
     }
 
     function test_getPrice() public {
-        uint256 price = slayOracle.getPrice(address(underlying));
+        // call with priceID
+        uint256 price = slayOracle.getPrice(priceID);
         // The expected price is $100k in minor units (18 decimals)
         uint256 expectedPrice = 100_000 * 1e18;
         assertEq(price, expectedPrice, "Fetched price does not match the expected one");
 
-        // call with asset
-        uint256 priceWithAsset = slayOracle.getPrice(address(underlying));
+        // call with vault
+        uint256 priceWithAsset = slayOracle.getPrice(address(vault));
         assertEq(priceWithAsset, expectedPrice, "Fetched price with asset does not match the expected one");
     }
 }

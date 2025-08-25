@@ -7,12 +7,13 @@ import {PythStructs} from "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
 
 import {ISLAYOracle} from "./interface/ISLAYOracle.sol";
 import {SLAYBase} from "../SLAYBase.sol";
+import {ISLAYVaultV2} from "../interface/ISLAYVaultV2.sol";
 
 contract SLAYOracle is SLAYBase, ISLAYOracle {
     IPyth internal pyth;
 
-    /// @dev stores the mapping of asset addresses to their corresponding Pyth price IDs
-    mapping(address asset => bytes32 priceId) internal _assetToPriceId;
+    /// @dev stores the mapping of vault addresses to their corresponding Pyth price IDs
+    mapping(address vault => bytes32 priceId) internal _vaultToPriceId;
 
     constructor() {
         _disableInitializers();
@@ -27,13 +28,17 @@ contract SLAYOracle is SLAYBase, ISLAYOracle {
     }
 
     /// @inheritdoc ISLAYOracle
-    function getPriceId(address asset) external view override returns (bytes32) {
-        return _assetToPriceId[asset];
+    function getPriceId(address vault) external view override returns (bytes32) {
+        return _vaultToPriceId[vault];
     }
 
     /// @inheritdoc ISLAYOracle
-    function setPriceId(address asset, bytes32 priceId) external override onlyOwner {
-        _assetToPriceId[asset] = priceId;
+    function setPriceId(address vault, bytes32 priceId) external override {
+        ISLAYVaultV2 slayVault = ISLAYVaultV2(vault);
+        require(_msgSender() == slayVault.delegated(), "Only vault's delegated operator can set price ID");
+
+        _vaultToPriceId[vault] = priceId;
+        emit PriceIdSet(vault, priceId);
     }
 
     /// @inheritdoc ISLAYOracle
@@ -47,7 +52,7 @@ contract SLAYOracle is SLAYBase, ISLAYOracle {
     }
 
     /// @inheritdoc ISLAYOracle
-    function getPrice(address asset) external view override returns (uint256) {
-        return getPrice(_assetToPriceId[asset]);
+    function getPrice(address vault) external view override returns (uint256) {
+        return getPrice(_vaultToPriceId[vault]);
     }
 }

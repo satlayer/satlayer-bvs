@@ -24,8 +24,15 @@ contract SLAYSDKTest is Test, TestSuiteV2 {
     uint8 public underlyingDecimal = underlying.decimals();
     uint256 public underlyingMinorUnit = 10 ** underlyingDecimal;
 
+    address public operator;
+    ISLAYVaultV2 public vault;
+
     function setUp() public override {
         TestSuiteV2.setUp();
+        operator = makeAddr("Operator");
+        // register operator
+        vm.prank(operator);
+        registry.registerAsOperator("www.operator.com", "operator");
 
         // Creating a mock of Pyth contract with 60 seconds validTimePeriod (for staleness)
         // and 1 wei fee for updating the price.
@@ -49,9 +56,18 @@ contract SLAYSDKTest is Test, TestSuiteV2 {
         );
         vm.stopPrank();
 
-        // set mapping of asset address to Pyth price ID
+        // operator creates a vault
+        vm.prank(operator);
+        address vaultI = address(vaultFactory.create(underlying));
+        vault = ISLAYVaultV2(vaultI);
+
+        // whitelist the vault
         vm.prank(owner);
-        slayOracle.setPriceId(address(underlying), priceID);
+        router.setVaultWhitelist(vaultI, true);
+
+        // set mapping of asset address to Pyth price ID
+        vm.prank(operator);
+        slayOracle.setPriceId(address(vault), priceID);
 
         // update pyth with mock data
         bytes[] memory updateData = new bytes[](1);
@@ -77,21 +93,24 @@ contract SLAYSDKTest is Test, TestSuiteV2 {
     }
 
     function test_GetOperatorAUM() public {
-        address operator = makeAddr("Operator");
+        address operator2 = makeAddr("Operator2");
         address staker = makeAddr("Staker");
+
+        // register operator
+        vm.prank(operator2);
+        registry.registerAsOperator("www.operator2.com", "operator2");
 
         address[] memory vaults;
         vaults = new address[](5);
 
-        // register operator
-        vm.prank(operator);
-        registry.registerAsOperator("www.operator.com", "Operator");
-
-        // create multiple vault for operator
+        // create multiple vault for operator2
         for (uint256 i = 0; i < 5; i++) {
-            vm.prank(operator);
+            vm.startPrank(operator2);
             address vaultI = address(vaultFactory.create(underlying));
             vaults[i] = vaultI;
+            // set price feed
+            slayOracle.setPriceId(vaultI, priceID);
+            vm.stopPrank();
 
             vm.prank(owner);
             router.setVaultWhitelist(vaultI, true);
@@ -107,30 +126,21 @@ contract SLAYSDKTest is Test, TestSuiteV2 {
             vm.stopPrank();
         }
 
-        uint256 aum = slaySDK.getOperatorAUM(operator);
+        uint256 aum = slaySDK.getOperatorAUM(operator2);
         assertEq(aum, 5_000_000 * 1e18); // 5 vaults * 10 wbtc * 100_000 usd/wbtc
     }
 
     function test_GetVaultAUM() public {
-        address operator = makeAddr("Operator");
         address staker = makeAddr("Staker");
-
-        vm.prank(operator);
-        registry.registerAsOperator("www.operator.com", "Operator");
-
-        vm.prank(operator);
-        address vault = address(vaultFactory.create(underlying));
-        vm.prank(owner);
-        router.setVaultWhitelist(vault, true);
 
         // mint tokens to staker
         underlying.mint(staker, 99 * underlyingMinorUnit);
         vm.startPrank(staker);
-        underlying.approve(vault, 99 * underlyingMinorUnit);
-        ISLAYVaultV2(vault).deposit(99 * underlyingMinorUnit, staker);
+        underlying.approve(address(vault), 99 * underlyingMinorUnit);
+        vault.deposit(99 * underlyingMinorUnit, staker);
         vm.stopPrank();
 
-        uint256 aum = slaySDK.getVaultAUM(vault);
+        uint256 aum = slaySDK.getVaultAUM(address(vault));
         assertEq(aum, 9_900_000 * 1e18); // 99 wbtc * 100_000 usd/wbtc
     }
 }
