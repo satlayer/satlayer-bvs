@@ -21,11 +21,10 @@ contract BVS is Ownable {
     event SlashEnabled(ISLAYRegistryV2.SlashParameter params);
     event SlashDisabled();
 
-    error ZeroValueNotAllowed();
     error Unauthorized();
     error ResponseNotFound();
     error RequestNotFound();
-    error invalidChallenge();
+    error InvalidChallenge();
     error AlreadyResponded();
 
     constructor(SLAYRouterV2 router_, SLAYRegistryV2 registry_, address owner) Ownable(owner) {
@@ -93,7 +92,7 @@ contract BVS is Ownable {
         int64 newSquared = _expensiveComputation(inp);
 
         if (prevSquared == newSquared) {
-            revert invalidChallenge();
+            revert InvalidChallenge();
         }
 
         responses[inp][operator] = newSquared;
