@@ -1146,6 +1146,8 @@ fn migrate_to_v2() {
     let operator_active_registration_count: Map<&Addr, u8> =
         Map::new("operator_active_registration_count");
 
+    let service_active_operators_count: Map<&Addr, u8> = Map::new("service_active_operators_count");
+
     {
         // save some data into old contract state with same 'registration_status' namespace
         let mut contract_storage = app.contract_storage_mut(&registry.addr);
@@ -1159,6 +1161,10 @@ fn migrate_to_v2() {
 
         operator_active_registration_count
             .save(&mut *contract_storage, &operator, &1u8)
+            .unwrap();
+
+        service_active_operators_count
+            .save(&mut *contract_storage, &service, &1u8)
             .unwrap();
 
         // assert that state is populated
@@ -1250,5 +1256,267 @@ fn migrate_to_v2() {
             )
             .unwrap();
         assert_eq!(status_at_timestamp, StatusResponse(1));
+    }
+}
+
+#[test]
+fn test_registration_counters() {
+    let (mut app, registry, _) = instantiate();
+
+    let services = vec![
+        app.api().addr_make("service/1"),
+        app.api().addr_make("service/2"),
+    ];
+
+    // 20 operators
+    let operators = vec![
+        app.api().addr_make("operator/1"),
+        app.api().addr_make("operator/2"),
+        app.api().addr_make("operator/3"),
+        app.api().addr_make("operator/4"),
+        app.api().addr_make("operator/5"),
+        app.api().addr_make("operator/6"),
+        app.api().addr_make("operator/7"),
+        app.api().addr_make("operator/8"),
+        app.api().addr_make("operator/9"),
+        app.api().addr_make("operator/10"),
+        app.api().addr_make("operator/11"),
+        app.api().addr_make("operator/12"),
+        app.api().addr_make("operator/13"),
+        app.api().addr_make("operator/14"),
+        app.api().addr_make("operator/15"),
+        app.api().addr_make("operator/16"),
+        app.api().addr_make("operator/17"),
+        app.api().addr_make("operator/18"),
+        app.api().addr_make("operator/19"),
+        app.api().addr_make("operator/20"),
+    ];
+
+    for service in services.iter() {
+        // register service
+        registry
+            .execute(
+                &mut app,
+                service,
+                &ExecuteMsg::RegisterAsService {
+                    metadata: Metadata {
+                        name: Some(service.to_string()),
+                        uri: Some(format!("https://service-{}.com", service).to_string()),
+                    },
+                },
+            )
+            .unwrap();
+    }
+
+    for operator in operators.iter() {
+        // register operator
+        registry
+            .execute(
+                &mut app,
+                operator,
+                &ExecuteMsg::RegisterAsOperator {
+                    metadata: Metadata {
+                        name: Some(operator.to_string()),
+                        uri: Some(format!("https://operator-{}.com", operator).to_string()),
+                    },
+                },
+            )
+            .unwrap();
+    }
+
+    // query counters - should all be 0
+    for operator in operators.iter() {
+        let count: u64 = registry
+            .query(
+                &mut app,
+                &QueryMsg::ActiveServicesCount {
+                    operator: operator.to_string(),
+                },
+            )
+            .unwrap();
+        assert_eq!(count, 0);
+    }
+
+    for service in services.iter() {
+        let count: u64 = registry
+            .query(
+                &mut app,
+                &QueryMsg::ActiveOperatorsCount {
+                    service: service.to_string(),
+                },
+            )
+            .unwrap();
+        assert_eq!(count, 0);
+    }
+
+    for operator in operators.iter() {
+        for service in services.iter() {
+            // register operator <-> service
+            registry
+                .execute(
+                    &mut app,
+                    operator,
+                    &ExecuteMsg::RegisterServiceToOperator {
+                        service: service.to_string(),
+                    },
+                )
+                .unwrap();
+            registry
+                .execute(
+                    &mut app,
+                    service,
+                    &ExecuteMsg::RegisterOperatorToService {
+                        operator: operator.to_string(),
+                    },
+                )
+                .unwrap();
+        }
+    }
+
+    {
+        let count: u64 = registry
+            .query(
+                &mut app,
+                &QueryMsg::ActiveOperatorsCount {
+                    service: services[0].to_string(),
+                },
+            )
+            .unwrap();
+        assert_eq!(count, 20);
+
+        let count: u64 = registry
+            .query(
+                &mut app,
+                &QueryMsg::ActiveOperatorsCount {
+                    service: services[1].to_string(),
+                },
+            )
+            .unwrap();
+
+        assert_eq!(count, 20);
+    }
+
+    for operator in operators.iter() {
+        let count: u64 = registry
+            .query(
+                &mut app,
+                &QueryMsg::ActiveServicesCount {
+                    operator: operator.to_string(),
+                },
+            )
+            .unwrap();
+        assert_eq!(count, 2);
+    }
+
+    registry
+        .execute(
+            &mut app,
+            &operators[0],
+            &ExecuteMsg::DeregisterServiceFromOperator {
+                service: services[0].to_string(),
+            },
+        )
+        .unwrap();
+
+    {
+        let count: u64 = registry
+            .query(
+                &mut app,
+                &QueryMsg::ActiveOperatorsCount {
+                    service: services[0].to_string(),
+                },
+            )
+            .unwrap();
+        assert_eq!(count, 19);
+
+        let count: u64 = registry
+            .query(
+                &mut app,
+                &QueryMsg::ActiveOperatorsCount {
+                    service: services[1].to_string(),
+                },
+            )
+            .unwrap();
+
+        assert_eq!(count, 20);
+    }
+
+    {
+        let count: u64 = registry
+            .query(
+                &mut app,
+                &QueryMsg::ActiveServicesCount {
+                    operator: operators[0].to_string(),
+                },
+            )
+            .unwrap();
+        assert_eq!(count, 1);
+
+        for operator in operators.iter().skip(1) {
+            let count: u64 = registry
+                .query(
+                    &mut app,
+                    &QueryMsg::ActiveServicesCount {
+                        operator: operator.to_string(),
+                    },
+                )
+                .unwrap();
+            assert_eq!(count, 2);
+        }
+    }
+
+    // deregister the rest of operators from service[0]
+    {
+        for operator in operators.iter().skip(1) {
+            registry
+                .execute(
+                    &mut app,
+                    operator,
+                    &ExecuteMsg::DeregisterServiceFromOperator {
+                        service: services[0].to_string(),
+                    },
+                )
+                .unwrap();
+            let count: u64 = registry
+                .query(
+                    &mut app,
+                    &QueryMsg::ActiveOperatorsCount {
+                        service: services[0].to_string(),
+                    },
+                )
+                .unwrap();
+            assert_eq!(
+                count,
+                operators.len() as u64
+                    - (operators.iter().position(|o| o == operator).unwrap() as u64)
+                    - 1
+            );
+        }
+    }
+
+    // service 0 should not have any active operators
+    {
+        let count: u64 = registry
+            .query(
+                &mut app,
+                &QueryMsg::ActiveOperatorsCount {
+                    service: services[0].to_string(),
+                },
+            )
+            .unwrap();
+        assert_eq!(count, 0);
+    }
+
+    // service 1 should still have all operators
+    {
+        let count: u64 = registry
+            .query(
+                &mut app,
+                &QueryMsg::ActiveOperatorsCount {
+                    service: services[1].to_string(),
+                },
+            )
+            .unwrap();
+        assert_eq!(count, 20);
     }
 }

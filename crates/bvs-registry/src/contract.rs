@@ -3,6 +3,7 @@ use cosmwasm_std::entry_point;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use crate::state;
 use bvs_library::ownership;
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
@@ -522,6 +523,20 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&query::is_operator_opted_in_to_slashing(
                 deps, service, operator, timestamp,
             )?)
+        }
+        QueryMsg::ActiveOperatorsCount { service } => {
+            let service = deps.api.addr_validate(&service)?;
+            let count = state::SERVICE_ACTIVE_OPERATORS_COUNT
+                .may_load(deps.storage, &service)?
+                .unwrap_or(0);
+            to_json_binary(&count)
+        }
+        QueryMsg::ActiveServicesCount { operator } => {
+            let operator = deps.api.addr_validate(&operator)?;
+            let count = state::OPERATOR_ACTIVE_REGISTRATION_COUNT
+                .may_load(deps.storage, &operator)?
+                .unwrap_or(0);
+            to_json_binary(&count)
         }
     }
 }
