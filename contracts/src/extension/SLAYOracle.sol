@@ -10,6 +10,12 @@ import {SLAYBase} from "../SLAYBase.sol";
 import {ISLAYVaultV2} from "../interface/ISLAYVaultV2.sol";
 import {ISLAYRouterV2} from "../SLAYRouterV2.sol";
 
+/**
+ * @title SLAYOracle
+ * @notice SLAYOracle is an upgradeable contract that provides price feeds and AUM calculations for SLAYVaults using Pyth Network.
+ * It allows setting and retrieving Pyth price IDs for vaults, fetching current prices, and calculating the total assets under management (AUM)
+ * for operators based on their associated vaults.
+ */
 contract SLAYOracle is SLAYBase, ISLAYOracle {
     ISLAYRouterV2 internal _slayRouter;
 
@@ -25,6 +31,7 @@ contract SLAYOracle is SLAYBase, ISLAYOracle {
     /**
      * @dev This fn is called during the upgrade from SLAYBase to SLAYOracle.
      * @param pyth_ The address of the Pyth contract.
+     * @param slayRouter_ The address of the SLAYRouterV2 contract.
      */
     function initialize2(address pyth_, address slayRouter_) external reinitializer(2) {
         pyth = IPyth(pyth_);

@@ -1,9 +1,22 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
+/**
+ * @title SatLayer Oracle Interface
+ * @dev Interface for the SatLayer Oracle contract to manage and retrieve price data for vaults.
+ */
 interface ISLAYOracle {
+    /**
+     * @dev Emitted when a price ID is not set for a vault.
+     * @param vault The vault address without a price ID.
+     */
     error PriceIdNotSet(address vault);
 
+    /**
+     * @notice Emitted when a price ID is set or updated for a vault.
+     * @param vault The vault address.
+     * @param priceId The price feed identifier associated with the vault.
+     */
     event PriceIdSet(address indexed vault, bytes32 indexed priceId);
 
     /**
@@ -15,7 +28,7 @@ interface ISLAYOracle {
 
     /**
      * @notice Sets or updates the price ID for an vault.
-     * @dev Only callable by the owner.
+     * @dev Only callable by the delegated operator of the vault.
      * @param vault The vault address as key.
      * @param priceId The price feed identifier to associate with the vault.
      */
