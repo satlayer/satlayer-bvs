@@ -217,9 +217,9 @@ pub fn decrease_operator_active_registration_count(
 /// Increase the service active operator count by 1
 pub fn increase_service_active_operator_count(
     store: &mut dyn Storage,
-    operator: &Operator,
+    service: &Service,
 ) -> StdResult<u64> {
-    SERVICE_ACTIVE_OPERATORS_COUNT.update(store, operator, |count| {
+    SERVICE_ACTIVE_OPERATORS_COUNT.update(store, service, |count| {
         let new_count = count.unwrap_or(0).checked_add(1);
         new_count
             .ok_or_else(|| StdError::generic_err("Increase service active operator count failed"))
@@ -229,9 +229,9 @@ pub fn increase_service_active_operator_count(
 /// Decrease the service active operator count by 1
 pub fn decrease_service_active_operator_count(
     store: &mut dyn Storage,
-    operator: &Operator,
+    service: &Service,
 ) -> StdResult<u64> {
-    SERVICE_ACTIVE_OPERATORS_COUNT.update(store, operator, |count| {
+    SERVICE_ACTIVE_OPERATORS_COUNT.update(store, service, |count| {
         let new_count = count.unwrap_or(0).checked_sub(1);
         new_count
             .ok_or_else(|| StdError::generic_err("Decrease service active operator count failed"))

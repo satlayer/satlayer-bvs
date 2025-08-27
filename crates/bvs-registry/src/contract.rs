@@ -3,7 +3,7 @@ use cosmwasm_std::entry_point;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use crate::state;
+use crate::{migration, state};
 use bvs_library::ownership;
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
@@ -638,8 +638,15 @@ pub fn migrate(
     _env: Env,
     _msg: Option<MigrateMsg>,
 ) -> Result<Response, ContractError> {
-    cw2::ensure_from_older_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    Ok(Response::default())
+    let old_version =
+        cw2::ensure_from_older_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    match old_version.minor {
+        3 => {
+            migration::fill_serivce_active_operators_count(deps)?;
+            Ok(Response::default())
+        }
+        _ => Ok(Response::default()),
+    }
 }
 
 #[cfg(test)]
