@@ -2,7 +2,7 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {SLAYRegistryV2} from "@satlayer/contracts/SLAYRegistryV2.sol";
-import { ISLAYRegistryV2 } from "@satlayer/contracts/interface/ISLAYRegistryV2.sol";
+import {ISLAYRegistryV2} from "@satlayer/contracts/interface/ISLAYRegistryV2.sol";
 
 /**
  * @title BVS
@@ -30,9 +30,9 @@ contract BVS is ReentrancyGuard {
     // A struct to store the details of a proposal.
     struct Proposal {
         address destination; // The address the proposal is being sent to.
-        uint256 value;       // The amount of Ether to send with the proposal.
-        bytes data;          // The calldata for the proposal.
-        bool executed;       // A flag to check if the proposal has been executed.
+        uint256 value; // The amount of Ether to send with the proposal.
+        bytes data; // The calldata for the proposal.
+        bool executed; // A flag to check if the proposal has been executed.
         uint256 confirmationsCount; // Number of confirmations received.
     }
 
@@ -86,7 +86,9 @@ contract BVS is ReentrancyGuard {
      * @param _owners The list of addresses that will be the initial owners.
      * @param _threshold The number of confirmations required to execute a proposal.
      */
-    constructor(address[] memory _owners, uint256 _threshold, address _registryAddress, address _routerAddress) payable {
+    constructor(address[] memory _owners, uint256 _threshold, address _registryAddress, address _routerAddress)
+        payable
+    {
         require(_owners.length > 0, "BVS: owners list cannot be empty");
         require(_threshold > 0 && _threshold <= _owners.length, "BVS: invalid threshold");
 
@@ -100,7 +102,9 @@ contract BVS is ReentrancyGuard {
         registryAddress = _registryAddress;
         routerAddress = _routerAddress;
 
-        ISLAYRegistryV2(registryAddress).registerAsService("www.dao.com", "A governance based Bitcoin Validated Service");
+        ISLAYRegistryV2(registryAddress).registerAsService(
+            "www.dao.com", "A governance based Bitcoin Validated Service"
+        );
     }
 
     // --- Public Functions ---
@@ -117,19 +121,14 @@ contract BVS is ReentrancyGuard {
      * @param _data The calldata for the proposal.
      * @return proposalId The ID of the newly created proposal.
      */
-    function submitProposal(
-        address _destination,
-        uint256 _value,
-        bytes memory _data
-    ) public onlyOwners returns (uint256 proposalId) {
+    function submitProposal(address _destination, uint256 _value, bytes memory _data)
+        public
+        onlyOwners
+        returns (uint256 proposalId)
+    {
         proposalId = proposalCount;
-        proposals[proposalId] = Proposal({
-            destination: _destination,
-            value: _value,
-            data: _data,
-            executed: false,
-            confirmationsCount: 0
-        });
+        proposals[proposalId] =
+            Proposal({destination: _destination, value: _value, data: _data, executed: false, confirmationsCount: 0});
         proposalCount++;
 
         emit Submission(proposalId);
@@ -144,9 +143,12 @@ contract BVS is ReentrancyGuard {
      * @dev Confirms a proposal by an owner.
      * @param _proposalId The ID of the proposal to confirm.
      */
-    function confirmProposal(
-        uint256 _proposalId
-    ) public onlyOwners proposalExists(_proposalId) notExecuted(_proposalId) {
+    function confirmProposal(uint256 _proposalId)
+        public
+        onlyOwners
+        proposalExists(_proposalId)
+        notExecuted(_proposalId)
+    {
         require(!confirmations[_proposalId][msg.sender], "BVS: proposal already confirmed by this owner");
 
         confirmations[_proposalId][msg.sender] = true;
@@ -159,9 +161,13 @@ contract BVS is ReentrancyGuard {
      * @dev Executes a proposal once the confirmation threshold has been met.
      * @param _proposalId The ID of the proposal to execute.
      */
-    function executeProposal(
-        uint256 _proposalId
-    ) public onlyOwners proposalExists(_proposalId) notExecuted(_proposalId) nonReentrant {
+    function executeProposal(uint256 _proposalId)
+        public
+        onlyOwners
+        proposalExists(_proposalId)
+        notExecuted(_proposalId)
+        nonReentrant
+    {
         require(proposals[_proposalId].confirmationsCount >= threshold, "BVS: not enough confirmations");
 
         Proposal storage p = proposals[_proposalId];
