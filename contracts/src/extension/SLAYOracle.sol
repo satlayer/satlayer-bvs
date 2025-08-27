@@ -21,6 +21,8 @@ contract SLAYOracle is SLAYBase, ISLAYOracle {
 
     IPyth internal pyth;
 
+    uint256 public constant MAX_PRICE_AGE = 10 seconds;
+
     /// @dev stores the mapping of vault addresses to their corresponding Pyth price IDs
     mapping(address vault => bytes32 priceId) internal _vaultToPriceId;
 
@@ -54,7 +56,7 @@ contract SLAYOracle is SLAYBase, ISLAYOracle {
 
     /// @inheritdoc ISLAYOracle
     function getPrice(bytes32 priceId) public view override returns (uint256) {
-        PythStructs.Price memory price = pyth.getPriceNoOlderThan(priceId, 10);
+        PythStructs.Price memory price = pyth.getPriceNoOlderThan(priceId, MAX_PRICE_AGE);
 
         // convert price to uint256 and minor units (18 decimals)
         uint256 basePrice = PythUtils.convertToUint(price.price, price.expo, 18);

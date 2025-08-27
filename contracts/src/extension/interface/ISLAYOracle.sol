@@ -21,13 +21,13 @@ interface ISLAYOracle {
 
     /**
      * @notice Returns the price ID for a given vault.
-     * @param vault The vault address the query.
+     * @param vault The vault address to query.
      * @return priceId The price feed identifier for the vault.
      */
     function getPriceId(address vault) external view returns (bytes32);
 
     /**
-     * @notice Sets or updates the price ID for an vault.
+     * @notice Sets or updates the price ID for a vault.
      * @dev Only callable by the delegated operator of the vault.
      * @param vault The vault address as key.
      * @param priceId The price feed identifier to associate with the vault.
