@@ -642,7 +642,7 @@ pub fn migrate(
         cw2::ensure_from_older_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     match old_version.minor {
         3 => {
-            migration::fill_serivce_active_operators_count(deps)?;
+            migration::fill_service_active_operators_count(deps)?;
             Ok(Response::default())
         }
         _ => Ok(Response::default()),
