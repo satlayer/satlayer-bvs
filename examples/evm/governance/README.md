@@ -39,8 +39,6 @@ Have a docker environment set up on the machine and follow these steps to run th
 
 ## Disclaimer
 
-This example in particular is designed to serve as supplementary material for BVS developers looking to integrate with SatLayer.
-Such that the social committee, as a governing body, is purely an arbitrary pick for this example, for simplicity.
-The example does not attempt to suggest any reward/slash strategy but rather gets developers familiar with BVS to SatLayer integration.
+This example is provided as supplemental material for BVS developers exploring integration with SatLayer. The “social committee” governing body is used here purely as a simple illustrative construct and does not constitute a recommendation of any reward or slashing policy.
 
-In case of projects that are seriously considering using a social committee as a governing body for BVS, we strongly recommend seeking professional development and security audit services to implement the contract instead of taking implementation from this example.
+If you are seriously considering a social-committee governance model for a production BVS, we strongly advise engaging experienced protocol engineers and independent security auditors to design and review your contracts rather than relying on this example implementation.
