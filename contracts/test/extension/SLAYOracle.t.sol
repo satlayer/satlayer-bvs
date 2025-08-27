@@ -110,7 +110,7 @@ contract SLAYOracleTest is Test, TestSuiteV2 {
         slayOracle.setPriceId(address(vault), newPriceId);
     }
 
-    function test_getPrice() public {
+    function test_GetPrice() public {
         // call with priceID
         uint256 price = slayOracle.getPrice(priceID);
         // The expected price is $100k in minor units (18 decimals)
@@ -120,6 +120,18 @@ contract SLAYOracleTest is Test, TestSuiteV2 {
         // call with vault
         uint256 priceWithAsset = slayOracle.getPrice(address(vault));
         assertEq(priceWithAsset, expectedPrice, "Fetched price with asset does not match the expected one");
+    }
+
+    function test_revert_GetPrice_NotSet() public {
+        // operator create new vault without setting priceID
+        vm.prank(operator);
+        address newVault = address(vaultFactory.create(underlying));
+        // whitelist the vault in router
+        vm.prank(owner);
+        router.setVaultWhitelist(newVault, true);
+
+        vm.expectRevert(abi.encodeWithSelector(ISLAYOracle.PriceIdNotSet.selector, newVault));
+        slayOracle.getPrice(newVault);
     }
 
     function test_GetOperatorAUM() public {

@@ -66,7 +66,11 @@ contract SLAYOracle is SLAYBase, ISLAYOracle {
 
     /// @inheritdoc ISLAYOracle
     function getPrice(address vault) public view override returns (uint256) {
-        return getPrice(_vaultToPriceId[vault]);
+        bytes32 priceId = _vaultToPriceId[vault];
+        if (priceId == bytes32(0)) {
+            revert PriceIdNotSet(vault);
+        }
+        return getPrice(priceId);
     }
 
     /// @inheritdoc ISLAYOracle
