@@ -57,6 +57,10 @@ contract SLAYOracleTest is Test, TestSuiteV2 {
         address vaultI = address(vaultFactory.create(underlying));
         vault = ISLAYVaultV2(vaultI);
 
+        // whitelist the vault in router
+        vm.prank(owner);
+        router.setVaultWhitelist(vaultI, true);
+
         // set mapping of asset address to Pyth price ID
         vm.prank(operator);
         slayOracle.setPriceId(address(vault), priceID);
