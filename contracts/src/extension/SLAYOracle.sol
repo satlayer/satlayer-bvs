@@ -8,8 +8,11 @@ import {PythStructs} from "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
 import {ISLAYOracle} from "./interface/ISLAYOracle.sol";
 import {SLAYBase} from "../SLAYBase.sol";
 import {ISLAYVaultV2} from "../interface/ISLAYVaultV2.sol";
+import {ISLAYRouterV2} from "../SLAYRouterV2.sol";
 
 contract SLAYOracle is SLAYBase, ISLAYOracle {
+    ISLAYRouterV2 internal _slayRouter;
+
     IPyth internal pyth;
 
     /// @dev stores the mapping of vault addresses to their corresponding Pyth price IDs
@@ -23,8 +26,9 @@ contract SLAYOracle is SLAYBase, ISLAYOracle {
      * @dev This fn is called during the upgrade from SLAYBase to SLAYOracle.
      * @param pyth_ The address of the Pyth contract.
      */
-    function initialize2(address pyth_) external reinitializer(2) {
+    function initialize2(address pyth_, address slayRouter_) external reinitializer(2) {
         pyth = IPyth(pyth_);
+        _slayRouter = ISLAYRouterV2(slayRouter_);
     }
 
     /// @inheritdoc ISLAYOracle
@@ -52,7 +56,28 @@ contract SLAYOracle is SLAYBase, ISLAYOracle {
     }
 
     /// @inheritdoc ISLAYOracle
-    function getPrice(address vault) external view override returns (uint256) {
+    function getPrice(address vault) public view override returns (uint256) {
         return getPrice(_vaultToPriceId[vault]);
+    }
+
+    /// @inheritdoc ISLAYOracle
+    function getOperatorAUM(address operator) external view virtual override returns (uint256 aum) {
+        address[] memory vaults = _slayRouter.getOperatorVaults(operator);
+        // get each vault's total active stake
+        for (uint256 i = 0; i < vaults.length; i++) {
+            aum += getVaultAUM(vaults[i]);
+        }
+        return aum;
+    }
+
+    /// @inheritdoc ISLAYOracle
+    function getVaultAUM(address vault_) public view virtual returns (uint256) {
+        ISLAYVaultV2 vault = ISLAYVaultV2(vault_);
+        // get the vault's total assets
+        uint256 vaultAssets = vault.totalAssets();
+        // get conversion rate
+        uint256 wbtcUSDPrice = getPrice(vault_);
+        // convert asset to USD
+        return (vaultAssets * wbtcUSDPrice) / 1e18;
     }
 }

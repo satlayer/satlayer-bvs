@@ -1,21 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
+import {UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {IPyth} from "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
+import {MockPyth} from "@pythnetwork/pyth-sdk-solidity/MockPyth.sol";
 import {SLAYOracle} from "../../src/extension/SLAYOracle.sol";
 import {ISLAYOracle} from "../../src/extension/interface/ISLAYOracle.sol";
 import {SLAYBase} from "../../src/SLAYBase.sol";
-import {IPyth} from "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
 import {ISLAYVaultV2} from "../../src/interface/ISLAYVaultV2.sol";
 import {MockERC20} from "../MockERC20.sol";
-import {MockPyth} from "@pythnetwork/pyth-sdk-solidity/MockPyth.sol";
-import {SLAYSDK} from "../../src/extension/SLAYSDK.sol";
 import {Test, console} from "forge-std/Test.sol";
 import {TestSuiteV2} from "../TestSuiteV2.sol";
-import {UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 contract SLAYOracleTest is Test, TestSuiteV2 {
-    SLAYSDK public slaySDK;
     SLAYOracle public slayOracle;
 
     MockPyth public mockPyth;
@@ -48,7 +46,9 @@ contract SLAYOracleTest is Test, TestSuiteV2 {
         // upgrade
         vm.startPrank(owner);
         UnsafeUpgrades.upgradeProxy(
-            address(slayOracle), address(new SLAYOracle()), abi.encodeCall(SLAYOracle.initialize2, (address(mockPyth)))
+            address(slayOracle),
+            address(new SLAYOracle()),
+            abi.encodeCall(SLAYOracle.initialize2, (address(mockPyth), address(router)))
         );
         vm.stopPrank();
 
@@ -116,5 +116,57 @@ contract SLAYOracleTest is Test, TestSuiteV2 {
         // call with vault
         uint256 priceWithAsset = slayOracle.getPrice(address(vault));
         assertEq(priceWithAsset, expectedPrice, "Fetched price with asset does not match the expected one");
+    }
+
+    function test_GetOperatorAUM() public {
+        address operator2 = makeAddr("Operator2");
+        address staker = makeAddr("Staker");
+
+        // register operator
+        vm.prank(operator2);
+        registry.registerAsOperator("www.operator2.com", "operator2");
+
+        address[] memory vaults;
+        vaults = new address[](5);
+
+        // create multiple vault for operator2
+        for (uint256 i = 0; i < 5; i++) {
+            vm.startPrank(operator2);
+            address vaultI = address(vaultFactory.create(underlying));
+            vaults[i] = vaultI;
+            // set price feed
+            slayOracle.setPriceId(vaultI, priceID);
+            vm.stopPrank();
+
+            vm.prank(owner);
+            router.setVaultWhitelist(vaultI, true);
+        }
+
+        // deposit some tokens into each vault
+        for (uint256 i = 0; i < 5; i++) {
+            // mint tokens to staker
+            underlying.mint(staker, 10 * underlyingMinorUnit);
+            vm.startPrank(staker);
+            underlying.approve(vaults[i], 10 * underlyingMinorUnit);
+            ISLAYVaultV2(vaults[i]).deposit(10 * underlyingMinorUnit, staker);
+            vm.stopPrank();
+        }
+
+        uint256 aum = slayOracle.getOperatorAUM(operator2);
+        assertEq(aum, 5_000_000 * 1e18); // 5 vaults * 10 wbtc * 100_000 usd/wbtc
+    }
+
+    function test_GetVaultAUM() public {
+        address staker = makeAddr("Staker");
+
+        // mint tokens to staker
+        underlying.mint(staker, 99 * underlyingMinorUnit);
+        vm.startPrank(staker);
+        underlying.approve(address(vault), 99 * underlyingMinorUnit);
+        vault.deposit(99 * underlyingMinorUnit, staker);
+        vm.stopPrank();
+
+        uint256 aum = slayOracle.getVaultAUM(address(vault));
+        assertEq(aum, 9_900_000 * 1e18); // 99 wbtc * 100_000 usd/wbtc
     }
 }
