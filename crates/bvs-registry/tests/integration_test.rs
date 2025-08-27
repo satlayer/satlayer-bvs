@@ -9,7 +9,7 @@ use bvs_registry::{ContractError, RegistrationStatus, SlashingParameters};
 use cosmwasm_std::testing::mock_env;
 use cosmwasm_std::{Addr, Event, StdError};
 use cw_multi_test::App;
-use cw_storage_plus::{Item, Map};
+use cw_storage_plus::Map;
 
 fn instantiate() -> (App, RegistryContract, PauserContract) {
     let mut app = App::default();
@@ -1613,7 +1613,7 @@ fn test_migrate_service_active_operators_count() {
     //         version: "2.3.0".to_string(),
     //     };
     //
-    //     let old_contract_info_state: Item<cw2::ContractVersion> = Item::new("contract_info");
+    //     let old_contract_info_state: cw_storage_plus::Item<cw2::ContractVersion> = cw_storage_plus::Item::new("contract_info");
     //
     //     old_contract_info_state
     //         .save(&mut *contract_storage, &old_version)
