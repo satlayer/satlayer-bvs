@@ -23,7 +23,7 @@ a fixed membership committee that can be used to govern the BVS, for the followi
   - For simplicity, this example assumes that operators are also node runners.
     Rewards are paid out as part of their sovereign native chain mechanisms to their operators separately.
     The node runners (operators) additionally act as vault curators on BVS,
-    such that the rewards are only paid to the retail stakes that stake into the vaults.
+    such that the rewards are only paid to the retail stakers that stake into the vaults.
   - The example also assumes that the reward node runners are required to curate vaults on BVS.
   - Operators are free to stake to their own delegated vaults to earn additional rewards.
 
