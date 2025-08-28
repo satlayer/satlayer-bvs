@@ -21,7 +21,7 @@ contract SLAYOracle is SLAYBase, ISLAYOracle {
 
     IPyth internal pyth;
 
-    uint256 public constant MAX_PRICE_AGE = 10 seconds;
+    uint256 public constant MAX_PRICE_AGE = 15 minutes;
 
     /// @dev stores the mapping of vault addresses to their corresponding Pyth price IDs
     mapping(address vault => bytes32 priceId) internal _vaultToPriceId;
@@ -89,8 +89,8 @@ contract SLAYOracle is SLAYBase, ISLAYOracle {
         // get the vault's total assets
         uint256 vaultAssets = vault.totalAssets();
         // get conversion rate
-        uint256 wbtcUSDPrice = getPrice(vault_);
+        uint256 USDPricePerAsset = getPrice(vault_);
         // convert asset to USD
-        return (vaultAssets * wbtcUSDPrice) / 1e18;
+        return (vaultAssets * USDPricePerAsset) / 1e18;
     }
 }
