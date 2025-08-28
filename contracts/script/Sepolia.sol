@@ -93,6 +93,7 @@ contract DeployVault is SepoliaContracts {
         promptConfirm();
 
         IERC20Metadata metadata = IERC20Metadata(asset);
+        // Using self-serve vault creation
         factory.create(metadata);
     }
 }
