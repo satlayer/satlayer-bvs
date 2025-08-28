@@ -5,6 +5,7 @@ import {Script, console} from "forge-std/Script.sol";
 import {ISLAYRegistryV2} from "../src/interface/ISLAYRegistryV2.sol";
 import {ISLAYRouterV2} from "../src/interface/ISLAYRouterV2.sol";
 import {ISLAYVaultFactoryV2} from "../src/interface/ISLAYVaultFactoryV2.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 contract SepoliaContracts is Script {
     ISLAYRouterV2 public router = ISLAYRouterV2(0xfcFd849e8F28EA01b4B7A9Bb170C63C4DF3A8466);
@@ -55,7 +56,7 @@ contract LinkService is SepoliaContracts {
     function run() public virtual {
         require(block.chainid == 11155111, "You're not on Sepolia");
 
-        string memory service = vm.prompt("Address of the Service");
+        address service = vm.promptAddress("Address of the Service");
 
         vm.startBroadcast();
         console.log("Service              :", service);
@@ -70,7 +71,7 @@ contract LinkOperator is SepoliaContracts {
     function run() public virtual {
         require(block.chainid == 11155111, "You're not on Sepolia");
 
-        string memory operator = vm.prompt("Address of the Operator");
+        address operator = vm.promptAddress("Address of the Operator");
 
         vm.startBroadcast();
         console.log("Operator             :", operator);
@@ -85,13 +86,13 @@ contract DeployVault is SepoliaContracts {
     function run() public virtual {
         require(block.chainid == 11155111, "You're not on Sepolia");
 
-        string memory erc20 = vm.prompt("ERC20 Asset");
+        address asset = vm.promptAddress("ERC20 Asset");
 
         vm.startBroadcast();
         console.log("Operator  (msg.sender):", msg.sender);
         promptConfirm();
 
-        IERC20Metadata asset = IERC20Metadata(erc20);
-        factory.create(asset);
+        IERC20Metadata metadata = IERC20Metadata(asset);
+        factory.create(metadata);
     }
 }
