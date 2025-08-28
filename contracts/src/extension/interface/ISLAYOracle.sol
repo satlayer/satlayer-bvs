@@ -50,6 +50,7 @@ interface ISLAYOracle {
 
     /**
      * @notice Computes an operator's total Assets Under Management (AUM) in USD minor units (18 decimals).
+     * @dev Any underlying asset with more than 18 decimals might lose precision.
      * @param operator The operator address whose vaults will be aggregated.
      * @return aum Total AUM in USD expressed with 18 decimals.
      */
@@ -57,6 +58,7 @@ interface ISLAYOracle {
 
     /**
      * @notice Computes a vault's Assets Under Management (AUM) in USD minor units (18 decimals).
+     * @dev Any underlying asset with more than 18 decimals might lose precision.
      * @param vault The vault address to query.
      * @return aum Vault AUM in USD expressed with 18 decimals.
      */

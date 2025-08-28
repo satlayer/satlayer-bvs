@@ -134,28 +134,41 @@ contract SLAYOracleTest is Test, TestSuiteV2 {
         address[] memory vaults;
         vaults = new address[](5);
 
+        MockERC20[] memory underlying_list = new MockERC20[](5);
+
         // create multiple vault for operator2
         for (uint256 i = 0; i < 5; i++) {
+            // create new underlying token for each vault with different decimals
+            uint8 decimals = 8 + uint8(i);
+            MockERC20 new_underlying = new MockERC20("MockWBTC", "WBTC", decimals);
+            underlying_list[i] = new_underlying;
+
             vm.startPrank(operator2);
-            address vaultI = address(vaultFactory.create(underlying));
+            address vaultI = address(vaultFactory.create(new_underlying));
             vaults[i] = vaultI;
             vm.stopPrank();
 
-            vm.prank(owner);
+            vm.startPrank(owner);
             router.setVaultWhitelist(vaultI, true);
+            slayOracle.setPriceId(address(new_underlying), priceID);
+            vm.stopPrank();
         }
 
         // deposit some tokens into each vault
         for (uint256 i = 0; i < 5; i++) {
+            uint8 decimals = 8 + uint8(i);
             // mint tokens to staker
-            underlying.mint(staker, 10 * underlyingMinorUnit);
+            underlying_list[i].mint(staker, 10 * (10 ** decimals));
             vm.startPrank(staker);
-            underlying.approve(vaults[i], 10 * underlyingMinorUnit);
-            ISLAYVaultV2(vaults[i]).deposit(10 * underlyingMinorUnit, staker);
+            underlying_list[i].approve(vaults[i], 10 * (10 ** decimals));
+            ISLAYVaultV2(vaults[i]).deposit(10 * (10 ** decimals), staker);
             vm.stopPrank();
         }
 
+        vm.startSnapshotGas("SLAYOracle", "getOperatorAUM");
         uint256 aum = slayOracle.getOperatorAUM(operator2);
+        vm.stopSnapshotGas();
+
         assertEq(aum, 5_000_000 * 1e18); // 5 vaults * 10 wbtc * 100_000 usd/wbtc
     }
 
@@ -169,7 +182,9 @@ contract SLAYOracleTest is Test, TestSuiteV2 {
         vault.deposit(99 * underlyingMinorUnit, staker);
         vm.stopPrank();
 
+        vm.startSnapshotGas("SLAYOracle", "getVaultAUM");
         uint256 aum = slayOracle.getVaultAUM(address(vault));
+        vm.stopSnapshotGas();
         assertEq(aum, 9_900_000 * 1e18); // 99 wbtc * 100_000 usd/wbtc
     }
 }

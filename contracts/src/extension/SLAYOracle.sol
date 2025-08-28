@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {IPyth} from "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
 import {PythUtils} from "@pythnetwork/pyth-sdk-solidity/PythUtils.sol";
 import {PythStructs} from "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {ISLAYOracle} from "./interface/ISLAYOracle.sol";
 import {SLAYBase} from "../SLAYBase.sol";
@@ -82,12 +83,21 @@ contract SLAYOracle is SLAYBase, ISLAYOracle {
 
     /// @inheritdoc ISLAYOracle
     function getVaultAUM(address vault) public view virtual returns (uint256) {
+        require(vault != address(0), "Invalid vault address");
+
         ISLAYVaultV2 vaultI = ISLAYVaultV2(vault);
+
         // get the vault's total assets
-        uint256 vaultAssets = vaultI.totalAssets();
+        uint256 vaultTotalAssets = vaultI.totalAssets();
+        if (vaultTotalAssets == 0) {
+            // return early if no assets
+            return 0;
+        }
+
         // get conversion rate
         uint256 USDPricePerAsset = getPrice(vaultI.asset());
-        // convert asset to USD
-        return (vaultAssets * USDPricePerAsset) / 1e18;
+
+        // convert asset to USD in 18 decimals
+        return Math.mulDiv(vaultTotalAssets, USDPricePerAsset, 10 ** vaultI.decimals());
     }
 }
