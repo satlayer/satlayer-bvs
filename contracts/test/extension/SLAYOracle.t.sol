@@ -62,8 +62,8 @@ contract SLAYOracleTest is Test, TestSuiteV2 {
         router.setVaultWhitelist(vaultI, true);
 
         // set mapping of asset address to Pyth price ID
-        vm.prank(operator);
-        slayOracle.setPriceId(address(vault), priceID);
+        vm.prank(owner);
+        slayOracle.setPriceId(address(underlying), priceID);
 
         // update pyth with mock data
         bytes[] memory updateData = new bytes[](1);
@@ -89,25 +89,19 @@ contract SLAYOracleTest is Test, TestSuiteV2 {
     }
 
     function test_GetPriceId() public {
-        bytes32 fetchedPriceId = slayOracle.getPriceId(address(vault));
+        bytes32 fetchedPriceId = slayOracle.getPriceId(address(underlying));
         assertEq(fetchedPriceId, priceID, "Fetched price ID does not match the expected one");
     }
 
     function test_SetPriceId() public {
         bytes32 newPriceId = 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef;
-        vm.prank(operator);
+        vm.prank(owner);
         vm.expectEmit();
-        emit ISLAYOracle.PriceIdSet(address(vault), newPriceId);
-        slayOracle.setPriceId(address(vault), newPriceId);
+        emit ISLAYOracle.PriceIdSet(address(underlying), newPriceId);
+        slayOracle.setPriceId(address(underlying), newPriceId);
 
-        bytes32 fetchedPriceId = slayOracle.getPriceId(address(vault));
+        bytes32 fetchedPriceId = slayOracle.getPriceId(address(underlying));
         assertEq(fetchedPriceId, newPriceId, "Fetched price ID does not match the new one");
-    }
-
-    function test_revert_SetPriceId_NotDelegated() public {
-        bytes32 newPriceId = 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef;
-        vm.expectRevert("Only vault's delegated operator can set price ID");
-        slayOracle.setPriceId(address(vault), newPriceId);
     }
 
     function test_GetPrice() public {
@@ -117,21 +111,16 @@ contract SLAYOracleTest is Test, TestSuiteV2 {
         uint256 expectedPrice = 100_000 * 1e18;
         assertEq(price, expectedPrice, "Fetched price does not match the expected one");
 
-        // call with vault
-        uint256 priceWithAsset = slayOracle.getPrice(address(vault));
+        // call with asset
+        uint256 priceWithAsset = slayOracle.getPrice(address(underlying));
         assertEq(priceWithAsset, expectedPrice, "Fetched price with asset does not match the expected one");
     }
 
     function test_revert_GetPrice_NotSet() public {
-        // operator create new vault without setting priceID
-        vm.prank(operator);
-        address newVault = address(vaultFactory.create(underlying));
-        // whitelist the vault in router
-        vm.prank(owner);
-        router.setVaultWhitelist(newVault, true);
-
-        vm.expectRevert(abi.encodeWithSelector(ISLAYOracle.PriceIdNotSet.selector, newVault));
-        slayOracle.getPrice(newVault);
+        // operator create new asset without setting priceID
+        MockERC20 underlying2 = new MockERC20("MockWBTC2", "WBTC2", 18);
+        vm.expectRevert(abi.encodeWithSelector(ISLAYOracle.PriceIdNotSet.selector, underlying2));
+        slayOracle.getPrice(address(underlying2));
     }
 
     function test_GetOperatorAUM() public {
@@ -150,8 +139,6 @@ contract SLAYOracleTest is Test, TestSuiteV2 {
             vm.startPrank(operator2);
             address vaultI = address(vaultFactory.create(underlying));
             vaults[i] = vaultI;
-            // set price feed
-            slayOracle.setPriceId(vaultI, priceID);
             vm.stopPrank();
 
             vm.prank(owner);

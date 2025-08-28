@@ -7,32 +7,32 @@ pragma solidity ^0.8.24;
  */
 interface ISLAYOracle {
     /**
-     * @dev Emitted when a price ID is not set for a vault.
-     * @param vault The vault address without a price ID.
+     * @dev Emitted when a price ID is not set for an asset.
+     * @param asset The asset address.
      */
-    error PriceIdNotSet(address vault);
+    error PriceIdNotSet(address asset);
 
     /**
-     * @notice Emitted when a price ID is set or updated for a vault.
-     * @param vault The vault address.
-     * @param priceId The price feed identifier associated with the vault.
+     * @notice Emitted when a price ID is set or updated for an asset.
+     * @param asset The asset address.
+     * @param priceId The price feed identifier associated with the asset.
      */
-    event PriceIdSet(address indexed vault, bytes32 indexed priceId);
+    event PriceIdSet(address indexed asset, bytes32 indexed priceId);
 
     /**
-     * @notice Returns the price ID for a given vault.
-     * @param vault The vault address to query.
-     * @return priceId The price feed identifier for the vault.
+     * @notice Returns the price ID for a given asset.
+     * @param asset The asset address to query.
+     * @return priceId The price feed identifier for the asset.
      */
-    function getPriceId(address vault) external view returns (bytes32);
+    function getPriceId(address asset) external view returns (bytes32);
 
     /**
-     * @notice Sets or updates the price ID for a vault.
-     * @dev Only callable by the delegated operator of the vault.
-     * @param vault The vault address as key.
-     * @param priceId The price feed identifier to associate with the vault.
+     * @notice Sets or updates the price ID for an asset.
+     * @dev Only callable by the contract owner.
+     * @param asset The asset address as key.
+     * @param priceId The price feed identifier to associate with the asset.
      */
-    function setPriceId(address vault, bytes32 priceId) external;
+    function setPriceId(address asset, bytes32 priceId) external;
 
     /**
      * @notice Fetches the price for a given price ID.
@@ -42,11 +42,11 @@ interface ISLAYOracle {
     function getPrice(bytes32 priceId) external view returns (uint256);
 
     /**
-     * @notice Fetches the price for a given vault
-     * @param vault The vault address to query.
+     * @notice Fetches the price for a given asset
+     * @param asset The asset address to query.
      * @return price The price in minor units (18 decimals).
      */
-    function getPrice(address vault) external view returns (uint256);
+    function getPrice(address asset) external view returns (uint256);
 
     /**
      * @notice Computes an operator's total Assets Under Management (AUM) in USD minor units (18 decimals).

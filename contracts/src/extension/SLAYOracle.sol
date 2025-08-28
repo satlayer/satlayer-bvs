@@ -13,7 +13,7 @@ import {ISLAYRouterV2} from "../SLAYRouterV2.sol";
 /**
  * @title SLAYOracle
  * @notice SLAYOracle is an upgradeable contract that provides price feeds and AUM calculations for SLAYVaults using Pyth Network.
- * It allows setting and retrieving Pyth price IDs for vaults, fetching current prices, and calculating the total assets under management (AUM)
+ * It allows setting and retrieving Pyth price IDs for an asset, fetching current prices, and calculating the total assets under management (AUM)
  * for operators based on their associated vaults.
  */
 contract SLAYOracle is SLAYBase, ISLAYOracle {
@@ -23,8 +23,8 @@ contract SLAYOracle is SLAYBase, ISLAYOracle {
 
     uint256 public constant MAX_PRICE_AGE = 15 minutes;
 
-    /// @dev stores the mapping of vault addresses to their corresponding Pyth price IDs
-    mapping(address vault => bytes32 priceId) internal _vaultToPriceId;
+    /// @dev stores the mapping of assets to their corresponding Pyth price IDs
+    mapping(address asset => bytes32 priceId) internal _assetToPriceId;
 
     constructor() {
         _disableInitializers();
@@ -41,17 +41,14 @@ contract SLAYOracle is SLAYBase, ISLAYOracle {
     }
 
     /// @inheritdoc ISLAYOracle
-    function getPriceId(address vault) external view override returns (bytes32) {
-        return _vaultToPriceId[vault];
+    function getPriceId(address asset) external view override returns (bytes32) {
+        return _assetToPriceId[asset];
     }
 
     /// @inheritdoc ISLAYOracle
-    function setPriceId(address vault, bytes32 priceId) external override {
-        ISLAYVaultV2 slayVault = ISLAYVaultV2(vault);
-        require(_msgSender() == slayVault.delegated(), "Only vault's delegated operator can set price ID");
-
-        _vaultToPriceId[vault] = priceId;
-        emit PriceIdSet(vault, priceId);
+    function setPriceId(address asset, bytes32 priceId) external override onlyOwner {
+        _assetToPriceId[asset] = priceId;
+        emit PriceIdSet(asset, priceId);
     }
 
     /// @inheritdoc ISLAYOracle
@@ -65,10 +62,10 @@ contract SLAYOracle is SLAYBase, ISLAYOracle {
     }
 
     /// @inheritdoc ISLAYOracle
-    function getPrice(address vault) public view override returns (uint256) {
-        bytes32 priceId = _vaultToPriceId[vault];
+    function getPrice(address asset) public view override returns (uint256) {
+        bytes32 priceId = _assetToPriceId[asset];
         if (priceId == bytes32(0)) {
-            revert PriceIdNotSet(vault);
+            revert PriceIdNotSet(asset);
         }
         return getPrice(priceId);
     }
@@ -84,12 +81,12 @@ contract SLAYOracle is SLAYBase, ISLAYOracle {
     }
 
     /// @inheritdoc ISLAYOracle
-    function getVaultAUM(address vault_) public view virtual returns (uint256) {
-        ISLAYVaultV2 vault = ISLAYVaultV2(vault_);
+    function getVaultAUM(address vault) public view virtual returns (uint256) {
+        ISLAYVaultV2 vaultI = ISLAYVaultV2(vault);
         // get the vault's total assets
-        uint256 vaultAssets = vault.totalAssets();
+        uint256 vaultAssets = vaultI.totalAssets();
         // get conversion rate
-        uint256 USDPricePerAsset = getPrice(vault_);
+        uint256 USDPricePerAsset = getPrice(vaultI.asset());
         // convert asset to USD
         return (vaultAssets * USDPricePerAsset) / 1e18;
     }
