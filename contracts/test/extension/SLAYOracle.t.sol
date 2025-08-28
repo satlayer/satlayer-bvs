@@ -104,6 +104,14 @@ contract SLAYOracleTest is Test, TestSuiteV2 {
         assertEq(fetchedPriceId, newPriceId, "Fetched price ID does not match the new one");
     }
 
+    function test_revert_SetPriceId_NotOwner() public {
+        bytes32 newPriceId = 0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd;
+        address notOwner = makeAddr("NotOwner");
+        vm.prank(notOwner);
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, notOwner));
+        slayOracle.setPriceId(address(underlying), newPriceId);
+    }
+
     function test_GetPrice() public {
         // call with priceID
         uint256 price = slayOracle.getPrice(priceID);
@@ -114,6 +122,14 @@ contract SLAYOracleTest is Test, TestSuiteV2 {
         // call with asset
         uint256 priceWithAsset = slayOracle.getPrice(address(underlying));
         assertEq(priceWithAsset, expectedPrice, "Fetched price with asset does not match the expected one");
+    }
+
+    function test_revert_GetPrice_Stale() public {
+        // advance time beyond MAX_PRICE_AGE (15 minutes)
+        vm.warp(block.timestamp + 16 minutes);
+        // Expect revert due to stale price from Pyth
+        vm.expectRevert();
+        slayOracle.getPrice(priceID);
     }
 
     function test_revert_GetPrice_NotSet() public {
@@ -172,6 +188,44 @@ contract SLAYOracleTest is Test, TestSuiteV2 {
         assertEq(aum, 5_000_000 * 1e18); // 5 vaults * 10 wbtc * 100_000 usd/wbtc
     }
 
+    function test_GetOperatorAUM_NoVaults() public {
+        address operator2 = makeAddr("Operator2");
+
+        // register operator
+        vm.prank(operator2);
+        registry.registerAsOperator("www.operator2.com", "operator2");
+
+        uint256 aum = slayOracle.getOperatorAUM(operator2);
+        assertEq(aum, 0);
+    }
+
+    function test_GetOperatorAUM_VaultsZeroAssets() public {
+        address operator2 = makeAddr("Operator2");
+
+        // register operator
+        vm.prank(operator2);
+        registry.registerAsOperator("www.operator2.com", "operator2");
+
+        // create multiple vaults for operator2
+        for (uint256 i = 0; i < 3; i++) {
+            // create new underlying token for each vault with different decimals
+            uint8 decimals = 8 + uint8(i);
+            MockERC20 new_underlying = new MockERC20("MockWBTC", "WBTC", decimals);
+
+            vm.startPrank(operator2);
+            address vaultI = address(vaultFactory.create(new_underlying));
+            vm.stopPrank();
+
+            vm.startPrank(owner);
+            router.setVaultWhitelist(vaultI, true);
+            slayOracle.setPriceId(address(new_underlying), priceID);
+            vm.stopPrank();
+        }
+
+        uint256 aum = slayOracle.getOperatorAUM(operator2);
+        assertEq(aum, 0);
+    }
+
     function test_GetVaultAUM() public {
         address staker = makeAddr("Staker");
 
@@ -186,5 +240,26 @@ contract SLAYOracleTest is Test, TestSuiteV2 {
         uint256 aum = slayOracle.getVaultAUM(address(vault));
         vm.stopSnapshotGas();
         assertEq(aum, 9_900_000 * 1e18); // 99 wbtc * 100_000 usd/wbtc
+    }
+
+    function test_GetVaultAUM_ZeroAssets() public {
+        // create another vault with same underlying but no deposits
+        address operator2 = makeAddr("Operator2");
+        // register operator
+        vm.startPrank(operator2);
+        registry.registerAsOperator("www.no.deposit", "no_deposit");
+        address newVaultAddr = address(vaultFactory.create(underlying));
+        vm.stopPrank();
+        // whitelist the vault in router
+        vm.prank(owner);
+        router.setVaultWhitelist(newVaultAddr, true);
+
+        uint256 aum = slayOracle.getVaultAUM(newVaultAddr);
+        assertEq(aum, 0);
+    }
+
+    function test_revert_GetVaultAUM_ZeroAddress() public {
+        vm.expectRevert("Invalid vault address");
+        slayOracle.getVaultAUM(address(0));
     }
 }
