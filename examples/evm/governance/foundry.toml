@@ -1,0 +1,5 @@
+[profile.default]
+src = "src"
+out = "src/out"
+libs = ["node_modules"]
+solc = "0.8.24"
