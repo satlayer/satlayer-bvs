@@ -7,6 +7,10 @@ use cosmwasm_std::{testing::mock_env, Addr, Empty, Env};
 use cw_multi_test::{App, Contract, ContractWrapper};
 use serde::{Deserialize, Serialize};
 
+/// The following functions in the module are identical to those in bvs_registry::contract
+/// But we need to bypass the !env() - loading of version that is 0.0.0
+/// This make it very hard to test migration normally
+/// Thus the module mock the functions with the same code but with a next planned version
 pub mod bvs_registry_v3 {
     use bvs_library::ownership;
     use bvs_registry::msg::{InstantiateMsg, MigrateMsg};
@@ -18,10 +22,6 @@ pub mod bvs_registry_v3 {
     const CONTRACT_NAME: &str = concat!("crates.io:", env!("CARGO_PKG_NAME"));
     const CONTRACT_VERSION: &str = "3.0.0"; // next planned version
 
-    //The following function are identical to those in bvs_registry::contract
-    //But we need to bypass the !env() - loading of version that is 0.0.0
-    //This make it very hard to test migration normally
-    //Thus the module mock the functions with the same code but with a next planned version
     #[cfg_attr(not(feature = "library"), entry_point)]
     pub fn instantiate(
         deps: DepsMut,
