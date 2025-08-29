@@ -205,12 +205,12 @@ fn test_migrate_service_active_operators_count() {
             .unwrap();
 
         // manually reset service_active_operators_count to 0
-        let old_service_active_operators_count: Map<&Addr, u8> =
+        let old_service_active_operators_count: Map<&Addr, u64> =
             Map::new("service_active_operators_count");
 
         for service in services.iter() {
             old_service_active_operators_count
-                .save(&mut *contract_storage, service, &0u8)
+                .save(&mut *contract_storage, service, &0u64)
                 .unwrap();
         }
     }

@@ -1146,7 +1146,8 @@ fn migrate_to_v2() {
     let operator_active_registration_count: Map<&Addr, u8> =
         Map::new("operator_active_registration_count");
 
-    let service_active_operators_count: Map<&Addr, u8> = Map::new("service_active_operators_count");
+    let service_active_operators_count: Map<&Addr, u64> =
+        Map::new("service_active_operators_count");
 
     {
         // save some data into old contract state with same 'registration_status' namespace
@@ -1164,7 +1165,7 @@ fn migrate_to_v2() {
             .unwrap();
 
         service_active_operators_count
-            .save(&mut *contract_storage, &service, &1u8)
+            .save(&mut *contract_storage, &service, &1u64)
             .unwrap();
 
         // assert that state is populated
