@@ -1610,7 +1610,7 @@ fn test_migrate_service_active_operators_count() {
     //
     //     let old_version = cw2::ContractVersion {
     //         contract: concat!("crates.io:", env!("CARGO_PKG_NAME")).to_string(),
-    //         version: "2.3.0".to_string(),
+    //         version: "2.0.0".to_string(),
     //     };
     //
     //     let old_contract_info_state: cw_storage_plus::Item<cw2::ContractVersion> = cw_storage_plus::Item::new("contract_info");
