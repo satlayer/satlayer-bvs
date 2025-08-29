@@ -1,6 +1,8 @@
 // This file was automatically generated from registry/schema.json.
 // DO NOT MODIFY IT BY HAND.
 
+type Uint64 = number;
+
 type IsOperatorResponse = boolean;
 
 type IsOperatorActiveResponse = boolean;
@@ -124,6 +126,16 @@ export interface QueryMsg {
   is_operator_active?: string;
   slashing_parameters?: QueryMsgSlashingParameters;
   is_operator_opted_in_to_slashing?: IsOperatorOptedInToSlashing;
+  active_operators_count?: ActiveOperatorsCount;
+  active_services_count?: ActiveServicesCount;
+}
+
+export interface ActiveOperatorsCount {
+  service: string;
+}
+
+export interface ActiveServicesCount {
+  operator: string;
 }
 
 export interface IsOperatorOptedInToSlashing {
