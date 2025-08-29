@@ -640,8 +640,8 @@ pub fn migrate(
 ) -> Result<Response, ContractError> {
     let old_version =
         cw2::ensure_from_older_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    match old_version.minor {
-        3 => {
+    match old_version.major {
+        2 => {
             migration::fill_service_active_operators_count(deps)?;
             Ok(Response::default())
         }
