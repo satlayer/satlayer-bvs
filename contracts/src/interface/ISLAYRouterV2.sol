@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
+import {ISLAYRouterSlashingV2} from "./ISLAYRouterSlashingV2.sol";
+
 /**
  * @title Vaults Router Interface
  * @dev Interface for the SLAYRouterV2 contract, which serves as the central point for managing
  * interactions with SLAYVaults.
  */
-interface ISLAYRouterV2 {
+interface ISLAYRouterV2 is ISLAYRouterSlashingV2 {
     /*//////////////////////////////////////////////////////////////
                                 EVENTS
     //////////////////////////////////////////////////////////////*/

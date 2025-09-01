@@ -30,7 +30,7 @@ import {ISLAYRouterSlashingV2, SlashingRequestId} from "./interface/ISLAYRouterS
  *
  * @custom:oz-upgrades-from src/SLAYBase.sol:SLAYBase
  */
-contract SLAYRouterV2 is SLAYBase, ReentrancyGuardUpgradeable, ISLAYRouterV2, ISLAYRouterSlashingV2 {
+contract SLAYRouterV2 is SLAYBase, ReentrancyGuardUpgradeable, ISLAYRouterV2 {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
 
