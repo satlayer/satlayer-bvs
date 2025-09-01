@@ -2,7 +2,7 @@
   "name": "@examples/governance-evm",
   "private": true,
   "scripts": {
-    "build": "forge build -vvv --force",
+    "build": "forge build",
     "test": "vitest run --reporter verbose",
     "test:sol": "forge test"
   },
