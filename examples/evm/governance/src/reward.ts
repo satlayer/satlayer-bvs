@@ -40,7 +40,9 @@ export interface Earner {
  * The Merkle root and distribution data are then passed to the callback function.
  * For this example, the callback function will be the multi-sig member's consensus to approve the rewards.
  *
- * @param api - The API instance to interact with the blockchain
+ * @param underlyingAssetContractAddress - The address of the underlying asset contract (e.g., uStake)
+ * @param bvsContractAddress - The address of the BVS contract
+ * @param earners - The list of earners with their staked amounts
  * @param callback - The callback function to handle the Merkle root and distribution data
  * @returns An object containing the Merkle root and distribution data
  */
@@ -106,14 +108,16 @@ async function createMerkleTree(distFilePath: string): Promise<string> {
 
 /**
  * This function dumps the reward distribution data into a JSON file.
- * It retrieves all stakers' addresses from SatLayer protocol, calculates their staked amounts,
+ * Addresses from SatLayer protocol are supplied to the function, calculates their staked amounts,
  * and computes their rewards based on the APY.
  * The resulting distribution data is saved in a file named distribution.json
- * in the dist/bbn-test-5/{api.Service}/ustake directory.
+ * in the dist/eth-mainnet/{bvsContractAddress}/{underlyingAssetContractAddress} directory.
  * For the simplicity of this example, the operator is not rewarded if the operator hasn't staked any tokens.
  *
  *
- * @param api - The API instance to interact with the blockchain
+ * @param underlyingAssetContractAddress - The address of the underlying asset contract (e.g., uStake)
+ * @param bvsContractAddress - The address of the BVS contract
+ * @param earners - The list of earners with their staked amounts
  * @returns The distribution rewards data
  */
 async function dumpRewardDistribution(
