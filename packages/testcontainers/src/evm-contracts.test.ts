@@ -160,8 +160,8 @@ test("should set oracle price", async () => {
 
   await evmContracts.setOraclePrice({
     priceId,
-    price: BigInt(100_000e8), // $100k with 8 decimals
-    conf: BigInt(100e8), // $100 with 8 decimals
+    price: BigInt(parseUnits("100000", 8)), // $100k with 8 decimals
+    conf: BigInt(parseUnits("100", 8)), // $100 with 8 decimals
     expo: -8,
     timestamp: currentBlock.timestamp,
   });

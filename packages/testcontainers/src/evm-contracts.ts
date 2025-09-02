@@ -345,7 +345,21 @@ export class EVMContracts {
     });
   }
 
-  /// Sets oracle price through mockPyth contract
+  /**
+   * Sets oracle price through mockPyth contract
+   * @param priceId - pyth price id
+   * @param price - price in minor units (e.g. 100_000e8 for $100k with 8 decimals)
+   * @param conf - confidence in minor units (e.g. 100e8 for +-$100 confidence)
+   * @param expo - minor units decimals (e.g. -8 for 8 decimals)
+   * @param timestamp - publish timestamp
+   * @example setOraclePrice({
+   *     priceId: "0x0000000000000000000000000000000000000000000000000000000000000000" as `0x${string}`,
+   *     price: BigInt(parseUnits("100000", 8)), // $100k with 8 decimals
+   *     conf: BigInt(parseUnits("100", 8)), // $100 with 8 decimals
+   *     expo: -8,
+   *     timestamp: currentBlock.timestamp,
+   *   })
+   */
   async setOraclePrice({
     priceId,
     price,
@@ -358,7 +372,7 @@ export class EVMContracts {
     conf: bigint; // confidence in minor units
     expo: number; // minor units decimals (e.g. -8 for 8 decimals)
     timestamp: bigint; // publish timestamp
-  }) {
+  }): Promise<void> {
     if (!this.mockPyth) {
       throw new Error("MockPyth contract not initialized. run initOracle first");
     }
