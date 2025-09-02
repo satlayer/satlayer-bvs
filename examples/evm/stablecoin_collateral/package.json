@@ -1,0 +1,34 @@
+{
+  "name": "@satlayer/contracts",
+  "private": false,
+  "exports": {
+    "./*": "./out/*"
+  },
+  "files": [
+    "out"
+  ],
+  "scripts": {
+    "build": "forge build",
+    "docs": "mm-foundryup -b forge && node_modules/.bin/forge doc",
+    "fmt": "forge fmt",
+    "test": "forge test"
+  },
+  "lint-staged": {
+    "!(*.sol)": [
+      "prettier --write --ignore-unknown"
+    ],
+    "*.sol": [
+      "forge fmt"
+    ]
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.4.0",
+    "@openzeppelin/contracts-upgradeable": "^5.4.0",
+    "@satlayer/contracts": "^2.3.0",
+    "forge-std": "https://github.com/foundry-rs/forge-std/tarball/v1.9.7"
+  },
+  "devDependencies": {
+    "@metamask/foundryup": "^1.0.1",
+    "@openzeppelin/foundry-upgrades": "^0.4.0"
+  }
+}
