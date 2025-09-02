@@ -1,3 +1,4 @@
+import { parseUnits } from "viem";
 import { afterEach, beforeEach, expect, test } from "vitest";
 
 import { AnvilContainer, ChainName, StartedAnvilContainer } from "./anvil-container";
@@ -133,4 +134,39 @@ test("should init ERC20", async () => {
   // expect the balance of the random address to be 1e8 - 1e6 - 1e6
   const finalRandomBalance = await erc20.contract.read.balanceOf([random.address]);
   expect(finalRandomBalance).toStrictEqual(BigInt(1e8 - 2e6));
+});
+
+test("should deploy oracle", async () => {
+  await evmContracts.initOracle();
+  expect(evmContracts.oracle.address).toBeDefined();
+
+  const assetAddress = started.getRandomAddress();
+  const priceId = "0xc9d8b075a5c69303365ae23633d4e085199bf5c520a3b90fed1322a0342ffc33";
+  await evmContracts.oracle.write.setPriceId([assetAddress, priceId]);
+
+  await started.mineBlock();
+
+  // read price id
+  const priceIdRes = await evmContracts.oracle.read.getPriceId([assetAddress]);
+  expect(priceIdRes).toStrictEqual(priceId);
+});
+
+test("should set oracle price", async () => {
+  await evmContracts.initOracle();
+
+  const priceId = "0xc9d8b075a5c69303365ae23633d4e085199bf5c520a3b90fed1322a0342ffc33";
+
+  const currentBlock = await started.getClient().getBlock();
+
+  await evmContracts.setOraclePrice({
+    priceId,
+    price: BigInt(parseUnits("100000", 8)), // $100k with 8 decimals
+    conf: BigInt(parseUnits("100", 8)), // $100 with 8 decimals
+    expo: -8,
+    timestamp: currentBlock.timestamp,
+  });
+
+  // get price
+  const price = await evmContracts.oracle.read.getPrice([priceId]);
+  expect(price).toStrictEqual(parseUnits("100000", 18));
 });

@@ -46,9 +46,7 @@ contract SLAYOracleTest is Test, TestSuiteV2 {
         // upgrade
         vm.startPrank(owner);
         UnsafeUpgrades.upgradeProxy(
-            address(slayOracle),
-            address(new SLAYOracle()),
-            abi.encodeCall(SLAYOracle.initialize2, (address(mockPyth), address(router)))
+            address(slayOracle), address(new SLAYOracle(address(mockPyth), address(router))), ""
         );
         vm.stopPrank();
 
