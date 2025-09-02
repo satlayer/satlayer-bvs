@@ -336,6 +336,50 @@ export class EVMContracts {
     // upgrade oracleProxy to use SLAYOracle impl contract
     await oracleProxyContract.write.upgradeToAndCall([oracleImpl.contractAddress, ""]);
 
-    this.oracle = oracleProxyContract;
+    await this.started.mineBlock(1);
+
+    this.oracle = getContract({
+      address: oracleProxy.contractAddress,
+      abi: slayOracle.abi,
+      client: this.started.getClient(),
+    });
+  }
+
+  /// Sets oracle price through mockPyth contract
+  async setOraclePrice({
+    priceId,
+    price,
+    conf,
+    expo,
+    timestamp,
+  }: {
+    priceId: `0x${string}`;
+    price: bigint; // price in minor units
+    conf: bigint; // confidence in minor units
+    expo: number; // minor units decimals (e.g. -8 for 8 decimals)
+    timestamp: bigint; // publish timestamp
+  }) {
+    if (!this.mockPyth) {
+      throw new Error("MockPyth contract not initialized. run initOracle first");
+    }
+
+    const updateData = await this.mockPyth.read.createPriceFeedUpdateData([
+      priceId,
+      price,
+      conf,
+      expo,
+      price, // use same price for EMA
+      conf, // use same conf for EMA
+      timestamp,
+      timestamp, // use same timestamp for prevPublishTime
+    ]);
+
+    // get update fee ( args updateData is expected in array of bytes, hence the double array )
+    const updateFee = await this.mockPyth.read.getUpdateFee([[updateData]]);
+
+    // update price feeds
+    await this.mockPyth.write.updatePriceFeeds([[updateData]], { value: updateFee });
+
+    await this.started.mineBlock(1);
   }
 }
