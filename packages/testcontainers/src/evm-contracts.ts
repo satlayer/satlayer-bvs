@@ -239,7 +239,7 @@ export class EVMContracts {
     return new EVMContracts(started, registryContract, routerContract, rewardsContract, vaultFactoryContract);
   }
 
-  /// Initializes an ERC20 token with the given name, symbol, and decimals.
+  // Initializes an ERC20 token with the given name, symbol, and decimals.
   async initERC20({ name, symbol, decimals }: { name: string; symbol: string; decimals: number }) {
     return this.started.deployContract({
       abi: erc20Abi.abi,
@@ -249,8 +249,8 @@ export class EVMContracts {
     });
   }
 
-  /// Initializes a SLAYVault for the given operator and underlying asset.
-  /// Returns the address of the created SLAYVault.
+  // Initializes a SLAYVault for the given operator and underlying asset.
+  // Returns the address of the created SLAYVault.
   async initVault({
     operator,
     underlyingAsset,
@@ -265,7 +265,7 @@ export class EVMContracts {
     return createRes.result;
   }
 
-  /// Returns a contract instance for the SLAYVault at the given address.
+  // Returns a contract instance for the SLAYVault at the given address.
   async getVaultContractInstance(
     vaultAddress: `0x${string}`,
   ): Promise<GetContractReturnType<typeof slayVault.abi, SuperTestClient>> {
@@ -276,7 +276,7 @@ export class EVMContracts {
     });
   }
 
-  /// Initializes a SLAYOracle
+  // Initializes a SLAYOracle
   async initOracle() {
     const owner = this.started.getAccount().address;
 
