@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
-import {RelationshipV2} from "@satlayer/contracts/RelationshipV2.sol";
-import {SLAYRegistryV2} from "@satlayer/contracts/SLAYRegistryV2.sol";
-import {SLAYRouterV2} from "@satlayer/contracts/SLAYRouterV2.sol";
-import {ISLAYRouterSlashingV2} from "@satlayer/contracts/interface/ISLAYRouterSlashingV2.sol";
-import {ISLAYRegistryV2} from "@satlayer/contracts/interface/ISLAYRegistryV2.sol";
+import {RelationshipV2} from "@satlayer/contracts/src/RelationshipV2.sol";
+import {SLAYRegistryV2} from "@satlayer/contracts/src/SLAYRegistryV2.sol";
+import {SLAYRouterV2} from "@satlayer/contracts/src/SLAYRouterV2.sol";
+import {ISLAYRouterSlashingV2} from "@satlayer/contracts/src/interface/ISLAYRouterSlashingV2.sol";
+import {ISLAYRegistryV2} from "@satlayer/contracts/src/interface/ISLAYRegistryV2.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract BVS is Ownable {

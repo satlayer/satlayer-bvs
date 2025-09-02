@@ -3,7 +3,9 @@
   "private": false,
   "files": [
     "out",
-    "src"
+    "src",
+    "test/TestSuiteV2.sol",
+    "test/MockERC20.sol"
   ],
   "scripts": {
     "build": "forge build",
