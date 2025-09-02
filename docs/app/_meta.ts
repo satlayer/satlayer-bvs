@@ -6,7 +6,7 @@ const meta: MetaRecord = {
     title: "Introduction",
   },
   index: {},
-  _G: {
+  _A: {
     type: "separator",
     title: "Architecture",
   },
@@ -27,7 +27,14 @@ const meta: MetaRecord = {
   cosmwasm: {
     display: "children",
   },
-  _A: {
+  _G: {
+    type: "separator",
+    title: "Guides",
+  },
+  guides: {
+    display: "children",
+  },
+  _PA: {
     type: "separator",
     title: "Protocol-agnostic",
   },
