@@ -286,7 +286,7 @@ export class StartedAnvilContainer extends AbstractStartedContainer {
     const deployData = encodeDeployData({ abi, args: constructorArgs, bytecode });
 
     // deploy
-    const deployTx = await create2Contract.write.deploy([deployData, saltHex], { gas: 10_000_000n });
+    const deployTx = await create2Contract.write.deploy([deployData, saltHex]);
 
     // mine a block to ensure the transaction is processed
     await this.mineBlock();
