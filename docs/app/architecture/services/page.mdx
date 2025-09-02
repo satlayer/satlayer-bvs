@@ -7,7 +7,7 @@ import {Callout} from "nextra/components";
 # What is a Service?
 
 Together with [Operators](/architecture/operators), Services form the backbone of the SatLayer ecosystem.
-Services represent blockchain applications or protocols that require "operations," validation, and security.
+Services represent blockchain applications or protocols that require "operations", validation, and security.
 They are the entities that define the operational requirements, reward structures, and slashing conditions
 for the ecosystem's validators and infrastructure providers.
 
@@ -17,22 +17,24 @@ In the SatLayer ecosystem, a Service can be any decentralized application that n
 trustworthy computation and validation. Services establish the rules and parameters for their operations,
 while relying on Operators to execute these operations securely and efficiently.
 
+Restaked Bitcoin LSTs are key to the SatLayer ecosystem, providing the necessary cryptoeconomic security for Services.
+
 Typically, Services play a crucial role in the ecosystem by:
 - Defining what needs to be validated and how it should be validated
 - Establishing consequences for improper validation or malicious behavior
 - Setting operational requirements and standards
-- Creating economic incentives for proper operation
+- Providing economic incentives for proper operation
 
-They require infrastructure support because building and maintaining a robust, secure validation network
-is complex, resource-intensive, and often outside the core expertise of the service developers.
+Services require infrastructure support because building and maintaining a robust, secure validation network
+is complex, resource-intensive, and often outside the core expertise of the Service developers.
 Therefore, Operators become essential partners who provide the specialized infrastructure,
 security expertise, and operational capabilities that Services need to function effectively.
 
 <Callout type="info">
   **Services without operations?**<br/>
-  Service can exist without a need for operations in the traditional sense.
-  Not all services require complex logic or binaries to be run by Operators.
-  Some services might only need verification of data, provision of liquidity,
+  Services in SatLayer can exist without a need for operations in the traditional sense.
+  Not all Services require complex logic or binaries to be run by Operators.
+  Some Services might only need verification of data, provision of liquidity,
   or other forms of support that don't involve running infrastructure.
 
   The relationship between Services and Operators is flexible and can be tailored to the specific needs of each Service.
@@ -43,13 +45,13 @@ Services have significant responsibilities toward the Operators they engage with
 - **Provide economic incentives**: Services cannot expect Operators to run their service without incentive—proper
 economic incentives must be established to make it worthwhile for Operators to dedicate their resources and expertise.
 - **Offer clear documentation**: Services cannot expect Operators to understand all the nuances of their
-specific application or protocol without proper guidance.
+specific application or protocol without proper guidance, generally we expect Services to provide clear documentation.
 - **Establish straightforward integration processes**: Making it easy for Operators to integrate with the service
 reduces friction and improves operational efficiency.
 - **Maintain ongoing support**: Responsive support channels help Operators resolve issues quickly and effectively.
 - **Provide clear technical specifications**: Detailed specifications help Operators understand exactly what
-is required to run the service properly.
-- **Create fair economic models**: Aligning the interests of both parties through well-designed economic models
+is required to run the Service properly.
+- **Create fair crypto-economic models**: Aligning the interests of both parties through well-designed crypto-economic models
 helps ensure a sustainable relationship.
 
 By fulfilling these responsibilities, Services help create a sustainable ecosystem
