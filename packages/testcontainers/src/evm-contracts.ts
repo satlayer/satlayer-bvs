@@ -1,17 +1,23 @@
 import UpgradeableBeacon from "@openzeppelin/upgrades-core/artifacts/@openzeppelin/contracts-v5/proxy/beacon/UpgradeableBeacon.sol/UpgradeableBeacon.json";
 import ERC1967Proxy from "@openzeppelin/upgrades-core/artifacts/@openzeppelin/contracts-v5/proxy/ERC1967/ERC1967Proxy.sol/ERC1967Proxy.json";
+import mockPyth from "@satlayer/contracts/out/MockPyth.sol/MockPyth.json";
 import slayBase from "@satlayer/contracts/out/SLAYBase.sol/SLAYBase.json";
+import slayOracle from "@satlayer/contracts/out/SLAYOracle.sol/SLAYOracle.json";
 import slayRegistry from "@satlayer/contracts/out/SLAYRegistryV2.sol/SLAYRegistryV2.json";
 import slayRewards from "@satlayer/contracts/out/SLAYRewardsV2.sol/SLAYRewardsV2.json";
 import slayRouter from "@satlayer/contracts/out/SLAYRouterV2.sol/SLAYRouterV2.json";
 import slayVaultFactory from "@satlayer/contracts/out/SLAYVaultFactoryV2.sol/SLAYVaultFactoryV2.json";
 import slayVault from "@satlayer/contracts/out/SLAYVaultV2.sol/SLAYVaultV2.json";
-import { Account, encodeFunctionData, getContract, GetContractReturnType } from "viem";
+import { Account, encodeDeployData, encodeFunctionData, getContract, GetContractReturnType } from "viem";
 
-import { StartedAnvilContainer, SuperTestClient } from "./anvil-container";
+import { saltToHex, StartedAnvilContainer, SuperTestClient } from "./anvil-container";
 import erc20Abi from "./MockERC20.sol/MockERC20.json";
 
 export class EVMContracts {
+  public oracle: GetContractReturnType<typeof slayOracle.abi, SuperTestClient> | undefined;
+
+  public mockPyth: GetContractReturnType<typeof mockPyth.abi, SuperTestClient> | undefined;
+
   private constructor(
     public readonly started: StartedAnvilContainer,
     public readonly registry: GetContractReturnType<typeof slayRegistry.abi, SuperTestClient>,
@@ -268,5 +274,68 @@ export class EVMContracts {
       abi: slayVault.abi,
       client: this.started.getClient(),
     });
+  }
+
+  /// Initializes a SLAYOracle
+  async initOracle() {
+    const owner = this.started.getAccount().address;
+
+    // deploy mock Pyth contract
+    const mockPythContract = await this.started.deployContract({
+      abi: mockPyth.abi,
+      bytecode: mockPyth.bytecode.object as `0x${string}`,
+      salt: "MockPyth",
+      constructorArgs: [60, 1],
+    });
+
+    this.mockPyth = getContract({
+      address: mockPythContract.contractAddress,
+      abi: mockPyth.abi,
+      client: this.started.getClient(),
+    });
+
+    // deploy SLAYBase impl contract
+    const baseContractAddress = StartedAnvilContainer.getCreate2Address({
+      deployBytecode: encodeDeployData({
+        abi: slayBase.abi,
+        args: [],
+        bytecode: slayBase.bytecode.object as `0x${string}`,
+      }),
+      saltHex: saltToHex("SLAYBase"),
+    });
+
+    // deploy oracleProxy contract with ERC1967Proxy and SLAYBase as the impl contract
+    const oracleProxy = await this.started.deployContract({
+      abi: ERC1967Proxy.abi,
+      bytecode: ERC1967Proxy.bytecode as `0x${string}`,
+      salt: "oracleProxy",
+      constructorArgs: [
+        baseContractAddress,
+        encodeFunctionData({
+          abi: slayBase.abi,
+          functionName: "initialize",
+          args: [owner],
+        }),
+      ],
+    });
+
+    // deploy SLAYOracle impl contract
+    const oracleImpl = await this.started.deployContract({
+      abi: slayOracle.abi,
+      bytecode: slayOracle.bytecode.object as `0x${string}`,
+      salt: "SLAYOracle",
+      constructorArgs: [mockPythContract.contractAddress, this.router.address],
+    });
+
+    // get oracleProxy contract instance ( cannot use oracleProxy contract because it is the instance of ERC1967Proxy )
+    const oracleProxyContract = getContract({
+      address: oracleProxy.contractAddress,
+      abi: slayBase.abi,
+      client: this.started.getClient(),
+    });
+    // upgrade oracleProxy to use SLAYOracle impl contract
+    await oracleProxyContract.write.upgradeToAndCall([oracleImpl.contractAddress, ""]);
+
+    this.oracle = oracleProxyContract;
   }
 }

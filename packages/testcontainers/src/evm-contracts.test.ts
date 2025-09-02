@@ -134,3 +134,8 @@ test("should init ERC20", async () => {
   const finalRandomBalance = await erc20.contract.read.balanceOf([random.address]);
   expect(finalRandomBalance).toStrictEqual(BigInt(1e8 - 2e6));
 });
+
+test("should deploy oracle", async () => {
+  await evmContracts.initOracle();
+  expect(evmContracts.oracle.address).toBeDefined();
+});

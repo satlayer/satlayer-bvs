@@ -9,7 +9,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ISLAYOracle} from "./interface/ISLAYOracle.sol";
 import {SLAYBase} from "../SLAYBase.sol";
 import {ISLAYVaultV2} from "../interface/ISLAYVaultV2.sol";
-import {ISLAYRouterV2} from "../SLAYRouterV2.sol";
+import {ISLAYRouterV2} from "../interface/ISLAYRouterV2.sol";
 
 /**
  * @title SLAYOracle
@@ -20,25 +20,18 @@ import {ISLAYRouterV2} from "../SLAYRouterV2.sol";
 contract SLAYOracle is SLAYBase, ISLAYOracle {
     ISLAYRouterV2 internal _slayRouter;
 
-    IPyth internal pyth;
+    IPyth internal _pyth;
 
     uint256 public constant MAX_PRICE_AGE = 15 minutes;
 
     /// @dev stores the mapping of assets to their corresponding Pyth price IDs
     mapping(address asset => bytes32 priceId) internal _assetToPriceId;
 
-    constructor() {
-        _disableInitializers();
-    }
-
-    /**
-     * @dev This fn is called during the upgrade from SLAYBase to SLAYOracle.
-     * @param pyth_ The address of the Pyth contract.
-     * @param slayRouter_ The address of the SLAYRouterV2 contract.
-     */
-    function initialize2(address pyth_, address slayRouter_) external reinitializer(2) {
-        pyth = IPyth(pyth_);
+    constructor(address pyth_, address slayRouter_) {
+        _pyth = IPyth(pyth_);
         _slayRouter = ISLAYRouterV2(slayRouter_);
+
+        _disableInitializers();
     }
 
     /// @inheritdoc ISLAYOracle
@@ -54,7 +47,7 @@ contract SLAYOracle is SLAYBase, ISLAYOracle {
 
     /// @inheritdoc ISLAYOracle
     function getPrice(bytes32 priceId) public view override returns (uint256) {
-        PythStructs.Price memory price = pyth.getPriceNoOlderThan(priceId, MAX_PRICE_AGE);
+        PythStructs.Price memory price = _pyth.getPriceNoOlderThan(priceId, MAX_PRICE_AGE);
 
         // convert price to uint256 and minor units (18 decimals)
         uint256 basePrice = PythUtils.convertToUint(price.price, price.expo, 18);
