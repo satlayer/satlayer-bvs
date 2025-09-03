@@ -4,8 +4,7 @@ pragma solidity ^0.8.24;
 import {Test, console} from "forge-std/Test.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 
-import "./MockERC20.sol";
-
+import {MockERC20} from "@satlayer/contracts/test/MockERC20.sol";
 import "../src/ConversionGateway.sol";
 
 contract MockWrapper1to1 is IWrapper1to1 {

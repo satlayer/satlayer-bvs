@@ -8,7 +8,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
-import "./MockERC20.sol";
+import {MockERC20} from "@satlayer/contracts/test/MockERC20.sol";
 
 import "../src/Connector.sol";
 

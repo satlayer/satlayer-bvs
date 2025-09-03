@@ -8,12 +8,12 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
-import {TestSuiteV2} from "./TestSuiteV2.sol";
+import {TestSuiteV2} from "@satlayer/contracts/test/TestSuiteV2.sol";
+import {MockERC20} from "@satlayer/contracts/test/MockERC20.sol";
 
 import "../src/PositionLocker.sol"; // PL
 import "../src/ConversionGateway.sol"; // CG
 import "../src/Connector.sol"; // ExternalVaultConnector
-import "./MockERC20.sol";
 
 contract Simple4626 is ERC20, ERC4626 {
     uint8 private immutable _dec;
