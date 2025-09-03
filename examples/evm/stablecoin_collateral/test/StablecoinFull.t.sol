@@ -10,17 +10,24 @@ import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import {TestSuiteV2} from "./TestSuiteV2.sol";
 
-import "../src/PositionLocker.sol";           // PL
-import "../src/ConversionGateway.sol";        // CG 
-import "../src/Connector.sol";                // ExternalStableVaultConnector
+import "../src/PositionLocker.sol"; // PL
+import "../src/ConversionGateway.sol"; // CG
+import "../src/Connector.sol"; // ExternalVaultConnector
 import "./MockERC20.sol";
-
 
 contract Simple4626 is ERC20, ERC4626 {
     uint8 private immutable _dec;
+
     constructor(ERC20 underlying, string memory name_, string memory symbol_)
-        ERC20(name_, symbol_) ERC4626(underlying) { _dec = underlying.decimals(); }
-    function decimals() public view override(ERC20, ERC4626) returns (uint8) { return _dec; }
+        ERC20(name_, symbol_)
+        ERC4626(underlying)
+    {
+        _dec = underlying.decimals();
+    }
+
+    function decimals() public view override(ERC20, ERC4626) returns (uint8) {
+        return _dec;
+    }
 }
 
 contract MockWrapper1to1 is IWrapper1to1 {
@@ -28,9 +35,18 @@ contract MockWrapper1to1 is IWrapper1to1 {
     MockERC20 public immutable _wrapped;
     uint256 public unwrapNextOut; // for negative tests; unused here
 
-    constructor(MockERC20 base_, MockERC20 wrapped_) { _base = base_; _wrapped = wrapped_; }
-    function base() external view override returns (address) { return address(_base); }
-    function wrapped() external view override returns (address) { return address(_wrapped); }
+    constructor(MockERC20 base_, MockERC20 wrapped_) {
+        _base = base_;
+        _wrapped = wrapped_;
+    }
+
+    function base() external view override returns (address) {
+        return address(_base);
+    }
+
+    function wrapped() external view override returns (address) {
+        return address(_wrapped);
+    }
 
     // Pull base and mint wrapped 1:1 to caller
     function wrap(uint256 amount) external override returns (uint256 out) {
@@ -40,6 +56,7 @@ contract MockWrapper1to1 is IWrapper1to1 {
         return amount;
     }
     // Pull wrapped and mint base 1:1 to caller
+
     function unwrap(uint256 amount) external override returns (uint256 out) {
         require(amount > 0, "unwrap/zero");
         _wrapped.transferFrom(msg.sender, address(this), amount);
@@ -48,45 +65,43 @@ contract MockWrapper1to1 is IWrapper1to1 {
     }
 }
 
-
 contract StablecoinFullIntegrationTest is Test, TestSuiteV2 {
     // actors
-    address public gov    = makeAddr("gov");      // governance
-    address public operator = makeAddr("operator");   // keeper (also operator in this test)
-    address public alice  = makeAddr("alice");
+    address public gov = makeAddr("gov"); // governance
+    address public operator = makeAddr("operator"); // keeper (also operator in this test)
+    address public alice = makeAddr("alice");
 
     // base & wrapped
-    MockERC20 public BASE;     // e.g., WBTC (8 decimals)
-    MockERC20 public WRAPPED;  // 1:1 wrapper token (8 decimals)
+    MockERC20 public BASE; // e.g., WBTC (8 decimals)
+    MockERC20 public WRAPPED; // 1:1 wrapper token (8 decimals)
 
     // SatLayer vault + PL + CG
-    SLAYVaultV2     public vault;
-    PositionLocker  public pl;
+    SLAYVaultV2 public vault;
+    PositionLocker public pl;
     ConversionGateway public cg;
 
-
-    MockWrapper1to1                   public wrapper;
-    Simple4626                        public extVaultWrapped; // external 4626 vault whose asset = WRAPPED
-    Simple4626                        public extVaultBase;    // external 4626 vault whose asset = BASE 
-    ExternalStableVaultConnector      public connWrapped;     // connector targeting extVaultWrapped
-    ExternalStableVaultConnector      public connBase;        // connector targeting extVaultBase
+    MockWrapper1to1 public wrapper;
+    Simple4626 public extVaultWrapped; // external 4626 vault whose asset = WRAPPED
+    Simple4626 public extVaultBase; // external 4626 vault whose asset = BASE
+    ExternalVaultConnector public connWrapped; // connector targeting extVaultWrapped
+    ExternalVaultConnector public connBase; // connector targeting extVaultBase
 
     // strategy ids
-    bytes32 constant STRAT_WRAP  = keccak256("ROUTE_WRAP");
+    bytes32 constant STRAT_WRAP = keccak256("ROUTE_WRAP");
     bytes32 constant STRAT_IDENT = keccak256("ROUTE_IDENTITY");
-    StrategyId constant STRAT_WRAP_ID  = StrategyId.wrap(STRAT_WRAP);
+    StrategyId constant STRAT_WRAP_ID = StrategyId.wrap(STRAT_WRAP);
     StrategyId constant STRAT_IDENT_ID = StrategyId.wrap(STRAT_IDENT);
 
     function setUp() public override {
         /* --- tokens --- */
-        BASE    = new MockERC20("Wrapped BTC", "WBTC", 8);
+        BASE = new MockERC20("Wrapped BTC", "WBTC", 8);
         WRAPPED = new MockERC20("wWBTC", "wWBTC", 8);
         TestSuiteV2.setUp();
-        // Register an operator 
+        // Register an operator
         vm.prank(operator);
         registry.registerAsOperator("https://example.com", "Operator Y");
 
-        // Create vault 
+        // Create vault
         vm.prank(operator);
         vault = vaultFactory.create(BASE);
 
@@ -103,15 +118,14 @@ contract StablecoinFullIntegrationTest is Test, TestSuiteV2 {
         /* --- CG with base and PL wired --- */
         cg = new ConversionGateway(gov, operator, operator, address(pl), IERC20(address(BASE)));
 
-
         /* --- External infra --- */
-        wrapper        = new MockWrapper1to1(BASE, WRAPPED);
+        wrapper = new MockWrapper1to1(BASE, WRAPPED);
         extVaultWrapped = new Simple4626(ERC20(address(WRAPPED)), "ext vWBTC", "ext-vWBTC");
-        extVaultBase    = new Simple4626(ERC20(address(BASE)),    "ext vBASE", "ext-vBASE");
+        extVaultBase = new Simple4626(ERC20(address(BASE)), "ext vBASE", "ext-vBASE");
 
         // connectors
-        connWrapped = new ExternalStableVaultConnector(gov, address(cg), IERC4626(address(extVaultWrapped)));
-        connBase    = new ExternalStableVaultConnector(gov, address(cg), IERC4626(address(extVaultBase)));
+        connWrapped = new ExternalVaultConnector(gov, address(cg), IERC4626(address(extVaultWrapped)));
+        connBase = new ExternalVaultConnector(gov, address(cg), IERC4626(address(extVaultBase)));
 
         /* --- Strategy config in CG --- */
         // wrap 1:1 then deposit to ext 4626 (wrapped)
@@ -122,10 +136,9 @@ contract StablecoinFullIntegrationTest is Test, TestSuiteV2 {
         vm.prank(gov);
         cg.setStrategyWrap(STRAT_IDENT, address(0), address(connBase));
 
-
         //Modifying caps to allow tests
         vm.prank(operator);
-        pl.setCaps(5_000, 5_000 , 5_000, 1 days);
+        pl.setCaps(5_000, 5_000, 5_000, 1 days);
 
         /* --- Wire CG into PL and unpause PL --- */
         vm.prank(operator);
@@ -153,7 +166,10 @@ contract StablecoinFullIntegrationTest is Test, TestSuiteV2 {
     /* =========================================================
      *  Helper: user deposits BASE into SatLayer vault, then opt-in
      * ========================================================= */
-    function _userDepositAndOptIn(address user, uint256 baseAssets, StrategyId strat) internal returns (uint256 shares) {
+    function _userDepositAndOptIn(address user, uint256 baseAssets, StrategyId strat)
+        internal
+        returns (uint256 shares)
+    {
         // fund user
         BASE.mint(user, baseAssets);
 
@@ -189,7 +205,7 @@ contract StablecoinFullIntegrationTest is Test, TestSuiteV2 {
 
         // Claim: vault pays underlaying to CG; PL books debt; CG wraps & deposits to connector (per-user)
         vm.prank(operator);
-        uint256 assetsOut = pl.claimTo(reqId); 
+        uint256 assetsOut = pl.claimTo(reqId);
         assertGt(assetsOut, 0, "claimed base > 0");
 
         // connector shows user entitlement in wrapped units (1:1)
@@ -207,8 +223,7 @@ contract StablecoinFullIntegrationTest is Test, TestSuiteV2 {
 
         // User can now opt out entirely from the strategy
         StrategyId[] memory arr = new StrategyId[](1);
-        arr[0] =  STRAT_WRAP_ID;
-   
+        arr[0] = STRAT_WRAP_ID;
 
         vm.prank(alice);
         pl.optOutAll(arr);
@@ -258,7 +273,7 @@ contract StablecoinFullIntegrationTest is Test, TestSuiteV2 {
 
         // User can now opt out entirely from the strategy
         StrategyId[] memory arr = new StrategyId[](1);
-        arr[0] =  STRAT_IDENT_ID;
+        arr[0] = STRAT_IDENT_ID;
         vm.prank(alice);
         pl.optOutAll(arr);
     }

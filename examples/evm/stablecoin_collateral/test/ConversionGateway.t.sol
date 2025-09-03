@@ -4,10 +4,9 @@ pragma solidity ^0.8.24;
 import {Test, console} from "forge-std/Test.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 
-import "./MockERC20.sol"; 
+import "./MockERC20.sol";
 
 import "../src/ConversionGateway.sol";
-
 
 contract MockWrapper1to1 is IWrapper1to1 {
     MockERC20 public immutable _base;
@@ -20,10 +19,17 @@ contract MockWrapper1to1 is IWrapper1to1 {
         _wrapped = wrapped_;
     }
 
-    function base() external view override returns (address) { return address(_base); }
-    function wrapped() external view override returns (address) { return address(_wrapped); }
+    function base() external view override returns (address) {
+        return address(_base);
+    }
 
-    function setUnwrapNextOut(uint256 v) external { unwrapNextOut = v; }
+    function wrapped() external view override returns (address) {
+        return address(_wrapped);
+    }
+
+    function setUnwrapNextOut(uint256 v) external {
+        unwrapNextOut = v;
+    }
 
     // Pull base from caller and mint wrapped 1:1 to caller
     function wrap(uint256 amount) external override returns (uint256 out) {
@@ -44,13 +50,17 @@ contract MockWrapper1to1 is IWrapper1to1 {
     }
 }
 
-contract MockExternalStableVaultConnector is IExternalStableVaultConnector {
+contract MockExternalVaultConnector is IExternalVaultConnector {
     address public immutable _asset; // token this connector accepts / returns
     mapping(address => uint256) public ent; // per-user entitlement in asset units
 
-    constructor(address asset_) { _asset = asset_; }
+    constructor(address asset_) {
+        _asset = asset_;
+    }
 
-    function asset() external view override returns (address) { return _asset; }
+    function asset() external view override returns (address) {
+        return _asset;
+    }
 
     // Pull token from caller (CG) and credit user's entitlement 1:1
     function depositFor(address user, uint256 assets) external override returns (uint256 sharesOut) {
@@ -84,49 +94,48 @@ contract MockPL {
     uint256 public lastAssets;
     uint256 public called;
 
-    function repayAndRestake(address user, uint256 assets,bytes32 strategy) external  {
+    function repayAndRestake(address user, uint256 assets, bytes32 strategy) external {
         lastUser = user;
         lastAssets = assets;
         called++;
     }
 }
 
-
 contract ConversionGatewayTest is Test {
     // actors
-    address public gov    = makeAddr("gov");
+    address public gov = makeAddr("gov");
     address public keeper = makeAddr("keeper");
     address public pauser = makeAddr("pauser");
-    MockPL  public pl; // gets ROLE_PL
+    MockPL public pl; // gets ROLE_PL
 
     // tokens
-    MockERC20 public BASE;     // e.g. WBTC 
-    MockERC20 public WRAPPED;  // 1:1 wrapper token 
-    MockERC20 public OTHER;    // random ERC20 to test mismatches
+    MockERC20 public BASE; // e.g. WBTC
+    MockERC20 public WRAPPED; // 1:1 wrapper token
+    MockERC20 public OTHER; // random ERC20 to test mismatches
 
     // system under test
     ConversionGateway public cg;
 
     // mocks
     MockWrapper1to1 public wrapper;
-    MockExternalStableVaultConnector public connWrapped; // expects WRAPPED
-    MockExternalStableVaultConnector public connBase;    // expects BASE
+    MockExternalVaultConnector public connWrapped; // expects WRAPPED
+    MockExternalVaultConnector public connBase; // expects BASE
 
-    bytes32 constant STRAT_WRAP   = keccak256("WRAP");
-    bytes32 constant STRAT_IDENT  = keccak256("IDENTITY");
+    bytes32 constant STRAT_WRAP = keccak256("WRAP");
+    bytes32 constant STRAT_IDENT = keccak256("IDENTITY");
 
     function setUp() public {
-        BASE    = new MockERC20("Wrapped BTC", "WBTC", 8);
+        BASE = new MockERC20("Wrapped BTC", "WBTC", 8);
         WRAPPED = new MockERC20("wWBTC", "wWBTC", 8);
-        OTHER   = new MockERC20("OTHER", "OTH", 18);
+        OTHER = new MockERC20("OTHER", "OTH", 18);
 
         pl = new MockPL();
 
         cg = new ConversionGateway(gov, keeper, pauser, address(pl), IERC20(address(BASE)));
 
-        wrapper    = new MockWrapper1to1(BASE, WRAPPED);
-        connWrapped = new MockExternalStableVaultConnector(address(WRAPPED));
-        connBase    = new MockExternalStableVaultConnector(address(BASE));
+        wrapper = new MockWrapper1to1(BASE, WRAPPED);
+        connWrapped = new MockExternalVaultConnector(address(WRAPPED));
+        connBase = new MockExternalVaultConnector(address(BASE));
 
         // set a wrapper strategy (wrap base -> wrapped -> deposit)
         vm.prank(gov);
@@ -161,18 +170,17 @@ contract ConversionGatewayTest is Test {
         cg.setStrategyWrap(keccak256("Y"), address(badWrap), address(connWrapped));
 
         // wrapper set but connector asset != wrapper.wrapped
-        MockExternalStableVaultConnector badConn = new MockExternalStableVaultConnector(address(BASE));
+        MockExternalVaultConnector badConn = new MockExternalVaultConnector(address(BASE));
         vm.prank(gov);
         vm.expectRevert(bytes("CONNECTOR_ASSET_MISMATCH"));
         cg.setStrategyWrap(keccak256("Z"), address(wrapper), address(badConn));
 
         // identity path requires connector asset == base
-        MockExternalStableVaultConnector connNeedsBase = new MockExternalStableVaultConnector(address(WRAPPED));
+        MockExternalVaultConnector connNeedsBase = new MockExternalVaultConnector(address(WRAPPED));
         vm.prank(gov);
         vm.expectRevert(bytes("CONNECTOR_NEEDS_BASE_ASSET"));
         cg.setStrategyWrap(keccak256("I"), address(0), address(connNeedsBase));
     }
-
 
     function test_onClaim_wrap_happy_path() public {
         address user = makeAddr("alice");
@@ -185,7 +193,7 @@ contract ConversionGatewayTest is Test {
         vm.prank(address(pl));
         cg.onClaimWithStrategy(user, baseIn, STRAT_WRAP);
 
-        // connector credited ENT 
+        // connector credited ENT
         assertEq(connWrapped.assetsOf(user), baseIn, "user entitlement in connector");
         // CG ended with zero base & zero wrapped (wrapped was pulled by connector)
         assertEq(BASE.balanceOf(address(cg)), 0);
@@ -209,11 +217,13 @@ contract ConversionGatewayTest is Test {
         address user = makeAddr("eve");
 
         // only PL
-         vm.expectRevert(abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        address(this),         // msg.sender here is the test contract
-        cg.ROLE_PL()           // role required by onlyRole(ROLE_PL)
-        ));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(this), // msg.sender here is the test contract
+                cg.ROLE_PL() // role required by onlyRole(ROLE_PL)
+            )
+        );
 
         cg.onClaimWithStrategy(user, 1, STRAT_WRAP);
 
@@ -227,7 +237,6 @@ contract ConversionGatewayTest is Test {
         vm.expectRevert(bytes("BAD_ARGS"));
         cg.onClaimWithStrategy(user, 0, STRAT_WRAP);
     }
-
 
     function _seedWrappedPosition(address user, uint256 baseIn) internal {
         // fund CG with base and do the onClaim (wrap) so the connector holds entitlement
@@ -302,7 +311,6 @@ contract ConversionGatewayTest is Test {
         vm.expectRevert(bytes("UNWRAP_SLIPPAGE"));
         cg.unwindWrapAny(user, STRAT_WRAP, 50e8);
     }
-
 
     function test_unwindWrapAny_identity() public {
         address user = makeAddr("erin");

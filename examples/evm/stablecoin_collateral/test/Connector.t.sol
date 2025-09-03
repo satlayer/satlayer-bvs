@@ -8,10 +8,9 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
-import "./MockERC20.sol"; 
+import "./MockERC20.sol";
 
 import "../src/Connector.sol";
-
 
 contract Simple4626 is ERC20, ERC4626 {
     uint8 private immutable _dec;
@@ -28,42 +27,38 @@ contract Simple4626 is ERC20, ERC4626 {
     }
 }
 
-
 contract ConnectorTest is Test {
     // roles
-    address public gov   = makeAddr("gov");
-    address public cg    = makeAddr("cg");
+    address public gov = makeAddr("gov");
+    address public cg = makeAddr("cg");
     address public rando = makeAddr("rando");
 
     // tokens
     MockERC20 public USDC; // 6 decimals
 
-
     Simple4626 public vault;
-    ExternalStableVaultConnector public connector;
+    ExternalVaultConnector public connector;
 
     function setUp() public {
         USDC = new MockERC20("USD Coin", "USDC", 6);
         vault = new Simple4626(ERC20(address(USDC)), "Vault Share", "vSHARE");
-        connector = new ExternalStableVaultConnector(gov, cg, IERC4626(address(vault)));
+        connector = new ExternalVaultConnector(gov, cg, IERC4626(address(vault)));
 
         vm.label(address(USDC), "USDC");
         vm.label(address(vault), "OZ4626");
         vm.label(address(connector), "Connector");
     }
 
-
     function test_constructor_sets_asset_and_roles() public {
-        assertEq(address(connector.stable()), address(USDC), "stable cache");
+        assertEq(address(connector.asset()), address(USDC), "stable cache");
         assertEq(address(connector.targetVault()), address(vault), "target vault");
         assertTrue(connector.hasRole(connector.ROLE_GOV(), gov));
         assertTrue(connector.hasRole(connector.ROLE_CG(), cg));
     }
 
-
     function test_depositFor_happy_path() public {
         address user = makeAddr("alice");
-        uint256 amt = 1_000_000_000; 
+        uint256 amt = 1_000_000_000;
 
         USDC.mint(cg, amt);
 
@@ -71,7 +66,7 @@ contract ConnectorTest is Test {
         USDC.approve(address(connector), type(uint256).max);
 
         vm.expectEmit(true, true, false, true, address(connector));
-        emit ExternalStableVaultConnector.Deposited(user, amt, amt);
+        emit ExternalVaultConnector.Deposited(user, amt, amt);
 
         uint256 sharesOut = connector.depositFor(user, amt);
         vm.stopPrank();
@@ -95,9 +90,9 @@ contract ConnectorTest is Test {
     }
 
     function test_depositFor_onlyCG() public {
-        vm.expectRevert(abi.encodeWithSelector(
-            IAccessControl.AccessControlUnauthorizedAccount.selector, rando, connector.ROLE_CG()
-        ));
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, rando, connector.ROLE_CG())
+        );
         vm.prank(rando);
         connector.depositFor(rando, 1);
     }
@@ -112,7 +107,6 @@ contract ConnectorTest is Test {
         connector.depositFor(makeAddr("u"), 0);
     }
 
-
     function _seed(address user, uint256 amt) internal {
         USDC.mint(cg, amt);
         vm.startPrank(cg);
@@ -123,11 +117,11 @@ contract ConnectorTest is Test {
 
     function test_redeemFor_happy_with_yield_and_clip() public {
         address user = makeAddr("bob");
-        uint256 first = 1_000_000_000; 
+        uint256 first = 1_000_000_000;
         _seed(user, first);
 
         // Simulate yield: donate 100 USDC directly to the vault
-        USDC.mint(address(vault), 100_000_000); 
+        USDC.mint(address(vault), 100_000_000);
 
         // Read entitlement from the connector (may be 1 wei under )
         uint256 entitlement = connector.assetsOf(user);
@@ -136,11 +130,11 @@ contract ConnectorTest is Test {
 
         // Ask to redeem more than entitlement -> clip to entitlement
         uint256 request = entitlement + 123; // anything >= entitlement
-        uint256 minOut  = entitlement - 1;   // low enough to pass
+        uint256 minOut = entitlement - 1; // low enough to pass
 
         // Expect the event with the runtime  entitlement
         vm.expectEmit(true, true, false, true, address(connector));
-        emit ExternalStableVaultConnector.Redeemed(user, entitlement, first);
+        emit ExternalVaultConnector.Redeemed(user, entitlement, first);
 
         vm.prank(cg);
         (uint256 assetsOut, uint256 burned) = connector.redeemFor(user, request, minOut);
@@ -154,9 +148,9 @@ contract ConnectorTest is Test {
 
     function test_redeemFor_slippage_reverts() public {
         address user = makeAddr("carol");
-        _seed(user, 500_000_000); 
+        _seed(user, 500_000_000);
 
-        // donate 50 USDC -> entitlement = around 550 
+        // donate 50 USDC -> entitlement = around 550
         USDC.mint(address(vault), 50_000_000);
 
         uint256 entitlement = connector.assetsOf(user);
@@ -168,14 +162,13 @@ contract ConnectorTest is Test {
         connector.redeemFor(user, entitlement, entitlement + 1);
     }
 
-
     function test_redeemFor_badArgs_and_noBalance() public {
         address user = makeAddr("dave");
 
         // only CG
-        vm.expectRevert(abi.encodeWithSelector(
-            IAccessControl.AccessControlUnauthorizedAccount.selector, rando, connector.ROLE_CG()
-        ));
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, rando, connector.ROLE_CG())
+        );
         vm.prank(rando);
         connector.redeemFor(user, 1, 0);
 
@@ -194,13 +187,12 @@ contract ConnectorTest is Test {
         connector.redeemFor(user, 1, 0);
     }
 
-
     function test_views_post_multiple_deposits_and_yield() public {
         address u1 = makeAddr("u1");
         address u2 = makeAddr("u2");
 
-        _seed(u1, 300_000_000); 
-        _seed(u2, 700_000_000); 
+        _seed(u1, 300_000_000);
+        _seed(u2, 700_000_000);
 
         assertEq(ERC20(address(vault)).balanceOf(address(connector)), 1_000_000_000);
         assertEq(connector.totalUserShares(), 1_000_000_000);
@@ -213,15 +205,9 @@ contract ConnectorTest is Test {
         assertApproxEqAbs(connector.assetsOf(u2), 770_000_000, 1, "u2 entitlement");
 
         // total pooled equals vault underlying balance
-        assertApproxEqAbs(
-            connector.totalPooledAssets(),
-            USDC.balanceOf(address(vault)),
-            1,
-            "total pooled rounding"
-        );
+        assertApproxEqAbs(connector.totalPooledAssets(), USDC.balanceOf(address(vault)), 1, "total pooled rounding");
 
         // connectorShares view mirrors vault.share balance
         assertEq(connector.connectorShares(), ERC20(address(vault)).balanceOf(address(connector)));
     }
-
 }

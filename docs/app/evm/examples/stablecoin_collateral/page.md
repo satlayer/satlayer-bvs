@@ -1,0 +1,1 @@
+/Users/margimenez/Documents/satlayer/github2/satlayer-bvs-stablecoin/examples/evm/stablecoin_collateral/README.md

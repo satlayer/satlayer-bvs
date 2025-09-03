@@ -22,20 +22,17 @@ The Conversion Gateway (CG) is a small router owned by the operator/keeper that,
 
 The Connector attributes per-user shares (not pooled debt) so a user’s entitlement = targetVault.convertToAssets(userShares), automatically including yield.
 
-
 ## User-centric
 
 Users can unwind any amount, anytime. If they unwind all and the CG restakes it, their PL debt goes to zero, so they can opt-out and take back their vault shares.
 
-Yield is tracked automatically by the external ERC-4626 vault’s share price. 
-
+Yield is tracked automatically by the external ERC-4626 vault’s share price.
 
 ## Key Assumptions
 
 - Single operator per vault (as in SatLayer): the vault’s delegated() address is the Operator and also can act as Keeper in PL/CG.
 
 - External venue is an ERC-4626 vault whose asset() is either:
-
   - the same base as SatLayer’s vault asset, or
 
   - a canonical 1:1 wrapper of it (e.g., WBTC via a trusted wrapper/bridge).
@@ -43,6 +40,7 @@ Yield is tracked automatically by the external ERC-4626 vault’s share price.
 - Users interact only with SatLayer Vault + PL (if they want to unwind). The rest is run by the operator/keeper.
 
 ## Core Contracts
+
 ### SatLayer Vault (ERC-4626/7540)
 
 Holds the base asset (e.g., WBTC/LST).
@@ -101,7 +99,7 @@ flowchart LR
 
   subgraph External["External Venue"]
     WRAP[1:1 Wrapper: base↔wrapped]
-    
+
     EXT[External ERC-4626 Vault:asset=base or wrapped]
   end
 
@@ -125,7 +123,7 @@ flowchart LR
 
   %% Exit
   U -- optOutFromStrategy/optOutAll --> PL --> U
-  ```
+```
 
 ### Path
 
@@ -143,11 +141,9 @@ flowchart LR
 
 7. If the user unwinds all, their debtAssets becomes 0, so they can opt-out and withdraw their vault shares.
 
-
 ## Roles & Trust Model
 
 - Operator / Keeper (service): vault.delegated() address.
-
   - Has ROLE_KEEPER in PL & CG.
 
   - Triggers request/claim and unwind.
@@ -156,7 +152,6 @@ flowchart LR
 
 - Users: keep custody of their vault shares inside PL; can unwind any amount on Route A and then opt-out.
 
-
 ## Guardrails & Notes
 
 - Dust threshold in PL: treat tiny debtAssets ≤ dust as 0 for unlockability to avoid “stuck on 1 wei”.
@@ -164,7 +159,6 @@ flowchart LR
 - Buffer in PL’s unlockable keeps a small margin of shares to cover rounding/fees.
 
 - Wrapper must be 1:1; CG enforces out == in or reverts (WRAP_NOT_1_TO_1, UNWRAP_SLIPPAGE).
-
 
 ## Setup
 
@@ -191,7 +185,6 @@ forge build
 forge test -vvv --match-contract StablecoinFullIntegrationTest
 ```
 
-## License
+## Disclaimer
 
 Contracts here are skeletons; audit before mainnet.
-

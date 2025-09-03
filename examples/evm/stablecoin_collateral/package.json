@@ -1,5 +1,5 @@
 {
-  "name": "@satlayer/stablecoin-collateral-example",
+  "name": "@examples/stablecoin-collateral-example",
   "private": false,
   "exports": {
     "./*": "./out/*"
