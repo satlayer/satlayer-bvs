@@ -86,6 +86,47 @@ test("should init vault", async () => {
   expect(stakerBalance).toStrictEqual(BigInt(1e8));
 });
 
+test("should init different vaults for same asset but different operators", async () => {
+  const operator1 = started.generateAccount("operator1");
+  await started.setBalance(operator1.address, BigInt(1e18));
+
+  const operator2 = started.generateAccount("operator2");
+  await started.setBalance(operator2.address, BigInt(1e18));
+
+  // create underlying erc20 token
+  const wbtc = await evmContracts.initERC20({
+    name: "Wrapped Bitcoin",
+    symbol: "WBTC",
+    decimals: 8,
+  });
+
+  // register operators
+  await evmContracts.registry.write.registerAsOperator(["www.operator1.com", "operator1"], {
+    account: operator1,
+  });
+  await evmContracts.registry.write.registerAsOperator(["www.operator2.com", "operator2"], {
+    account: operator2,
+  });
+  await started.mineBlock(1);
+
+  // init vault for operator1
+  const vault1Address = await evmContracts.initVault({
+    operator: operator1,
+    underlyingAsset: wbtc.contractAddress,
+  });
+  expect(vault1Address).toBeDefined();
+
+  // init vault for operator2
+  const vault2Address = await evmContracts.initVault({
+    operator: operator2,
+    underlyingAsset: wbtc.contractAddress,
+  });
+  expect(vault2Address).toBeDefined();
+
+  // assert vaults are different
+  expect(vault1Address).not.toStrictEqual(vault2Address);
+});
+
 test("should init ERC20", async () => {
   const erc20 = await evmContracts.initERC20({
     name: "Wrapped Bitcoin",

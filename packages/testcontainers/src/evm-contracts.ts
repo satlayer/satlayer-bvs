@@ -14,9 +14,9 @@ import { saltToHex, StartedAnvilContainer, SuperTestClient } from "./anvil-conta
 import erc20Abi from "./MockERC20.sol/MockERC20.json";
 
 export class EVMContracts {
-  public oracle: GetContractReturnType<typeof slayOracle.abi, SuperTestClient> | undefined;
+  private oracleContract: GetContractReturnType<typeof slayOracle.abi, SuperTestClient> | undefined;
 
-  public mockPyth: GetContractReturnType<typeof mockPyth.abi, SuperTestClient> | undefined;
+  private mockPythContract: GetContractReturnType<typeof mockPyth.abi, SuperTestClient> | undefined;
 
   private constructor(
     public readonly started: StartedAnvilContainer,
@@ -32,6 +32,20 @@ export class EVMContracts {
 
   get wallet(): Account {
     return this.started.getAccount();
+  }
+
+  get mockPyth(): GetContractReturnType<typeof mockPyth.abi, SuperTestClient> {
+    if (!this.mockPythContract) {
+      throw new Error("MockPyth contract not initialized. run initOracle first");
+    }
+    return this.mockPythContract!;
+  }
+
+  get oracle(): GetContractReturnType<typeof slayOracle.abi, SuperTestClient> {
+    if (!this.oracleContract) {
+      throw new Error("Oracle contract not initialized. run initOracle first");
+    }
+    return this.oracleContract!;
   }
 
   static async bootstrap(started: StartedAnvilContainer): Promise<EVMContracts> {
@@ -262,6 +276,8 @@ export class EVMContracts {
     const createRes = await this.vaultFactory.simulate.create([underlyingAsset], { account: operator.address });
     // commit the transaction to create the vault
     await this.vaultFactory.write.create([underlyingAsset], { account: operator });
+    // mine a block to ensure vault is created and prevents race conditions
+    await this.started.mineBlock(1);
     return createRes.result;
   }
 
@@ -288,7 +304,7 @@ export class EVMContracts {
       constructorArgs: [60, 1],
     });
 
-    this.mockPyth = getContract({
+    this.mockPythContract = getContract({
       address: mockPythContract.contractAddress,
       abi: mockPyth.abi,
       client: this.started.getClient(),
@@ -338,7 +354,7 @@ export class EVMContracts {
 
     await this.started.mineBlock(1);
 
-    this.oracle = getContract({
+    this.oracleContract = getContract({
       address: oracleProxy.contractAddress,
       abi: slayOracle.abi,
       client: this.started.getClient(),
@@ -373,11 +389,11 @@ export class EVMContracts {
     expo: number; // minor units decimals (e.g. -8 for 8 decimals)
     timestamp: bigint; // publish timestamp
   }): Promise<void> {
-    if (!this.mockPyth) {
+    if (!this.mockPythContract) {
       throw new Error("MockPyth contract not initialized. run initOracle first");
     }
 
-    const updateData = await this.mockPyth.read.createPriceFeedUpdateData([
+    const updateData = await this.mockPythContract.read.createPriceFeedUpdateData([
       priceId,
       price,
       conf,
@@ -389,10 +405,10 @@ export class EVMContracts {
     ]);
 
     // get update fee ( args updateData is expected in array of bytes, hence the double array )
-    const updateFee = await this.mockPyth.read.getUpdateFee([[updateData]]);
+    const updateFee = await this.mockPythContract.read.getUpdateFee([[updateData]]);
 
     // update price feeds
-    await this.mockPyth.write.updatePriceFeeds([[updateData]], { value: updateFee });
+    await this.mockPythContract.write.updatePriceFeeds([[updateData]], { value: updateFee });
 
     await this.started.mineBlock(1);
   }
