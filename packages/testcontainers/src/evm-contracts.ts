@@ -38,14 +38,14 @@ export class EVMContracts {
     if (!this.mockPythContract) {
       throw new Error("MockPyth contract not initialized. run initOracle first");
     }
-    return this.mockPythContract!;
+    return this.mockPythContract;
   }
 
   get oracle(): GetContractReturnType<typeof slayOracle.abi, SuperTestClient> {
     if (!this.oracleContract) {
       throw new Error("Oracle contract not initialized. run initOracle first");
     }
-    return this.oracleContract!;
+    return this.oracleContract;
   }
 
   static async bootstrap(started: StartedAnvilContainer): Promise<EVMContracts> {
