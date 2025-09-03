@@ -6,7 +6,6 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {SLAYVaultV2} from "@satlayer/contracts/SLAYVaultV2.sol";
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-//import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 
