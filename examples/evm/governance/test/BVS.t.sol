@@ -1,12 +1,12 @@
 pragma solidity ^0.8.20;
 
 import {Test, console} from "forge-std/Test.sol";
-import {TestSuiteV2} from "./TestSuite.t.sol";
+import {TestSuiteV2} from "@satlayer/contracts/test/TestSuiteV2.sol";
 import {BVS} from "../src/BVS.sol";
-import {ISLAYRouterSlashingV2} from "@satlayer/contracts/interface/ISLAYRouterSlashingV2.sol";
-import {ISLAYRegistryV2} from "@satlayer/contracts/interface/ISLAYRegistryV2.sol";
-import {SLAYRegistryV2} from "@satlayer/contracts/SLAYRegistryV2.sol";
-import {RelationshipV2} from "@satlayer/contracts/RelationshipV2.sol";
+import {ISLAYRouterSlashingV2} from "@satlayer/contracts/src/interface/ISLAYRouterSlashingV2.sol";
+import {ISLAYRegistryV2} from "@satlayer/contracts/src/interface/ISLAYRegistryV2.sol";
+import {SLAYRegistryV2} from "@satlayer/contracts/src/SLAYRegistryV2.sol";
+import {RelationshipV2} from "@satlayer/contracts/src/RelationshipV2.sol";
 
 contract BVSTest is Test, TestSuiteV2 {
     BVS public service;

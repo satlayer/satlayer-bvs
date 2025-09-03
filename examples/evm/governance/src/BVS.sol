@@ -1,8 +1,8 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {SLAYRegistryV2} from "@satlayer/contracts/SLAYRegistryV2.sol";
-import {ISLAYRegistryV2} from "@satlayer/contracts/interface/ISLAYRegistryV2.sol";
+import {SLAYRegistryV2} from "@satlayer/contracts/src/SLAYRegistryV2.sol";
+import {ISLAYRegistryV2} from "@satlayer/contracts/src/interface/ISLAYRegistryV2.sol";
 
 /**
  * @title BVS
