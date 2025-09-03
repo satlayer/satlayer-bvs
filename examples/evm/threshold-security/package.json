@@ -1,0 +1,22 @@
+{
+  "name": "threshold-security",
+  "version": "0.0.0",
+  "scripts": {
+    "build": "forge build",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.4.0",
+    "@openzeppelin/contracts-upgradeable": "^5.4.0",
+    "@openzeppelin/foundry-upgrades": "^0.4.0",
+    "@satlayer/contracts": "workspace:*",
+    "forge-std": "https://github.com/foundry-rs/forge-std/tarball/v1.9.6",
+    "viem": "2.33.1"
+  },
+  "devDependencies": {
+    "@satlayer/testcontainers": "workspace:*",
+    "@types/node": "^20",
+    "typescript": "latest",
+    "vitest": "^3.1.4"
+  }
+}
