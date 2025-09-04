@@ -420,7 +420,7 @@ contract PositionLocker is AccessControl, ReentrancyGuard, Pausable {
         if (debt <= dustThreshold) debt = 0;
         if (debt == 0) return S.allocatedShares;
 
-        //Cover in case rounding/fee
+        //Cover in case rounding/fees
         uint256 encShares = vault.convertToShares(debt);
         encShares = encShares + (encShares * bufferBps) / 10_000;
         return S.allocatedShares > encShares ? (S.allocatedShares - encShares) : 0;

@@ -60,7 +60,7 @@ contract PositionLockerTest is Test, TestSuiteV2 {
         vm.prank(owner);
         router.setVaultWhitelist(address(vault), true);
 
-        // Dploy PL (governance = operator)
+        // Deploy PL (governance = operator)
         pl = new PositionLocker(vault);
 
         // Conversion gateway
@@ -69,7 +69,7 @@ contract PositionLockerTest is Test, TestSuiteV2 {
         // Wire CG into PL and grant ROLE_CG
         vm.prank(operator);
         pl.setConversionGateway(address(cg));
-        //Modifying caps to allow seemless operation
+        //Modifying caps to allow seamless operation
         vm.prank(operator);
         pl.setCaps(5_000, 5_000, 5_000, 1 days);
 
@@ -207,7 +207,6 @@ contract PositionLockerTest is Test, TestSuiteV2 {
         StrategyId[] memory arr = new StrategyId[](1);
         arr[0] = STRAT_A;
 
-        console.log("paso array");
 
         vm.prank(alice);
         vm.expectRevert(bytes("OUTSTANDING_DEBT"));
