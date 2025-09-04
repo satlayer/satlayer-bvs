@@ -1,6 +1,5 @@
 {
-  "name": "threshold-security",
-  "version": "0.0.0",
+  "name": "@examples/threshold-security",
   "scripts": {
     "build": "forge build",
     "test": "vitest run"
