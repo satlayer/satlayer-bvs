@@ -1,9 +1,9 @@
 import { StartedAnvilContainer, SuperTestClient } from "@satlayer/testcontainers";
-import { Account, getContract, GetContractReturnType } from "viem";
+import { Account, getContract, GetContractReturnType, WatchContractEventReturnType } from "viem";
 import { abi } from "./out/BVS.sol/BVS.json";
 
 export class OperatorNode {
-  private unwatch: any;
+  private unwatch: WatchContractEventReturnType | undefined;
 
   private bvsContract: GetContractReturnType<typeof abi, SuperTestClient, `0x${string}`>;
 
@@ -30,10 +30,8 @@ export class OperatorNode {
       address: this.bvsAddress,
       abi: abi,
       eventName: "Requested",
-      onLogs: (logs) => {
-        logs.forEach(async (log) => {
-          await this.respondToRequest(log.args.requestId, log.args.input);
-        });
+      onLogs: async (logs) => {
+        await Promise.all(logs.map((log) => this.respondToRequest(log.args.requestId, log.args.input)));
       },
     });
   }
@@ -54,6 +52,6 @@ export class OperatorNode {
   }
 
   public stop() {
-    this.unwatch();
+    this.unwatch && this.unwatch();
   }
 }

@@ -121,14 +121,14 @@ contract BVS is Ownable {
     }
 
     /**
-   * Get a squared value responded by an operator for a particular input
-   */
+     * @dev Get the response value provided by an operator for a particular request.
+     */
     function getResponse(uint64 requestId, address operator) external view returns (uint128) {
         return responses[requestId][operator];
     }
 
     /**
-     * Register and recognized an address to be an operator the service.
+     * @dev Register and recognized an address to be an operator the service.
      */
     function registerOperator(address operator) external onlyOwner {
         registry.registerOperatorToService(operator);
