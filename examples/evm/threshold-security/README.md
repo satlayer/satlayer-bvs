@@ -14,11 +14,11 @@ read more about [`SLAYOracle`](https://build.satlayer.xyz/evm/contracts/extensio
 
 - `src/BVS.sol`: Core contract maintained by the Service (owner) implementing request/response, AUM weighting via SLAYOracle, and threshold finalization.
 - `src/operatorNode.ts`: Minimal Operator node that listens for `Requested` and calls `respond` with the square.
-- `src/lifecyle.test.ts`: End-to-end lifecycle test that is meant to showcase the flow of threshold security.
+- `src/lifecycle.test.ts`: End-to-end lifecycle test that is meant to showcase the flow of threshold security.
 
 ## How it works (flow)
 
-If you prefer reading code, look at `src/lifecyle.test.ts`.
+If you prefer reading code, look at `src/lifecycle.test.ts`.
 
 ### Setups
 
@@ -39,7 +39,7 @@ If you prefer reading code, look at `src/lifecyle.test.ts`.
 
 1. Install dependencies: `pnpm install`
 2. Build: `pnpm build`
-3. Test: `pnpm test` to run the `lifecyle.test.ts`
+3. Test: `pnpm test` to run the `lifecycle.test.ts`
 
 Notes
 
