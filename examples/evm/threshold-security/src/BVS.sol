@@ -126,4 +126,22 @@ contract BVS is Ownable {
     function getResponse(uint64 requestId, address operator) external view returns (uint128) {
         return responses[requestId][operator];
     }
+
+    /**
+     * Register and recognized an address to be an operator the service.
+     */
+    function registerOperator(address operator) external onlyOwner {
+        registry.registerOperatorToService(operator);
+        emit OperatorRegistration(operator, true);
+    }
+
+    /**
+     * Enable SatLayer integrated slashing.
+     * If slashing is disabled, the slashing lifecycle in the event of malicious squaring challenge
+     * to an operator will result in failure.
+     */
+    function enableSlashing(ISLAYRegistryV2.SlashParameter calldata params) external onlyOwner {
+        registry.enableSlashing(params);
+        emit SlashEnabled(params);
+    }
 }
