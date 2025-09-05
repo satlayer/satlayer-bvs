@@ -96,7 +96,7 @@ interface ISLAYVaultV2 is IERC20Metadata, IERC4626, IERC7540Operator, IERC7540Re
     function lockSlashing(uint256 amount) external;
 
     /**
-     * @notice Retrieve the withdrawal delay
+     * @notice Retrieve the withdrawal delay set by the `delegated()` (Operator in SLAYRegistry) vault.
      */
     function getWithdrawalDelay() external view returns (uint32);
 }
