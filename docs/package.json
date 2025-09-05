@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
-    "@tailwindcss/postcss": "^4.1.12",
+    "@tailwindcss/postcss": "^4.1.13",
     "next": "^15.5.2",
     "next-sitemap": "^4.2.3",
     "nextra": "^4.4.0",
@@ -28,7 +28,7 @@
     "posthog-js": "^1.261.3",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "tailwindcss": "^4.1.12"
+    "tailwindcss": "^4.1.13"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
