@@ -66,6 +66,9 @@ async function initBVS(ethNodeStarted: StartedAnvilContainer): Promise<void> {
   await bvs.contract.write.registerOperator([operator1.address], {
     account: owner.address,
   });
+  await bvs.contract.write.registerOperator([operator2.address], {
+    account: owner.address,
+  });
   await ethNodeStarted.mineBlock(1);
 }
 
@@ -152,11 +155,11 @@ beforeAll(async () => {
     account: operator2.address,
   });
 
-  // sets WBTC price to 100k USD
+  // sets WBTC price to 80k USD
   const currentBlock = await ethNodeStarted.getClient().getBlock();
   await contracts.setOraclePrice({
     priceId: wbtcPriceId,
-    price: parseUnits("100000", 8),
+    price: parseUnits("80000", 8),
     conf: parseUnits("100", 8),
     expo: -8,
     timestamp: currentBlock.timestamp,
@@ -167,6 +170,7 @@ beforeAll(async () => {
 
   await ethNodeStarted.mineBlock(1);
 
+  // Operators run nodes to actively listens to requests from BVS.sol contract.
   operator1Node.start();
   operator2Node.start();
 }, 120_000);
@@ -177,6 +181,20 @@ afterAll(async () => {
   await ethNodeStarted.stop();
 });
 
+/**
+ *  Lifecycle setup:
+ *  - Service has 2 Operators (Operator1, Operator2)
+ *  - Service sets the threshold to 100k USD
+ *  - Operator1 has 1 WBTC vault (worth 80k USD)
+ *  - Operator2 has 0.25 WBTC vault (worth 20k USD)
+ *  Core:
+ *  - Service requests a number to be squared (`.request(5)`)
+ *  - Operator1 listens to the request and responds with 5*5=25 (`.respond(id, 25)`)
+ *  - Operator2 listens to the request and responds with 5*5=25 (`.respond(id, 25)`)
+ *  - Service finalizes^ the request when both operators respond as the threshold reached 100k USD
+ *
+ *  ^ The finalization can be called by anyone.
+ */
 test("lifecycle", async () => {
   const client = ethNodeStarted.getClient();
 
