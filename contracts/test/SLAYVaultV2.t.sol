@@ -1535,4 +1535,16 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
         vault.withdraw(100, address(this), controller);
     }
+
+    function test_getWithdrawalDelay() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        assertEq(vault.getWithdrawalDelay(), 7 days);
+
+        // proper withdrawal delay after operator specific delay set
+        vm.prank(operator);
+        registry.setWithdrawalDelay(10 days);
+        assertEq(vault.getWithdrawalDelay(), 10 days);
+    }
 }
