@@ -262,23 +262,23 @@ importers:
         specifier: ^4.0.0
         version: 4.0.0(e61b51a0e5b4c5d2eb2f438d51232f34)
       '@layerzerolabs/lz-evm-messagelib-v2':
-        specifier: ^3.0.125
-        version: 3.0.125(@axelar-network/axelar-gmp-sdk-solidity@5.10.0)(@chainlink/contracts-ccip@0.7.6(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@eth-optimism/contracts@0.6.0(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@layerzerolabs/lz-evm-protocol-v2@3.0.125(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4))(@layerzerolabs/lz-evm-v1-0.7@3.0.125(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
+        specifier: ^3.0.127
+        version: 3.0.127(@axelar-network/axelar-gmp-sdk-solidity@5.10.0)(@chainlink/contracts-ccip@0.7.6(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@eth-optimism/contracts@0.6.0(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@layerzerolabs/lz-evm-protocol-v2@3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4))(@layerzerolabs/lz-evm-v1-0.7@3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
       '@layerzerolabs/lz-evm-protocol-v2':
-        specifier: ^3.0.125
-        version: 3.0.125(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
+        specifier: ^3.0.127
+        version: 3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
       '@layerzerolabs/lz-evm-v1-0.7':
-        specifier: ^3.0.125
-        version: 3.0.125(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+        specifier: ^3.0.127
+        version: 3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@layerzerolabs/lz-v2-utilities':
-        specifier: ^3.0.125
-        version: 3.0.125
+        specifier: ^3.0.127
+        version: 3.0.127
       '@layerzerolabs/oapp-evm':
         specifier: ^0.3.2
-        version: 0.3.2(7f9372faf474b98a2abfeac8fcdd5d9b)
+        version: 0.3.2(f0829dbcf511bbc20fd63130f2f09631)
       '@layerzerolabs/test-devtools-evm-foundry':
         specifier: ^7.0.0
-        version: 7.0.0(76eb9fc32a11a1d24e72998548a35b65)
+        version: 7.0.0(1408a7b0d11ea0822fbcae1c75de448c)
       '@openzeppelin/contracts':
         specifier: ^5.4.0
         version: 5.4.0
@@ -397,23 +397,23 @@ importers:
         specifier: ^4.0.0
         version: 4.0.0(f5b0762ee5f254366222c6ba95e2f6bf)
       '@layerzerolabs/lz-evm-messagelib-v2':
-        specifier: ^3.0.125
-        version: 3.0.125(@axelar-network/axelar-gmp-sdk-solidity@5.10.0)(@chainlink/contracts-ccip@0.7.6(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@eth-optimism/contracts@0.6.0(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@layerzerolabs/lz-evm-protocol-v2@3.0.125(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4))(@layerzerolabs/lz-evm-v1-0.7@3.0.125(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
+        specifier: ^3.0.127
+        version: 3.0.127(@axelar-network/axelar-gmp-sdk-solidity@5.10.0)(@chainlink/contracts-ccip@0.7.6(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@eth-optimism/contracts@0.6.0(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@layerzerolabs/lz-evm-protocol-v2@3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4))(@layerzerolabs/lz-evm-v1-0.7@3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
       '@layerzerolabs/lz-evm-protocol-v2':
-        specifier: ^3.0.125
-        version: 3.0.125(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
+        specifier: ^3.0.127
+        version: 3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
       '@layerzerolabs/lz-evm-v1-0.7':
-        specifier: ^3.0.125
-        version: 3.0.125(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+        specifier: ^3.0.127
+        version: 3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@layerzerolabs/lz-v2-utilities':
-        specifier: ^3.0.125
-        version: 3.0.125
+        specifier: ^3.0.127
+        version: 3.0.127
       '@layerzerolabs/oapp-evm':
         specifier: ^0.3.2
-        version: 0.3.2(7f9372faf474b98a2abfeac8fcdd5d9b)
+        version: 0.3.2(f0829dbcf511bbc20fd63130f2f09631)
       '@layerzerolabs/test-devtools-evm-foundry':
         specifier: ^7.0.0
-        version: 7.0.0(76eb9fc32a11a1d24e72998548a35b65)
+        version: 7.0.0(1408a7b0d11ea0822fbcae1c75de448c)
       '@openzeppelin/contracts':
         specifier: ^5.4.0
         version: 5.4.0
@@ -1750,15 +1750,15 @@ packages:
   '@layerzerolabs/lz-definitions@3.0.102':
     resolution: {integrity: sha512-s0lRjQtIjZeZEpyy8e13jzAjTqxdn6OfqQ0l7l6CaU19OL1Ht4bkmg6fobEvlxv1I64hysriNfmCyt3IWTDUsg==}
 
-  '@layerzerolabs/lz-evm-messagelib-v2@3.0.125':
-    resolution: {integrity: sha512-WJ5gffrau/JXHEcrLH9I8lK6p2ciQlykKLvU0vdjMpLEGvjmnlR7y0vVSwEa450DBzB78cKPcNwWhlnINWRafg==}
+  '@layerzerolabs/lz-evm-messagelib-v2@3.0.127':
+    resolution: {integrity: sha512-swSezQWsMEUqDhCwzTMhecXYte156QdNZ1ariCwGui/Tt31C74ADmeu0ov52ny0ynMAVALMkaLd/ykhMg2T2kQ==}
     peerDependencies:
       '@arbitrum/nitro-contracts': ^1.1.0
       '@axelar-network/axelar-gmp-sdk-solidity': ^5.6.4
       '@chainlink/contracts-ccip': ^0.7.6
       '@eth-optimism/contracts': ^0.6.0
-      '@layerzerolabs/lz-evm-protocol-v2': ^3.0.125
-      '@layerzerolabs/lz-evm-v1-0.7': ^3.0.125
+      '@layerzerolabs/lz-evm-protocol-v2': ^3.0.127
+      '@layerzerolabs/lz-evm-v1-0.7': ^3.0.127
       '@openzeppelin/contracts': ^4.8.1 || ^5.0.0
       '@openzeppelin/contracts-upgradeable': ^4.8.1 || ^5.0.0
       hardhat-deploy: ^0.12.4
@@ -1767,23 +1767,23 @@ packages:
       '@arbitrum/nitro-contracts':
         optional: true
 
-  '@layerzerolabs/lz-evm-protocol-v2@3.0.125':
-    resolution: {integrity: sha512-rCCCC1cie0HH7KXL+qsZz60LO49t4Nabi+ksqW1dKAVvhLLbwGY1JGQBHWQnyDBFot3sMmw49/ibxvm6O1nI8g==}
+  '@layerzerolabs/lz-evm-protocol-v2@3.0.127':
+    resolution: {integrity: sha512-fi59IW/cJUK7J+CYuzy9FuP8qlwfDkMEOCAY7HAB+p7aF9FLGyW4L6DcZQZFTAGJ7x1NK8tXP/u+51ZK1MDsvA==}
     peerDependencies:
       '@openzeppelin/contracts': ^4.8.1 || ^5.0.0
       '@openzeppelin/contracts-upgradeable': ^4.8.1 || ^5.0.0
       hardhat-deploy: ^0.12.4
       solidity-bytes-utils: ^0.8.0
 
-  '@layerzerolabs/lz-evm-v1-0.7@3.0.125':
-    resolution: {integrity: sha512-cEy98IWQTpLql2swf+hLTlrDeR1T5yAZbgu3ptjxbeoXDJxQXoXVV2bcJ/FDQMaS2wX4ffD0Z5bQ656TiHAFEw==}
+  '@layerzerolabs/lz-evm-v1-0.7@3.0.127':
+    resolution: {integrity: sha512-JLQDQ1gTaCTu0O2COBSEmXMEo5gmy42k467MjJi3bWf8x0/zg/Mg1POlHK1Qf0vVPXewKQbs0YxcjtTphZ54Ag==}
     peerDependencies:
       '@openzeppelin/contracts': 3.4.2-solc-0.7 || ^3.4.2 || ^4.0.0 || ^5.0.0
       '@openzeppelin/contracts-upgradeable': 3.4.2-solc-0.7 || ^3.4.2 || ^4.0.0 || ^5.0.0
       hardhat-deploy: ^0.12.4
 
-  '@layerzerolabs/lz-v2-utilities@3.0.125':
-    resolution: {integrity: sha512-dyHiy+tKl8l3F2xxM3rhME24Y5YXo3wG1tCL9OumQVdwIq4dALD0zWDs9oz6+WQEs1JL3Nq/alxAU2oxCRZFYQ==}
+  '@layerzerolabs/lz-v2-utilities@3.0.127':
+    resolution: {integrity: sha512-yN9oekm6Cx/DzBsdhQGEFKP20EyszY02UYPTeD/C3VDWWWfyk9hc8SDLCjKbz8CkrbpU6OBjKS++e7BArv5NYg==}
 
   '@layerzerolabs/oapp-evm@0.3.2':
     resolution: {integrity: sha512-QqazLEl9KEPsipU/3m5eFDhyse+sG4bO2FWUEf/Kuee4JW6P3iIBI9wg0QfalUqLj0HL0ChFHL3yRTZVqzxrww==}
@@ -9791,32 +9791,32 @@ snapshots:
     dependencies:
       tiny-invariant: 1.3.3
 
-  '@layerzerolabs/lz-evm-messagelib-v2@3.0.125(@axelar-network/axelar-gmp-sdk-solidity@5.10.0)(@chainlink/contracts-ccip@0.7.6(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@eth-optimism/contracts@0.6.0(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@layerzerolabs/lz-evm-protocol-v2@3.0.125(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4))(@layerzerolabs/lz-evm-v1-0.7@3.0.125(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)':
+  '@layerzerolabs/lz-evm-messagelib-v2@3.0.127(@axelar-network/axelar-gmp-sdk-solidity@5.10.0)(@chainlink/contracts-ccip@0.7.6(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@eth-optimism/contracts@0.6.0(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@layerzerolabs/lz-evm-protocol-v2@3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4))(@layerzerolabs/lz-evm-v1-0.7@3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)':
     dependencies:
       '@axelar-network/axelar-gmp-sdk-solidity': 5.10.0
       '@chainlink/contracts-ccip': 0.7.6(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
       '@eth-optimism/contracts': 0.6.0(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
-      '@layerzerolabs/lz-evm-protocol-v2': 3.0.125(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
-      '@layerzerolabs/lz-evm-v1-0.7': 3.0.125(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+      '@layerzerolabs/lz-evm-protocol-v2': 3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
+      '@layerzerolabs/lz-evm-v1-0.7': 3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@openzeppelin/contracts': 5.4.0
       '@openzeppelin/contracts-upgradeable': 5.4.0(@openzeppelin/contracts@5.4.0)
       hardhat-deploy: 0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       solidity-bytes-utils: 0.8.4
 
-  '@layerzerolabs/lz-evm-protocol-v2@3.0.125(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)':
+  '@layerzerolabs/lz-evm-protocol-v2@3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)':
     dependencies:
       '@openzeppelin/contracts': 5.4.0
       '@openzeppelin/contracts-upgradeable': 5.4.0(@openzeppelin/contracts@5.4.0)
       hardhat-deploy: 0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       solidity-bytes-utils: 0.8.4
 
-  '@layerzerolabs/lz-evm-v1-0.7@3.0.125(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))':
+  '@layerzerolabs/lz-evm-v1-0.7@3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))':
     dependencies:
       '@openzeppelin/contracts': 5.4.0
       '@openzeppelin/contracts-upgradeable': 5.4.0(@openzeppelin/contracts@5.4.0)
       hardhat-deploy: 0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10)
 
-  '@layerzerolabs/lz-v2-utilities@3.0.125':
+  '@layerzerolabs/lz-v2-utilities@3.0.127':
     dependencies:
       '@ethersproject/abi': 5.8.0
       '@ethersproject/address': 5.8.0
@@ -9827,11 +9827,11 @@ snapshots:
       bs58: 5.0.0
       tiny-invariant: 1.3.3
 
-  '@layerzerolabs/oapp-evm@0.3.2(7f9372faf474b98a2abfeac8fcdd5d9b)':
+  '@layerzerolabs/oapp-evm@0.3.2(f0829dbcf511bbc20fd63130f2f09631)':
     dependencies:
-      '@layerzerolabs/lz-evm-messagelib-v2': 3.0.125(@axelar-network/axelar-gmp-sdk-solidity@5.10.0)(@chainlink/contracts-ccip@0.7.6(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@eth-optimism/contracts@0.6.0(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@layerzerolabs/lz-evm-protocol-v2@3.0.125(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4))(@layerzerolabs/lz-evm-v1-0.7@3.0.125(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
-      '@layerzerolabs/lz-evm-protocol-v2': 3.0.125(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
-      '@layerzerolabs/lz-evm-v1-0.7': 3.0.125(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+      '@layerzerolabs/lz-evm-messagelib-v2': 3.0.127(@axelar-network/axelar-gmp-sdk-solidity@5.10.0)(@chainlink/contracts-ccip@0.7.6(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@eth-optimism/contracts@0.6.0(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@layerzerolabs/lz-evm-protocol-v2@3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4))(@layerzerolabs/lz-evm-v1-0.7@3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
+      '@layerzerolabs/lz-evm-protocol-v2': 3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
+      '@layerzerolabs/lz-evm-v1-0.7': 3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@openzeppelin/contracts': 5.4.0
       '@openzeppelin/contracts-upgradeable': 5.4.0(@openzeppelin/contracts@5.4.0)
       ethers: 5.8.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -9839,22 +9839,22 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@layerzerolabs/oft-evm@3.1.4(3706ebe0d5147dfd5d42a14ed3b257b7)':
+  '@layerzerolabs/oft-evm@3.1.4(ee09f999646525ba3208ec857b7198f7)':
     dependencies:
-      '@layerzerolabs/lz-evm-messagelib-v2': 3.0.125(@axelar-network/axelar-gmp-sdk-solidity@5.10.0)(@chainlink/contracts-ccip@0.7.6(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@eth-optimism/contracts@0.6.0(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@layerzerolabs/lz-evm-protocol-v2@3.0.125(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4))(@layerzerolabs/lz-evm-v1-0.7@3.0.125(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
-      '@layerzerolabs/lz-evm-protocol-v2': 3.0.125(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
-      '@layerzerolabs/lz-evm-v1-0.7': 3.0.125(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))
-      '@layerzerolabs/oapp-evm': 0.3.2(7f9372faf474b98a2abfeac8fcdd5d9b)
+      '@layerzerolabs/lz-evm-messagelib-v2': 3.0.127(@axelar-network/axelar-gmp-sdk-solidity@5.10.0)(@chainlink/contracts-ccip@0.7.6(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@eth-optimism/contracts@0.6.0(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@layerzerolabs/lz-evm-protocol-v2@3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4))(@layerzerolabs/lz-evm-v1-0.7@3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
+      '@layerzerolabs/lz-evm-protocol-v2': 3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
+      '@layerzerolabs/lz-evm-v1-0.7': 3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+      '@layerzerolabs/oapp-evm': 0.3.2(f0829dbcf511bbc20fd63130f2f09631)
       '@openzeppelin/contracts': 5.4.0
       '@openzeppelin/contracts-upgradeable': 5.4.0(@openzeppelin/contracts@5.4.0)
 
-  '@layerzerolabs/test-devtools-evm-foundry@7.0.0(76eb9fc32a11a1d24e72998548a35b65)':
+  '@layerzerolabs/test-devtools-evm-foundry@7.0.0(1408a7b0d11ea0822fbcae1c75de448c)':
     dependencies:
-      '@layerzerolabs/lz-evm-messagelib-v2': 3.0.125(@axelar-network/axelar-gmp-sdk-solidity@5.10.0)(@chainlink/contracts-ccip@0.7.6(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@eth-optimism/contracts@0.6.0(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@layerzerolabs/lz-evm-protocol-v2@3.0.125(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4))(@layerzerolabs/lz-evm-v1-0.7@3.0.125(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
-      '@layerzerolabs/lz-evm-protocol-v2': 3.0.125(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
-      '@layerzerolabs/lz-evm-v1-0.7': 3.0.125(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))
-      '@layerzerolabs/oapp-evm': 0.3.2(7f9372faf474b98a2abfeac8fcdd5d9b)
-      '@layerzerolabs/oft-evm': 3.1.4(3706ebe0d5147dfd5d42a14ed3b257b7)
+      '@layerzerolabs/lz-evm-messagelib-v2': 3.0.127(@axelar-network/axelar-gmp-sdk-solidity@5.10.0)(@chainlink/contracts-ccip@0.7.6(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@eth-optimism/contracts@0.6.0(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@layerzerolabs/lz-evm-protocol-v2@3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4))(@layerzerolabs/lz-evm-v1-0.7@3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
+      '@layerzerolabs/lz-evm-protocol-v2': 3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
+      '@layerzerolabs/lz-evm-v1-0.7': 3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+      '@layerzerolabs/oapp-evm': 0.3.2(f0829dbcf511bbc20fd63130f2f09631)
+      '@layerzerolabs/oft-evm': 3.1.4(ee09f999646525ba3208ec857b7198f7)
       '@openzeppelin/contracts': 5.4.0
       '@openzeppelin/contracts-upgradeable': 5.4.0(@openzeppelin/contracts@5.4.0)
 
