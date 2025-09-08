@@ -29,12 +29,14 @@ interface ISLAYVaultFactoryV2 {
      * This self-serve function allows operators to create new vaults without needing to go through the owner.
      * For example an operator can create a vault for a new token that is IERC20Metadata compliant.
      * Given the {ERC20.name()} is Token and {ERC20.symbol()} is TKN,
-     * the vault will be initialized with the name "SatLayer Token" and symbol "satTKN".
+     * the vault will be initialized with the name "Restaked {name} {ERC20.name()}" and symbol "sat.{symbol}.{ERC20.symbol()}".
      *
      * @param asset The ERC20Metadata asset to be used in the vault.
+     * @param name The infix name of the tokenized vault token. (e.g. "Restaked {name} Wrapped BTC" )
+     * @param symbol The infix symbol of the tokenized vault token. (e.g. "sat.{symbol}.WBTC" )
      * @return The newly created SLAYVault instance.
      */
-    function create(IERC20Metadata asset) external returns (SLAYVaultV2);
+    function create(IERC20Metadata asset, string memory name, string memory symbol) external returns (SLAYVaultV2);
 
     /**
      * @notice For owner to create a new SLAYVault instance using the Beacon proxy pattern.

@@ -268,14 +268,23 @@ export class EVMContracts {
   async initVault({
     operator,
     underlyingAsset,
+    name,
+    symbol,
   }: {
     operator: Account;
     underlyingAsset: `0x${string}`;
+    name?: string;
+    symbol?: string;
   }): Promise<`0x${string}`> {
+    const nameArg = name ?? `Test`;
+    const symbolArg = symbol ?? `T`;
+
     // get vault address from vault factory
-    const createRes = await this.vaultFactory.simulate.create([underlyingAsset], { account: operator.address });
+    const createRes = await this.vaultFactory.simulate.create([underlyingAsset, nameArg, symbolArg], {
+      account: operator.address,
+    });
     // commit the transaction to create the vault
-    await this.vaultFactory.write.create([underlyingAsset], { account: operator });
+    await this.vaultFactory.write.create([underlyingAsset, nameArg, symbolArg], { account: operator });
     // mine a block to ensure vault is created and prevents race conditions
     await this.started.mineBlock(1);
     return createRes.result;

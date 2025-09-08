@@ -72,10 +72,16 @@ contract SLAYVaultFactoryV2 is SLAYBase, ISLAYVaultFactoryV2 {
     }
 
     /// @inheritdoc ISLAYVaultFactoryV2
-    function create(IERC20Metadata asset) external override whenNotPaused onlyOperator returns (SLAYVaultV2) {
+    function create(IERC20Metadata asset, string memory name, string memory symbol)
+        external
+        override
+        whenNotPaused
+        onlyOperator
+        returns (SLAYVaultV2)
+    {
         address operator = _msgSender();
-        string memory name = string(abi.encodePacked("SatLayer ", asset.name()));
-        string memory symbol = string(abi.encodePacked("sat", asset.symbol()));
+        string memory name = string(abi.encodePacked("Restaked ", name, " ", asset.name()));
+        string memory symbol = string(abi.encodePacked("sat.", symbol, ".", asset.symbol()));
 
         bytes memory data = abi.encodeCall(SLAYVaultV2.initialize, (asset, operator, name, symbol));
         BeaconProxy proxy = new BeaconProxy(BEACON, data);

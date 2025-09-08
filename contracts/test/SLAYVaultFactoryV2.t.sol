@@ -25,11 +25,11 @@ contract SLAYVaultFactoryV2Test is Test, TestSuiteV2 {
         MockERC20 asset = new MockERC20("Mock Token", "MTK", 8);
 
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(asset);
+        SLAYVaultV2 vault = vaultFactory.create(asset, "test", "T");
 
         assertEq(vault.delegated(), operator);
-        assertEq(vault.name(), "SatLayer Mock Token");
-        assertEq(vault.symbol(), "satMTK");
+        assertEq(vault.name(), "Restaked test Mock Token");
+        assertEq(vault.symbol(), "sat.T.MTK");
         assertEq(vault.decimals(), 8);
     }
 
@@ -37,12 +37,12 @@ contract SLAYVaultFactoryV2Test is Test, TestSuiteV2 {
         MockERC20 asset = new MockERC20("Mock Bit Dollar", "BDR", 15);
 
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(asset);
+        SLAYVaultV2 vault = vaultFactory.create(asset, "test", "T");
 
         assertEq(vault.delegated(), operator);
         assertEq(vault.decimals(), 15);
-        assertEq(vault.name(), "SatLayer Mock Bit Dollar");
-        assertEq(vault.symbol(), "satBDR");
+        assertEq(vault.name(), "Restaked test Mock Bit Dollar");
+        assertEq(vault.symbol(), "sat.T.BDR");
     }
 
     function test_create_without_metadata() public {
@@ -68,14 +68,14 @@ contract SLAYVaultFactoryV2Test is Test, TestSuiteV2 {
 
     function test_create_with_operator() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         assertEq(vault.delegated(), operator);
     }
 
     function test_create_with_not_operator() public {
         vm.expectRevert(abi.encodeWithSelector(ISLAYVaultFactoryV2.NotOperator.selector, address(this)));
-        vaultFactory.create(underlying);
+        vaultFactory.create(underlying, "test", "T");
 
         address notOperator = makeAddr("Not Operator");
         vm.startPrank(owner);
@@ -90,12 +90,12 @@ contract SLAYVaultFactoryV2Test is Test, TestSuiteV2 {
         // Try to create a vault when paused
         vm.prank(operator);
         vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
-        vaultFactory.create(underlying);
+        vaultFactory.create(underlying, "test", "T");
 
         // Try to create a vault with custom params when paused
         vm.prank(operator);
         vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
-        vaultFactory.create(underlying);
+        vaultFactory.create(underlying, "test", "T");
 
         // You can still create a vault when owner
         vm.prank(owner);
@@ -115,7 +115,7 @@ contract SLAYVaultFactoryV2Test is Test, TestSuiteV2 {
 
         // Create a vault when unpaused
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
         assertEq(vault.delegated(), operator);
 
         // Create a vault with custom params when unpaused
