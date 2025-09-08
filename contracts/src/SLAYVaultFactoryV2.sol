@@ -72,7 +72,7 @@ contract SLAYVaultFactoryV2 is SLAYBase, ISLAYVaultFactoryV2 {
     }
 
     /// @inheritdoc ISLAYVaultFactoryV2
-    function create(IERC20Metadata asset, string memory name, string memory symbol)
+    function create(IERC20Metadata asset, string calldata name, string calldata symbol)
         external
         override
         whenNotPaused

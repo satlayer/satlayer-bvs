@@ -31,12 +31,17 @@ interface ISLAYVaultFactoryV2 {
      * Given the {ERC20.name()} is Token and {ERC20.symbol()} is TKN,
      * the vault will be initialized with the name "Restaked {name} {ERC20.name()}" and symbol "sat.{symbol}.{ERC20.symbol()}".
      *
+     * We recommend operators to use a unique infix name and symbol to avoid confusion with other vaults.
+     * For instance, if operator is Babylon then the vault name can be "Restaked Babylon Wrapped BTC" and symbol "sat.BABY.WBTC".
+     *
      * @param asset The ERC20Metadata asset to be used in the vault.
      * @param name The infix name of the tokenized vault token. (e.g. "Restaked {name} Wrapped BTC" )
      * @param symbol The infix symbol of the tokenized vault token. (e.g. "sat.{symbol}.WBTC" )
      * @return The newly created SLAYVault instance.
      */
-    function create(IERC20Metadata asset, string memory name, string memory symbol) external returns (SLAYVaultV2);
+    function create(IERC20Metadata asset, string calldata name, string calldata symbol)
+        external
+        returns (SLAYVaultV2);
 
     /**
      * @notice For owner to create a new SLAYVault instance using the Beacon proxy pattern.
