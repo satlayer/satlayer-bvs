@@ -87,6 +87,8 @@ contract DeployVault is SepoliaContracts {
         require(block.chainid == 11155111, "You're not on Sepolia");
 
         address asset = vm.promptAddress("ERC20 Asset");
+        string memory name = vm.prompt("Infix name of the receipt token");
+        string memory symbol = vm.prompt("Infix symbol of the receipt token");
 
         vm.startBroadcast();
         console.log("Operator  (msg.sender):", msg.sender);
@@ -94,6 +96,6 @@ contract DeployVault is SepoliaContracts {
 
         IERC20Metadata metadata = IERC20Metadata(asset);
         // Using self-serve vault creation
-        factory.create(metadata);
+        factory.create(metadata, name, symbol);
     }
 }

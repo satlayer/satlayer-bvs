@@ -28,7 +28,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
         vm.startPrank(operator);
         registry.registerAsOperator("https://example.com", "Operator Y");
-        vault = vaultFactory.create(underlying);
+        vault = vaultFactory.create(underlying, "test", "T");
         vm.stopPrank();
 
         vm.prank(owner);
