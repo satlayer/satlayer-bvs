@@ -27,7 +27,7 @@
     "forge-std": "https://github.com/foundry-rs/forge-std/tarball/v1.9.6",
     "solidity-bytes-utils": "^0.8.0",
     "typescript": "latest",
-    "viem": "^2.37.3"
+    "viem": "^2.37.4"
   },
   "devDependencies": {
     "@satlayer/cosmwasm-optimizer": "workspace:*",

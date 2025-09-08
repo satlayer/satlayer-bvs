@@ -10,7 +10,7 @@
     "@openzeppelin/foundry-upgrades": "^0.4.0",
     "@satlayer/contracts": "workspace:*",
     "forge-std": "https://github.com/foundry-rs/forge-std/tarball/v1.9.6",
-    "viem": "2.37.3"
+    "viem": "2.37.4"
   },
   "devDependencies": {
     "@satlayer/testcontainers": "workspace:*",
