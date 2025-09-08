@@ -87,8 +87,8 @@ contract DeployVault is SepoliaContracts {
         require(block.chainid == 11155111, "You're not on Sepolia");
 
         address asset = vm.promptAddress("ERC20 Asset");
-        address name = vm.promptAddress("Infix name of the receipt token");
-        address symbol = vm.promptAddress("Infix symbol of the receipt token");
+        string memory name = vm.prompt("Infix name of the receipt token");
+        string memory symbol = vm.prompt("Infix symbol of the receipt token");
 
         vm.startBroadcast();
         console.log("Operator  (msg.sender):", msg.sender);

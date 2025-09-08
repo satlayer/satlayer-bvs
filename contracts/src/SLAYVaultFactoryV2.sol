@@ -80,10 +80,10 @@ contract SLAYVaultFactoryV2 is SLAYBase, ISLAYVaultFactoryV2 {
         returns (SLAYVaultV2)
     {
         address operator = _msgSender();
-        string memory name = string(abi.encodePacked("Restaked ", name, " ", asset.name()));
-        string memory symbol = string(abi.encodePacked("sat.", symbol, ".", asset.symbol()));
+        string memory fullName = string(abi.encodePacked("Restaked ", name, " ", asset.name()));
+        string memory fullSymbol = string(abi.encodePacked("sat.", symbol, ".", asset.symbol()));
 
-        bytes memory data = abi.encodeCall(SLAYVaultV2.initialize, (asset, operator, name, symbol));
+        bytes memory data = abi.encodeCall(SLAYVaultV2.initialize, (asset, operator, fullName, fullSymbol));
         BeaconProxy proxy = new BeaconProxy(BEACON, data);
         return SLAYVaultV2(address(proxy));
     }
