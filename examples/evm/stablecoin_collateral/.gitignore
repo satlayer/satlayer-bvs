@@ -10,3 +10,6 @@ target/
 
 # Node.js
 node_modules/
+
+contracts.iml
+package.lock
