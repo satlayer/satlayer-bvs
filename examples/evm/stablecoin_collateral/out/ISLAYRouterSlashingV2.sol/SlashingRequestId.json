@@ -1,0 +1,2244 @@
+{
+  "abi": [],
+  "bytecode": {
+    "object": "0x60556032600b8282823980515f1a607314602657634e487b7160e01b5f525f60045260245ffd5b305f52607381538281f3fe730000000000000000000000000000000000000000301460806040525f80fdfea2646970667358221220c2c20d47b5fde20845791126665945aee48b2352e75b651396d793af35bd47f864736f6c63430008180033",
+    "sourceMap": "17131:1771:85:-:0;;;;;;;;;;;;;;;-1:-1:-1;;;17131:1771:85;;;;;;;;;;;;;;;;;",
+    "linkReferences": {}
+  },
+  "deployedBytecode": {
+    "object": "0x730000000000000000000000000000000000000000301460806040525f80fdfea2646970667358221220c2c20d47b5fde20845791126665945aee48b2352e75b651396d793af35bd47f864736f6c63430008180033",
+    "sourceMap": "17131:1771:85:-:0;;;;;;;;",
+    "linkReferences": {}
+  },
+  "methodIdentifiers": {},
+  "rawMetadata": "{\"compiler\":{\"version\":\"0.8.24+commit.e11b9ed9\"},\"language\":\"Solidity\",\"output\":{\"abi\":[],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"title\":\"Slashing Request ID Library\",\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"node_modules/@satlayer/contracts/src/interface/ISLAYRouterSlashingV2.sol\":\"SlashingRequestId\"},\"evmVersion\":\"shanghai\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[\":@aave/=node_modules/@aave/\",\":@openzeppelin/contracts-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable/\",\":@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/\",\":@openzeppelin/foundry-upgrades/=node_modules/@openzeppelin/foundry-upgrades/src/\",\":@satlayer/contracts/=node_modules/@satlayer/contracts/\",\":forge-std/=node_modules/forge-std/src/\"]},\"sources\":{\"node_modules/@satlayer/contracts/src/interface/ISLAYRouterSlashingV2.sol\":{\"keccak256\":\"0x2646cba81e9d4a9d7355bf82d0ae15975372446cf063630de83c443b6fbec182\",\"license\":\"BUSL-1.1\",\"urls\":[\"bzz-raw://5930245bf72345a5225ce6ee11b0dcea27c6a7adc97030a5f16f2bb4182cdbbf\",\"dweb:/ipfs/QmbV3Y2sQHyPF1WgbWZQKHvh63gDnFWp3ixPhaqDPhBDCU\"]}},\"version\":1}",
+  "metadata": {
+    "compiler": { "version": "0.8.24+commit.e11b9ed9" },
+    "language": "Solidity",
+    "output": {
+      "abi": [],
+      "devdoc": { "kind": "dev", "methods": {}, "version": 1 },
+      "userdoc": { "kind": "user", "methods": {}, "version": 1 }
+    },
+    "settings": {
+      "remappings": [
+        "@aave/=node_modules/@aave/",
+        "@openzeppelin/contracts-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable/",
+        "@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/",
+        "@openzeppelin/foundry-upgrades/=node_modules/@openzeppelin/foundry-upgrades/src/",
+        "@satlayer/contracts/=node_modules/@satlayer/contracts/",
+        "forge-std/=node_modules/forge-std/src/"
+      ],
+      "optimizer": { "enabled": true, "runs": 200 },
+      "metadata": { "bytecodeHash": "ipfs" },
+      "compilationTarget": {
+        "node_modules/@satlayer/contracts/src/interface/ISLAYRouterSlashingV2.sol": "SlashingRequestId"
+      },
+      "evmVersion": "shanghai",
+      "libraries": {}
+    },
+    "sources": {
+      "node_modules/@satlayer/contracts/src/interface/ISLAYRouterSlashingV2.sol": {
+        "keccak256": "0x2646cba81e9d4a9d7355bf82d0ae15975372446cf063630de83c443b6fbec182",
+        "urls": [
+          "bzz-raw://5930245bf72345a5225ce6ee11b0dcea27c6a7adc97030a5f16f2bb4182cdbbf",
+          "dweb:/ipfs/QmbV3Y2sQHyPF1WgbWZQKHvh63gDnFWp3ixPhaqDPhBDCU"
+        ],
+        "license": "BUSL-1.1"
+      }
+    },
+    "version": 1
+  },
+  "storageLayout": { "storage": [], "types": {} },
+  "ast": {
+    "absolutePath": "node_modules/@satlayer/contracts/src/interface/ISLAYRouterSlashingV2.sol",
+    "id": 28505,
+    "exportedSymbols": { "ISLAYRouterSlashingV2": [28472], "SlashingRequestId": [28504] },
+    "nodeType": "SourceUnit",
+    "src": "37:18866:85",
+    "nodes": [
+      {
+        "id": 28269,
+        "nodeType": "PragmaDirective",
+        "src": "37:24:85",
+        "nodes": [],
+        "literals": ["solidity", "^", "0.8", ".24"]
+      },
+      {
+        "id": 28472,
+        "nodeType": "ContractDefinition",
+        "src": "509:16581:85",
+        "nodes": [
+          {
+            "id": 28273,
+            "nodeType": "ErrorDefinition",
+            "src": "824:21:85",
+            "nodes": [],
+            "documentation": {
+              "id": 28271,
+              "nodeType": "StructuredDocumentation",
+              "src": "725:94:85",
+              "text": "@dev Error thrown when an unauthorized address attempts to perform a restricted operation."
+            },
+            "errorSelector": "82b42900",
+            "name": "Unauthorized",
+            "nameLocation": "830:12:85",
+            "parameters": { "id": 28272, "nodeType": "ParameterList", "parameters": [], "src": "842:2:85" }
+          },
+          {
+            "id": 28276,
+            "nodeType": "ErrorDefinition",
+            "src": "954:22:85",
+            "nodes": [],
+            "documentation": {
+              "id": 28274,
+              "nodeType": "StructuredDocumentation",
+              "src": "851:98:85",
+              "text": "@dev Error thrown when an operation is attempted on a slashing request with an invalid status."
+            },
+            "errorSelector": "f525e320",
+            "name": "InvalidStatus",
+            "nameLocation": "960:13:85",
+            "parameters": { "id": 28275, "nodeType": "ParameterList", "parameters": [], "src": "973:2:85" }
+          },
+          {
+            "id": 28279,
+            "nodeType": "ErrorDefinition",
+            "src": "1079:31:85",
+            "nodes": [],
+            "documentation": {
+              "id": 28277,
+              "nodeType": "StructuredDocumentation",
+              "src": "982:92:85",
+              "text": "@dev Error thrown when an operation is attempted on a slashing request that has expired."
+            },
+            "errorSelector": "31e24a9f",
+            "name": "SlashingRequestExpired",
+            "nameLocation": "1085:22:85",
+            "parameters": { "id": 28278, "nodeType": "ParameterList", "parameters": [], "src": "1107:2:85" }
+          },
+          {
+            "id": 28282,
+            "nodeType": "ErrorDefinition",
+            "src": "1211:32:85",
+            "nodes": [],
+            "documentation": {
+              "id": 28280,
+              "nodeType": "StructuredDocumentation",
+              "src": "1116:90:85",
+              "text": "@dev Error thrown when an operation references a slashing request that does not exist."
+            },
+            "errorSelector": "c191eff9",
+            "name": "SlashingRequestNotFound",
+            "nameLocation": "1217:23:85",
+            "parameters": { "id": 28281, "nodeType": "ParameterList", "parameters": [], "src": "1240:2:85" }
+          },
+          {
+            "id": 28285,
+            "nodeType": "ErrorDefinition",
+            "src": "1359:37:85",
+            "nodes": [],
+            "documentation": {
+              "id": 28283,
+              "nodeType": "StructuredDocumentation",
+              "src": "1249:105:85",
+              "text": "@dev Error thrown when attempting to lock a slashing request before its resolution window has passed."
+            },
+            "errorSelector": "7957063c",
+            "name": "SlashingResolutionNotReached",
+            "nameLocation": "1365:28:85",
+            "parameters": { "id": 28284, "nodeType": "ParameterList", "parameters": [], "src": "1393:2:85" }
+          },
+          {
+            "id": 28288,
+            "nodeType": "ErrorDefinition",
+            "src": "1505:31:85",
+            "nodes": [],
+            "documentation": {
+              "id": 28286,
+              "nodeType": "StructuredDocumentation",
+              "src": "1402:98:85",
+              "text": "@dev Error thrown when guardrail attempts to approve/reject a slashing request more than once."
+            },
+            "errorSelector": "93579aa3",
+            "name": "GuardrailHasDetermined",
+            "nameLocation": "1511:22:85",
+            "parameters": { "id": 28287, "nodeType": "ParameterList", "parameters": [], "src": "1533:2:85" }
+          },
+          {
+            "id": 28291,
+            "nodeType": "ErrorDefinition",
+            "src": "1660:33:85",
+            "nodes": [],
+            "documentation": {
+              "id": 28289,
+              "nodeType": "StructuredDocumentation",
+              "src": "1542:113:85",
+              "text": "@dev Error thrown when attempting to finalize a slashing request that has not been approved by the guardrail."
+            },
+            "errorSelector": "05694d1d",
+            "name": "GuardrailHaveNotApproved",
+            "nameLocation": "1666:24:85",
+            "parameters": { "id": 28290, "nodeType": "ParameterList", "parameters": [], "src": "1690:2:85" }
+          },
+          {
+            "id": 28305,
+            "nodeType": "EventDefinition",
+            "src": "2337:146:85",
+            "nodes": [],
+            "anonymous": false,
+            "documentation": {
+              "id": 28292,
+              "nodeType": "StructuredDocumentation",
+              "src": "1877:455:85",
+              "text": " @dev Emitted when a new slashing request is created.\n @param service The address of the service that requested the slashing.\n @param operator The address of the operator being slashed.\n @param slashId The unique identifier for the slashing request.\n @param request The information about the slashing request.\n @param reason The reason for the slashing request, a human-readable string. Not stored on-chain."
+            },
+            "eventSelector": "1928f55cc7948e65b5fd8b65349e79b0970a639acc7f5f308bcd1808e0ecdb8e",
+            "name": "SlashingRequested",
+            "nameLocation": "2343:17:85",
+            "parameters": {
+              "id": 28304,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 28294,
+                  "indexed": true,
+                  "mutability": "mutable",
+                  "name": "service",
+                  "nameLocation": "2386:7:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28305,
+                  "src": "2370:23:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 28293,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "2370:7:85",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 28296,
+                  "indexed": true,
+                  "mutability": "mutable",
+                  "name": "operator",
+                  "nameLocation": "2411:8:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28305,
+                  "src": "2395:24:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 28295,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "2395:7:85",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 28298,
+                  "indexed": true,
+                  "mutability": "mutable",
+                  "name": "slashId",
+                  "nameLocation": "2437:7:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28305,
+                  "src": "2421:23:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" },
+                  "typeName": {
+                    "id": 28297,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "2421:7:85",
+                    "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 28301,
+                  "indexed": false,
+                  "mutability": "mutable",
+                  "name": "request",
+                  "nameLocation": "2454:7:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28305,
+                  "src": "2446:15:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_struct$_Request_$28388_memory_ptr",
+                    "typeString": "struct ISLAYRouterSlashingV2.Request"
+                  },
+                  "typeName": {
+                    "id": 28300,
+                    "nodeType": "UserDefinedTypeName",
+                    "pathNode": {
+                      "id": 28299,
+                      "name": "Request",
+                      "nameLocations": ["2446:7:85"],
+                      "nodeType": "IdentifierPath",
+                      "referencedDeclaration": 28388,
+                      "src": "2446:7:85"
+                    },
+                    "referencedDeclaration": 28388,
+                    "src": "2446:7:85",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_struct$_Request_$28388_storage_ptr",
+                      "typeString": "struct ISLAYRouterSlashingV2.Request"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 28303,
+                  "indexed": false,
+                  "mutability": "mutable",
+                  "name": "reason",
+                  "nameLocation": "2470:6:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28305,
+                  "src": "2463:13:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_string_memory_ptr", "typeString": "string" },
+                  "typeName": {
+                    "id": 28302,
+                    "name": "string",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "2463:6:85",
+                    "typeDescriptions": { "typeIdentifier": "t_string_storage_ptr", "typeString": "string" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "2360:122:85"
+            }
+          },
+          {
+            "id": 28314,
+            "nodeType": "EventDefinition",
+            "src": "2944:99:85",
+            "nodes": [],
+            "anonymous": false,
+            "documentation": {
+              "id": 28306,
+              "nodeType": "StructuredDocumentation",
+              "src": "2489:450:85",
+              "text": " @dev Emitted when a slashing request has been canceled.\n This occurs when a service explicitly cancels a pending request or when a new request\n replaces an expired one.\n @param service The address of the service that requested the slashing.\n @param operator The address of the operator that was targeted by the canceled request.\n @param slashId The unique identifier for the canceled slashing request."
+            },
+            "eventSelector": "e3884525a2d5f483253428531619e78f11f1af8cbd2d28311259fd31ef46018a",
+            "name": "SlashingCanceled",
+            "nameLocation": "2950:16:85",
+            "parameters": {
+              "id": 28313,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 28308,
+                  "indexed": true,
+                  "mutability": "mutable",
+                  "name": "service",
+                  "nameLocation": "2983:7:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28314,
+                  "src": "2967:23:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 28307,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "2967:7:85",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 28310,
+                  "indexed": true,
+                  "mutability": "mutable",
+                  "name": "operator",
+                  "nameLocation": "3008:8:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28314,
+                  "src": "2992:24:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 28309,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "2992:7:85",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 28312,
+                  "indexed": true,
+                  "mutability": "mutable",
+                  "name": "slashId",
+                  "nameLocation": "3034:7:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28314,
+                  "src": "3018:23:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" },
+                  "typeName": {
+                    "id": 28311,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "3018:7:85",
+                    "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "2966:76:85"
+            }
+          },
+          {
+            "id": 28323,
+            "nodeType": "EventDefinition",
+            "src": "3597:97:85",
+            "nodes": [],
+            "anonymous": false,
+            "documentation": {
+              "id": 28315,
+              "nodeType": "StructuredDocumentation",
+              "src": "3049:543:85",
+              "text": " @dev Emitted when a slashing request has been locked.\n This event is emitted when the slashed collateral is moved from the operator's vaults\n to the router for further processing. Locking occurs after the resolution window has passed\n and before the request expires.\n @param service The address of the service that requested the slashing.\n @param operator The address of the operator whose collateral is being locked.\n @param slashId The unique identifier for the locked slashing request."
+            },
+            "eventSelector": "6e141be0670106fb9241fc2d132fa5597d7decd0184d366414050b782c76ddda",
+            "name": "SlashingLocked",
+            "nameLocation": "3603:14:85",
+            "parameters": {
+              "id": 28322,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 28317,
+                  "indexed": true,
+                  "mutability": "mutable",
+                  "name": "service",
+                  "nameLocation": "3634:7:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28323,
+                  "src": "3618:23:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 28316,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "3618:7:85",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 28319,
+                  "indexed": true,
+                  "mutability": "mutable",
+                  "name": "operator",
+                  "nameLocation": "3659:8:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28323,
+                  "src": "3643:24:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 28318,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "3643:7:85",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 28321,
+                  "indexed": true,
+                  "mutability": "mutable",
+                  "name": "slashId",
+                  "nameLocation": "3685:7:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28323,
+                  "src": "3669:23:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" },
+                  "typeName": {
+                    "id": 28320,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "3669:7:85",
+                    "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "3617:76:85"
+            }
+          },
+          {
+            "id": 28334,
+            "nodeType": "EventDefinition",
+            "src": "4388:135:85",
+            "nodes": [],
+            "anonymous": false,
+            "documentation": {
+              "id": 28324,
+              "nodeType": "StructuredDocumentation",
+              "src": "3700:683:85",
+              "text": " @dev Emitted when a slashing request has been finalized.\n This event is emitted when the slashed collateral is moved from the router to the destination address.\n The destination address is agreed upon by the service and the operator in the slashing parameters.\n Finalization can only occur after locking and guardrail approval.\n @param service The address of the service that requested the slashing.\n @param operator The address of the operator whose collateral was slashed.\n @param slashId The unique identifier for the finalized slashing request.\n @param destination The address to which the slashed collateral was sent."
+            },
+            "eventSelector": "82a1d74d3c1a7982ea75f5e68c0964c3309fc5ddfc6e1f1d2fb6b10eacce91e6",
+            "name": "SlashingFinalized",
+            "nameLocation": "4394:17:85",
+            "parameters": {
+              "id": 28333,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 28326,
+                  "indexed": true,
+                  "mutability": "mutable",
+                  "name": "service",
+                  "nameLocation": "4437:7:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28334,
+                  "src": "4421:23:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 28325,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "4421:7:85",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 28328,
+                  "indexed": true,
+                  "mutability": "mutable",
+                  "name": "operator",
+                  "nameLocation": "4462:8:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28334,
+                  "src": "4446:24:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 28327,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "4446:7:85",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 28330,
+                  "indexed": true,
+                  "mutability": "mutable",
+                  "name": "slashId",
+                  "nameLocation": "4488:7:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28334,
+                  "src": "4472:23:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" },
+                  "typeName": {
+                    "id": 28329,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "4472:7:85",
+                    "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 28332,
+                  "indexed": false,
+                  "mutability": "mutable",
+                  "name": "destination",
+                  "nameLocation": "4505:11:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28334,
+                  "src": "4497:19:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 28331,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "4497:7:85",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "4411:111:85"
+            }
+          },
+          {
+            "id": 28341,
+            "nodeType": "EventDefinition",
+            "src": "4931:64:85",
+            "nodes": [],
+            "anonymous": false,
+            "documentation": {
+              "id": 28335,
+              "nodeType": "StructuredDocumentation",
+              "src": "4529:397:85",
+              "text": " @dev Emitted when a slashing request has been approved or rejected by the guardrail.\n The guardrail is a security mechanism that provides additional approval for slashing operations.\n @param slashId The unique identifier for the slashing request that received a decision.\n @param approval True if the guardrail approved the slashing request, false if rejected."
+            },
+            "eventSelector": "098a812d9d10a266b1a99ac5ec25f2cbf779f49d2cacf9c58eb35edea7df6842",
+            "name": "GuardrailApproval",
+            "nameLocation": "4937:17:85",
+            "parameters": {
+              "id": 28340,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 28337,
+                  "indexed": true,
+                  "mutability": "mutable",
+                  "name": "slashId",
+                  "nameLocation": "4971:7:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28341,
+                  "src": "4955:23:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" },
+                  "typeName": {
+                    "id": 28336,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "4955:7:85",
+                    "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 28339,
+                  "indexed": false,
+                  "mutability": "mutable",
+                  "name": "approval",
+                  "nameLocation": "4985:8:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28341,
+                  "src": "4980:13:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_bool", "typeString": "bool" },
+                  "typeName": {
+                    "id": 28338,
+                    "name": "bool",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "4980:4:85",
+                    "typeDescriptions": { "typeIdentifier": "t_bool", "typeString": "bool" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "4954:40:85"
+            }
+          },
+          {
+            "id": 28347,
+            "nodeType": "EnumDefinition",
+            "src": "5262:764:85",
+            "nodes": [],
+            "canonicalName": "ISLAYRouterSlashingV2.Status",
+            "documentation": {
+              "id": 28342,
+              "nodeType": "StructuredDocumentation",
+              "src": "5001:256:85",
+              "text": " @title Slashing Status\n @dev Enum representing the possible states of a slashing request throughout its lifecycle.\n The status transitions follow this flow:\n - Pending -> Locked -> Finalized\n - Pending -> Canceled"
+            },
+            "members": [
+              {
+                "id": 28343,
+                "name": "Pending",
+                "nameLocation": "5425:7:85",
+                "nodeType": "EnumValue",
+                "src": "5425:7:85"
+              },
+              {
+                "id": 28344,
+                "name": "Locked",
+                "nameLocation": "5623:6:85",
+                "nodeType": "EnumValue",
+                "src": "5623:6:85"
+              },
+              {
+                "id": 28345,
+                "name": "Finalized",
+                "nameLocation": "5817:9:85",
+                "nodeType": "EnumValue",
+                "src": "5817:9:85"
+              },
+              {
+                "id": 28346,
+                "name": "Canceled",
+                "nameLocation": "6012:8:85",
+                "nodeType": "EnumValue",
+                "src": "6012:8:85"
+              }
+            ],
+            "name": "Status",
+            "nameLocation": "5267:6:85"
+          },
+          {
+            "id": 28361,
+            "nodeType": "StructDefinition",
+            "src": "6309:1104:85",
+            "nodes": [],
+            "canonicalName": "ISLAYRouterSlashingV2.Payload",
+            "documentation": {
+              "id": 28348,
+              "nodeType": "StructuredDocumentation",
+              "src": "6032:272:85",
+              "text": " @title Slashing Request Payload\n @dev Contains the necessary information to initiate a slashing request.\n This struct is used as an input parameter and is not stored on-chain directly.\n See {Request} for the on-chain storage structure."
+            },
+            "members": [
+              {
+                "constant": false,
+                "id": 28351,
+                "mutability": "mutable",
+                "name": "operator",
+                "nameLocation": "6492:8:85",
+                "nodeType": "VariableDeclaration",
+                "scope": 28361,
+                "src": "6484:16:85",
+                "stateVariable": false,
+                "storageLocation": "default",
+                "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                "typeName": {
+                  "id": 28350,
+                  "name": "address",
+                  "nodeType": "ElementaryTypeName",
+                  "src": "6484:7:85",
+                  "stateMutability": "nonpayable",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                },
+                "visibility": "internal"
+              },
+              {
+                "constant": false,
+                "id": 28354,
+                "mutability": "mutable",
+                "name": "mbips",
+                "nameLocation": "6879:5:85",
+                "nodeType": "VariableDeclaration",
+                "scope": 28361,
+                "src": "6872:12:85",
+                "stateVariable": false,
+                "storageLocation": "default",
+                "typeDescriptions": { "typeIdentifier": "t_uint24", "typeString": "uint24" },
+                "typeName": {
+                  "id": 28353,
+                  "name": "uint24",
+                  "nodeType": "ElementaryTypeName",
+                  "src": "6872:6:85",
+                  "typeDescriptions": { "typeIdentifier": "t_uint24", "typeString": "uint24" }
+                },
+                "visibility": "internal"
+              },
+              {
+                "constant": false,
+                "id": 28357,
+                "mutability": "mutable",
+                "name": "timestamp",
+                "nameLocation": "7147:9:85",
+                "nodeType": "VariableDeclaration",
+                "scope": 28361,
+                "src": "7140:16:85",
+                "stateVariable": false,
+                "storageLocation": "default",
+                "typeDescriptions": { "typeIdentifier": "t_uint32", "typeString": "uint32" },
+                "typeName": {
+                  "id": 28356,
+                  "name": "uint32",
+                  "nodeType": "ElementaryTypeName",
+                  "src": "7140:6:85",
+                  "typeDescriptions": { "typeIdentifier": "t_uint32", "typeString": "uint32" }
+                },
+                "visibility": "internal"
+              },
+              {
+                "constant": false,
+                "id": 28360,
+                "mutability": "mutable",
+                "name": "reason",
+                "nameLocation": "7400:6:85",
+                "nodeType": "VariableDeclaration",
+                "scope": 28361,
+                "src": "7393:13:85",
+                "stateVariable": false,
+                "storageLocation": "default",
+                "typeDescriptions": { "typeIdentifier": "t_string_storage_ptr", "typeString": "string" },
+                "typeName": {
+                  "id": 28359,
+                  "name": "string",
+                  "nodeType": "ElementaryTypeName",
+                  "src": "7393:6:85",
+                  "typeDescriptions": { "typeIdentifier": "t_string_storage_ptr", "typeString": "string" }
+                },
+                "visibility": "internal"
+              }
+            ],
+            "name": "Payload",
+            "nameLocation": "6316:7:85",
+            "scope": 28472,
+            "visibility": "public"
+          },
+          {
+            "id": 28388,
+            "nodeType": "StructDefinition",
+            "src": "8096:1271:85",
+            "nodes": [],
+            "canonicalName": "ISLAYRouterSlashingV2.Request",
+            "documentation": {
+              "id": 28362,
+              "nodeType": "StructuredDocumentation",
+              "src": "7419:672:85",
+              "text": " @title Slashing Request\n @dev Represents a slashing request stored on-chain for internal state tracking.\n Includes all data from the original payload plus additional tracking information.\n The struct is optimized for gas efficiency by packing related fields together.\n Memory layout:\n Slot 0:\n - status: uint8 (8 bits)\n - service: address (160 bits)\n - mbips: uint24 (24 bits)\n - timestamp: uint32 (32 bits)\n - requestTime: uint32 (32 bits)\n Slot 1:\n - operator: address (160 bits)\n - requestResolution: uint32 (32 bits)\n - requestExpiry: uint32 (32 bits)"
+            },
+            "members": [
+              {
+                "constant": false,
+                "id": 28366,
+                "mutability": "mutable",
+                "name": "status",
+                "nameLocation": "8231:6:85",
+                "nodeType": "VariableDeclaration",
+                "scope": 28388,
+                "src": "8224:13:85",
+                "stateVariable": false,
+                "storageLocation": "default",
+                "typeDescriptions": {
+                  "typeIdentifier": "t_enum$_Status_$28347",
+                  "typeString": "enum ISLAYRouterSlashingV2.Status"
+                },
+                "typeName": {
+                  "id": 28365,
+                  "nodeType": "UserDefinedTypeName",
+                  "pathNode": {
+                    "id": 28364,
+                    "name": "Status",
+                    "nameLocations": ["8224:6:85"],
+                    "nodeType": "IdentifierPath",
+                    "referencedDeclaration": 28347,
+                    "src": "8224:6:85"
+                  },
+                  "referencedDeclaration": 28347,
+                  "src": "8224:6:85",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_enum$_Status_$28347",
+                    "typeString": "enum ISLAYRouterSlashingV2.Status"
+                  }
+                },
+                "visibility": "internal"
+              },
+              {
+                "constant": false,
+                "id": 28369,
+                "mutability": "mutable",
+                "name": "service",
+                "nameLocation": "8409:7:85",
+                "nodeType": "VariableDeclaration",
+                "scope": 28388,
+                "src": "8401:15:85",
+                "stateVariable": false,
+                "storageLocation": "default",
+                "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                "typeName": {
+                  "id": 28368,
+                  "name": "address",
+                  "nodeType": "ElementaryTypeName",
+                  "src": "8401:7:85",
+                  "stateMutability": "nonpayable",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                },
+                "visibility": "internal"
+              },
+              {
+                "constant": false,
+                "id": 28372,
+                "mutability": "mutable",
+                "name": "mbips",
+                "nameLocation": "8535:5:85",
+                "nodeType": "VariableDeclaration",
+                "scope": 28388,
+                "src": "8528:12:85",
+                "stateVariable": false,
+                "storageLocation": "default",
+                "typeDescriptions": { "typeIdentifier": "t_uint24", "typeString": "uint24" },
+                "typeName": {
+                  "id": 28371,
+                  "name": "uint24",
+                  "nodeType": "ElementaryTypeName",
+                  "src": "8528:6:85",
+                  "typeDescriptions": { "typeIdentifier": "t_uint24", "typeString": "uint24" }
+                },
+                "visibility": "internal"
+              },
+              {
+                "constant": false,
+                "id": 28375,
+                "mutability": "mutable",
+                "name": "timestamp",
+                "nameLocation": "8635:9:85",
+                "nodeType": "VariableDeclaration",
+                "scope": 28388,
+                "src": "8628:16:85",
+                "stateVariable": false,
+                "storageLocation": "default",
+                "typeDescriptions": { "typeIdentifier": "t_uint32", "typeString": "uint32" },
+                "typeName": {
+                  "id": 28374,
+                  "name": "uint32",
+                  "nodeType": "ElementaryTypeName",
+                  "src": "8628:6:85",
+                  "typeDescriptions": { "typeIdentifier": "t_uint32", "typeString": "uint32" }
+                },
+                "visibility": "internal"
+              },
+              {
+                "constant": false,
+                "id": 28378,
+                "mutability": "mutable",
+                "name": "requestTime",
+                "nameLocation": "8816:11:85",
+                "nodeType": "VariableDeclaration",
+                "scope": 28388,
+                "src": "8809:18:85",
+                "stateVariable": false,
+                "storageLocation": "default",
+                "typeDescriptions": { "typeIdentifier": "t_uint32", "typeString": "uint32" },
+                "typeName": {
+                  "id": 28377,
+                  "name": "uint32",
+                  "nodeType": "ElementaryTypeName",
+                  "src": "8809:6:85",
+                  "typeDescriptions": { "typeIdentifier": "t_uint32", "typeString": "uint32" }
+                },
+                "visibility": "internal"
+              },
+              {
+                "constant": false,
+                "id": 28381,
+                "mutability": "mutable",
+                "name": "operator",
+                "nameLocation": "8905:8:85",
+                "nodeType": "VariableDeclaration",
+                "scope": 28388,
+                "src": "8897:16:85",
+                "stateVariable": false,
+                "storageLocation": "default",
+                "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                "typeName": {
+                  "id": 28380,
+                  "name": "address",
+                  "nodeType": "ElementaryTypeName",
+                  "src": "8897:7:85",
+                  "stateMutability": "nonpayable",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                },
+                "visibility": "internal"
+              },
+              {
+                "constant": false,
+                "id": 28384,
+                "mutability": "mutable",
+                "name": "requestResolution",
+                "nameLocation": "9135:17:85",
+                "nodeType": "VariableDeclaration",
+                "scope": 28388,
+                "src": "9128:24:85",
+                "stateVariable": false,
+                "storageLocation": "default",
+                "typeDescriptions": { "typeIdentifier": "t_uint32", "typeString": "uint32" },
+                "typeName": {
+                  "id": 28383,
+                  "name": "uint32",
+                  "nodeType": "ElementaryTypeName",
+                  "src": "9128:6:85",
+                  "typeDescriptions": { "typeIdentifier": "t_uint32", "typeString": "uint32" }
+                },
+                "visibility": "internal"
+              },
+              {
+                "constant": false,
+                "id": 28387,
+                "mutability": "mutable",
+                "name": "requestExpiry",
+                "nameLocation": "9347:13:85",
+                "nodeType": "VariableDeclaration",
+                "scope": 28388,
+                "src": "9340:20:85",
+                "stateVariable": false,
+                "storageLocation": "default",
+                "typeDescriptions": { "typeIdentifier": "t_uint32", "typeString": "uint32" },
+                "typeName": {
+                  "id": 28386,
+                  "name": "uint32",
+                  "nodeType": "ElementaryTypeName",
+                  "src": "9340:6:85",
+                  "typeDescriptions": { "typeIdentifier": "t_uint32", "typeString": "uint32" }
+                },
+                "visibility": "internal"
+              }
+            ],
+            "name": "Request",
+            "nameLocation": "8103:7:85",
+            "scope": 28472,
+            "visibility": "public"
+          },
+          {
+            "id": 28396,
+            "nodeType": "StructDefinition",
+            "src": "9664:347:85",
+            "nodes": [],
+            "canonicalName": "ISLAYRouterSlashingV2.LockedAssets",
+            "documentation": {
+              "id": 28389,
+              "nodeType": "StructuredDocumentation",
+              "src": "9373:286:85",
+              "text": " @title Locked Assets\n @dev Struct used to track assets that have been locked in the router during the slashing process.\n These assets are temporarily held by the router before being transferred to the final destination\n during the finalization step."
+            },
+            "members": [
+              {
+                "constant": false,
+                "id": 28392,
+                "mutability": "mutable",
+                "name": "amount",
+                "nameLocation": "9802:6:85",
+                "nodeType": "VariableDeclaration",
+                "scope": 28396,
+                "src": "9794:14:85",
+                "stateVariable": false,
+                "storageLocation": "default",
+                "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" },
+                "typeName": {
+                  "id": 28391,
+                  "name": "uint256",
+                  "nodeType": "ElementaryTypeName",
+                  "src": "9794:7:85",
+                  "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" }
+                },
+                "visibility": "internal"
+              },
+              {
+                "constant": false,
+                "id": 28395,
+                "mutability": "mutable",
+                "name": "vault",
+                "nameLocation": "9999:5:85",
+                "nodeType": "VariableDeclaration",
+                "scope": 28396,
+                "src": "9991:13:85",
+                "stateVariable": false,
+                "storageLocation": "default",
+                "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                "typeName": {
+                  "id": 28394,
+                  "name": "address",
+                  "nodeType": "ElementaryTypeName",
+                  "src": "9991:7:85",
+                  "stateMutability": "nonpayable",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                },
+                "visibility": "internal"
+              }
+            ],
+            "name": "LockedAssets",
+            "nameLocation": "9671:12:85",
+            "scope": 28472,
+            "visibility": "public"
+          },
+          {
+            "id": 28407,
+            "nodeType": "FunctionDefinition",
+            "src": "10677:109:85",
+            "nodes": [],
+            "documentation": {
+              "id": 28397,
+              "nodeType": "StructuredDocumentation",
+              "src": "10198:474:85",
+              "text": " @dev Returns the most recent slashing request initiated by the specified service against the specified operator.\n If no pending request exists, the returned request will have default values.\n @param service Address of the service that initiated the slashing request.\n @param operator Address of the operator targeted by the slashing request.\n @return A Request struct containing the details of the current pending slashing request."
+            },
+            "functionSelector": "0b78623b",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "getPendingSlashingRequest",
+            "nameLocation": "10686:25:85",
+            "parameters": {
+              "id": 28402,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 28399,
+                  "mutability": "mutable",
+                  "name": "service",
+                  "nameLocation": "10720:7:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28407,
+                  "src": "10712:15:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 28398,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "10712:7:85",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 28401,
+                  "mutability": "mutable",
+                  "name": "operator",
+                  "nameLocation": "10737:8:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28407,
+                  "src": "10729:16:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 28400,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "10729:7:85",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "10711:35:85"
+            },
+            "returnParameters": {
+              "id": 28406,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 28405,
+                  "mutability": "mutable",
+                  "name": "",
+                  "nameLocation": "-1:-1:-1",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28407,
+                  "src": "10770:14:85",
+                  "stateVariable": false,
+                  "storageLocation": "memory",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_struct$_Request_$28388_memory_ptr",
+                    "typeString": "struct ISLAYRouterSlashingV2.Request"
+                  },
+                  "typeName": {
+                    "id": 28404,
+                    "nodeType": "UserDefinedTypeName",
+                    "pathNode": {
+                      "id": 28403,
+                      "name": "Request",
+                      "nameLocations": ["10770:7:85"],
+                      "nodeType": "IdentifierPath",
+                      "referencedDeclaration": 28388,
+                      "src": "10770:7:85"
+                    },
+                    "referencedDeclaration": 28388,
+                    "src": "10770:7:85",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_struct$_Request_$28388_storage_ptr",
+                      "typeString": "struct ISLAYRouterSlashingV2.Request"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "10769:16:85"
+            },
+            "scope": 28472,
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "id": 28417,
+            "nodeType": "FunctionDefinition",
+            "src": "11257:104:85",
+            "nodes": [],
+            "documentation": {
+              "id": 28408,
+              "nodeType": "StructuredDocumentation",
+              "src": "10792:460:85",
+              "text": " @dev Returns the most recent slashing request id initiated by the specified service against the specified operator.\n If no pending request exists, the returned request id will be empty.\n @param service Address of the service that initiated the slashing request.\n @param operator Address of the operator targeted by the slashing request.\n @return bytes32 The unique identifier for the current pending slashing request."
+            },
+            "functionSelector": "002cf9a4",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "getPendingSlashingRequestId",
+            "nameLocation": "11266:27:85",
+            "parameters": {
+              "id": 28413,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 28410,
+                  "mutability": "mutable",
+                  "name": "service",
+                  "nameLocation": "11302:7:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28417,
+                  "src": "11294:15:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 28409,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "11294:7:85",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 28412,
+                  "mutability": "mutable",
+                  "name": "operator",
+                  "nameLocation": "11319:8:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28417,
+                  "src": "11311:16:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 28411,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "11311:7:85",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "11293:35:85"
+            },
+            "returnParameters": {
+              "id": 28416,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 28415,
+                  "mutability": "mutable",
+                  "name": "",
+                  "nameLocation": "-1:-1:-1",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28417,
+                  "src": "11352:7:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" },
+                  "typeName": {
+                    "id": 28414,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "11352:7:85",
+                    "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "11351:9:85"
+            },
+            "scope": 28472,
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "id": 28426,
+            "nodeType": "FunctionDefinition",
+            "src": "11753:84:85",
+            "nodes": [],
+            "documentation": {
+              "id": 28418,
+              "nodeType": "StructuredDocumentation",
+              "src": "11367:381:85",
+              "text": " @dev Returns the complete details of a slashing request identified by the provided slashId.\n If no request exists with the given slashId, the returned request will have default values.\n @param slashId The unique identifier for the slashing request to retrieve.\n @return A Request struct containing the details of the specified slashing request."
+            },
+            "functionSelector": "53dd91f5",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "getSlashingRequest",
+            "nameLocation": "11762:18:85",
+            "parameters": {
+              "id": 28421,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 28420,
+                  "mutability": "mutable",
+                  "name": "slashId",
+                  "nameLocation": "11789:7:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28426,
+                  "src": "11781:15:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" },
+                  "typeName": {
+                    "id": 28419,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "11781:7:85",
+                    "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "11780:17:85"
+            },
+            "returnParameters": {
+              "id": 28425,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 28424,
+                  "mutability": "mutable",
+                  "name": "",
+                  "nameLocation": "-1:-1:-1",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28426,
+                  "src": "11821:14:85",
+                  "stateVariable": false,
+                  "storageLocation": "memory",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_struct$_Request_$28388_memory_ptr",
+                    "typeString": "struct ISLAYRouterSlashingV2.Request"
+                  },
+                  "typeName": {
+                    "id": 28423,
+                    "nodeType": "UserDefinedTypeName",
+                    "pathNode": {
+                      "id": 28422,
+                      "name": "Request",
+                      "nameLocations": ["11821:7:85"],
+                      "nodeType": "IdentifierPath",
+                      "referencedDeclaration": 28388,
+                      "src": "11821:7:85"
+                    },
+                    "referencedDeclaration": 28388,
+                    "src": "11821:7:85",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_struct$_Request_$28388_storage_ptr",
+                      "typeString": "struct ISLAYRouterSlashingV2.Request"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "11820:16:85"
+            },
+            "scope": 28472,
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "id": 28436,
+            "nodeType": "FunctionDefinition",
+            "src": "12233:88:85",
+            "nodes": [],
+            "documentation": {
+              "id": 28427,
+              "nodeType": "StructuredDocumentation",
+              "src": "11843:385:85",
+              "text": " @dev Returns an array of LockedAssets structs representing the assets that have been locked\n as part of the slashing process. This information is only relevant for requests in the Locked status.\n @param slashId The unique identifier for the slashing request.\n @return An array of LockedAssets structs containing information about the locked assets."
+            },
+            "functionSelector": "dd717644",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "getLockedAssets",
+            "nameLocation": "12242:15:85",
+            "parameters": {
+              "id": 28430,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 28429,
+                  "mutability": "mutable",
+                  "name": "slashId",
+                  "nameLocation": "12266:7:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28436,
+                  "src": "12258:15:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" },
+                  "typeName": {
+                    "id": 28428,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "12258:7:85",
+                    "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "12257:17:85"
+            },
+            "returnParameters": {
+              "id": 28435,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 28434,
+                  "mutability": "mutable",
+                  "name": "",
+                  "nameLocation": "-1:-1:-1",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28436,
+                  "src": "12298:21:85",
+                  "stateVariable": false,
+                  "storageLocation": "memory",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_struct$_LockedAssets_$28396_memory_ptr_$dyn_memory_ptr",
+                    "typeString": "struct ISLAYRouterSlashingV2.LockedAssets[]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "id": 28432,
+                      "nodeType": "UserDefinedTypeName",
+                      "pathNode": {
+                        "id": 28431,
+                        "name": "LockedAssets",
+                        "nameLocations": ["12298:12:85"],
+                        "nodeType": "IdentifierPath",
+                        "referencedDeclaration": 28396,
+                        "src": "12298:12:85"
+                      },
+                      "referencedDeclaration": 28396,
+                      "src": "12298:12:85",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_struct$_LockedAssets_$28396_storage_ptr",
+                        "typeString": "struct ISLAYRouterSlashingV2.LockedAssets"
+                      }
+                    },
+                    "id": 28433,
+                    "nodeType": "ArrayTypeName",
+                    "src": "12298:14:85",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_struct$_LockedAssets_$28396_storage_$dyn_storage_ptr",
+                      "typeString": "struct ISLAYRouterSlashingV2.LockedAssets[]"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "12297:23:85"
+            },
+            "scope": 28472,
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "id": 28445,
+            "nodeType": "FunctionDefinition",
+            "src": "13509:86:85",
+            "nodes": [],
+            "documentation": {
+              "id": 28437,
+              "nodeType": "StructuredDocumentation",
+              "src": "12327:1177:85",
+              "text": " @dev Allows a registered service to request a slash of an operator's staked tokens\n as a penalty for violations or non-compliance. The slashing request must meet several criteria:\n - Only callable by registered services.\n - The service must be actively registered with the operator at the specified timestamp.\n - The slashing amount (in mbips) must not exceed the maxMbips set by the service.\n - The operator must have opted in to slashing at the specified timestamp.\n - The timestamp must be within the allowable slashing window (not too old or in the future).\n - The service must not have another active slashing request against the same operator.\n - The reason provided must not exceed the maximum allowed length (250 characters).\n When successful, this creates a slashing request with an expiry time based on the\n resolutionWindow parameter and returns a unique slashing request ID.\n @param payload The slashing request payload containing the operator, mbips, timestamp, and reason.\n @return slashId The unique identifier for the newly created slashing request."
+            },
+            "functionSelector": "1838efe5",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "requestSlashing",
+            "nameLocation": "13518:15:85",
+            "parameters": {
+              "id": 28441,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 28440,
+                  "mutability": "mutable",
+                  "name": "payload",
+                  "nameLocation": "13551:7:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28445,
+                  "src": "13534:24:85",
+                  "stateVariable": false,
+                  "storageLocation": "calldata",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_struct$_Payload_$28361_calldata_ptr",
+                    "typeString": "struct ISLAYRouterSlashingV2.Payload"
+                  },
+                  "typeName": {
+                    "id": 28439,
+                    "nodeType": "UserDefinedTypeName",
+                    "pathNode": {
+                      "id": 28438,
+                      "name": "Payload",
+                      "nameLocations": ["13534:7:85"],
+                      "nodeType": "IdentifierPath",
+                      "referencedDeclaration": 28361,
+                      "src": "13534:7:85"
+                    },
+                    "referencedDeclaration": 28361,
+                    "src": "13534:7:85",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_struct$_Payload_$28361_storage_ptr",
+                      "typeString": "struct ISLAYRouterSlashingV2.Payload"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "13533:26:85"
+            },
+            "returnParameters": {
+              "id": 28444,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 28443,
+                  "mutability": "mutable",
+                  "name": "slashId",
+                  "nameLocation": "13586:7:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28445,
+                  "src": "13578:15:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" },
+                  "typeName": {
+                    "id": 28442,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "13578:7:85",
+                    "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "13577:17:85"
+            },
+            "scope": 28472,
+            "stateMutability": "nonpayable",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "id": 28451,
+            "nodeType": "FunctionDefinition",
+            "src": "14314:48:85",
+            "nodes": [],
+            "documentation": {
+              "id": 28446,
+              "nodeType": "StructuredDocumentation",
+              "src": "13601:708:85",
+              "text": " @dev Initiates the movement of slashed collateral from the operator's vaults to the router\n for temporary holding before finalization. This function:\n - Moves the calculated portion of the operator's assets from all their vaults to the router.\n - Can only be called after the resolution window has passed and before the request expires.\n - Can only be called by the service that initiated the slashing request.\n - Changes the request status from Pending to Locked.\n The amount locked from each vault is calculated based on the mbips value in the request.\n @param slashId The unique identifier for the slashing request to lock."
+            },
+            "functionSelector": "17afb65b",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "lockSlashing",
+            "nameLocation": "14323:12:85",
+            "parameters": {
+              "id": 28449,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 28448,
+                  "mutability": "mutable",
+                  "name": "slashId",
+                  "nameLocation": "14344:7:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28451,
+                  "src": "14336:15:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" },
+                  "typeName": {
+                    "id": 28447,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "14336:7:85",
+                    "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "14335:17:85"
+            },
+            "returnParameters": { "id": 28450, "nodeType": "ParameterList", "parameters": [], "src": "14361:0:85" },
+            "scope": 28472,
+            "stateMutability": "nonpayable",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "id": 28457,
+            "nodeType": "FunctionDefinition",
+            "src": "15010:52:85",
+            "nodes": [],
+            "documentation": {
+              "id": 28452,
+              "nodeType": "StructuredDocumentation",
+              "src": "14368:637:85",
+              "text": " @dev Completes the slashing process by moving the locked assets from the router to the\n destination address specified in the slashing parameters. This function:\n - Can only be called by the service that initiated the slashing request.\n - Can only be executed if the request is in the Locked status.\n - Requires prior approval from the guardrail.\n - Changes the request status from Locked to Finalized.\n After finalization, the slashing process is complete and cannot be reversed.\n @param slashId The unique identifier for the slashing request to finalize."
+            },
+            "functionSelector": "4eb30bc9",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "finalizeSlashing",
+            "nameLocation": "15019:16:85",
+            "parameters": {
+              "id": 28455,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 28454,
+                  "mutability": "mutable",
+                  "name": "slashId",
+                  "nameLocation": "15044:7:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28457,
+                  "src": "15036:15:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" },
+                  "typeName": {
+                    "id": 28453,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "15036:7:85",
+                    "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "15035:17:85"
+            },
+            "returnParameters": { "id": 28456, "nodeType": "ParameterList", "parameters": [], "src": "15061:0:85" },
+            "scope": 28472,
+            "stateMutability": "nonpayable",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "id": 28465,
+            "nodeType": "FunctionDefinition",
+            "src": "16388:66:85",
+            "nodes": [],
+            "documentation": {
+              "id": 28458,
+              "nodeType": "StructuredDocumentation",
+              "src": "15068:1315:85",
+              "text": " @dev Allows the designated guardrail address to approve or reject a slashing request\n before it can be finalized. This function:\n - Can only be called by the designated guardrail address.\n - Can only be called once per slashing request.\n - Does not check the status of the request (this will be checked during finalization).\n - Records the approval decision for later verification during finalization.\n The guardrail serves as an additional security mechanism to prevent unauthorized slashing.\n note: on rejection, the locked funds will not be returned to the vault due to the nature of rebasing that will cause losses to the stakers.\n During slashing, assets will be locked in the router which will impact the exchange rate of the vaults. If funds are reverted to the vaults,\n it is akin to donation to the vault which will distribute the reverted assets to all stakers including new stakers who did not get slashed.\n This is not the intended behaviour, hence the locked funds will not be returned to the vaults on rejection in phase 2.\n @param slashId The unique identifier for the slashing request to approve or reject.\n @param approve True to approve the slashing request, false to reject it."
+            },
+            "functionSelector": "b4867fe4",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "guardrailApprove",
+            "nameLocation": "16397:16:85",
+            "parameters": {
+              "id": 28463,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 28460,
+                  "mutability": "mutable",
+                  "name": "slashId",
+                  "nameLocation": "16422:7:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28465,
+                  "src": "16414:15:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" },
+                  "typeName": {
+                    "id": 28459,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "16414:7:85",
+                    "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 28462,
+                  "mutability": "mutable",
+                  "name": "approve",
+                  "nameLocation": "16436:7:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28465,
+                  "src": "16431:12:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_bool", "typeString": "bool" },
+                  "typeName": {
+                    "id": 28461,
+                    "name": "bool",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "16431:4:85",
+                    "typeDescriptions": { "typeIdentifier": "t_bool", "typeString": "bool" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "16413:31:85"
+            },
+            "returnParameters": { "id": 28464, "nodeType": "ParameterList", "parameters": [], "src": "16453:0:85" },
+            "scope": 28472,
+            "stateMutability": "nonpayable",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "id": 28471,
+            "nodeType": "FunctionDefinition",
+            "src": "17038:50:85",
+            "nodes": [],
+            "documentation": {
+              "id": 28466,
+              "nodeType": "StructuredDocumentation",
+              "src": "16460:573:85",
+              "text": " @dev Allows a service to cancel its own pending slashing request. This function:\n - Can only be called by the service that initiated the slashing request.\n - Can only be called if the request is in the Pending status.\n - Changes the request status from Pending to Canceled.\n - Removes the request from the pending requests mapping.\n Once canceled, a slashing request cannot be reactivated, but a new request can be created.\n @param slashId The unique identifier for the slashing request to cancel."
+            },
+            "functionSelector": "deec65bc",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "cancelSlashing",
+            "nameLocation": "17047:14:85",
+            "parameters": {
+              "id": 28469,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 28468,
+                  "mutability": "mutable",
+                  "name": "slashId",
+                  "nameLocation": "17070:7:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28471,
+                  "src": "17062:15:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" },
+                  "typeName": {
+                    "id": 28467,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "17062:7:85",
+                    "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "17061:17:85"
+            },
+            "returnParameters": { "id": 28470, "nodeType": "ParameterList", "parameters": [], "src": "17087:0:85" },
+            "scope": 28472,
+            "stateMutability": "nonpayable",
+            "virtual": false,
+            "visibility": "external"
+          }
+        ],
+        "abstract": false,
+        "baseContracts": [],
+        "canonicalName": "ISLAYRouterSlashingV2",
+        "contractDependencies": [],
+        "contractKind": "interface",
+        "documentation": {
+          "id": 28270,
+          "nodeType": "StructuredDocumentation",
+          "src": "63:445:85",
+          "text": " @title SLAY Router Slashing V2 Interface\n @dev Interface for the slashing functionality in the SatLayer protocol.\n This interface defines the structure and functions for slashing requests, which are penalties\n applied to operators for violations or non-compliance.\n It is designed to be implemented on the SLAYRouter, but separated to allow for clear\n separation of slashing-related concerns from other router functionality."
+        },
+        "fullyImplemented": false,
+        "linearizedBaseContracts": [28472],
+        "name": "ISLAYRouterSlashingV2",
+        "nameLocation": "519:21:85",
+        "scope": 28505,
+        "usedErrors": [28273, 28276, 28279, 28282, 28285, 28288, 28291],
+        "usedEvents": [28305, 28314, 28323, 28334, 28341]
+      },
+      {
+        "id": 28504,
+        "nodeType": "ContractDefinition",
+        "src": "17131:1771:85",
+        "nodes": [
+          {
+            "id": 28503,
+            "nodeType": "FunctionDefinition",
+            "src": "18133:767:85",
+            "nodes": [],
+            "body": {
+              "id": 28502,
+              "nodeType": "Block",
+              "src": "18225:675:85",
+              "nodes": [],
+              "statements": [
+                {
+                  "documentation": "We don't use inline assembly for keccak256 for this hashing function,\n due to the minimal gas savings and it doesn't fit into scratch space.\n It's better to maintain readability and security of the code.\n forge-lint: disable-start(asm-keccak256)",
+                  "expression": {
+                    "arguments": [
+                      {
+                        "arguments": [
+                          {
+                            "expression": {
+                              "id": 28485,
+                              "name": "request",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 28477,
+                              "src": "18584:7:85",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_struct$_Request_$28388_memory_ptr",
+                                "typeString": "struct ISLAYRouterSlashingV2.Request memory"
+                              }
+                            },
+                            "id": 28486,
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "memberLocation": "18592:7:85",
+                            "memberName": "service",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 28369,
+                            "src": "18584:15:85",
+                            "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                          },
+                          {
+                            "expression": {
+                              "id": 28487,
+                              "name": "request",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 28477,
+                              "src": "18617:7:85",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_struct$_Request_$28388_memory_ptr",
+                                "typeString": "struct ISLAYRouterSlashingV2.Request memory"
+                              }
+                            },
+                            "id": 28488,
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "memberLocation": "18625:5:85",
+                            "memberName": "mbips",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 28372,
+                            "src": "18617:13:85",
+                            "typeDescriptions": { "typeIdentifier": "t_uint24", "typeString": "uint24" }
+                          },
+                          {
+                            "expression": {
+                              "id": 28489,
+                              "name": "request",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 28477,
+                              "src": "18648:7:85",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_struct$_Request_$28388_memory_ptr",
+                                "typeString": "struct ISLAYRouterSlashingV2.Request memory"
+                              }
+                            },
+                            "id": 28490,
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "memberLocation": "18656:9:85",
+                            "memberName": "timestamp",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 28375,
+                            "src": "18648:17:85",
+                            "typeDescriptions": { "typeIdentifier": "t_uint32", "typeString": "uint32" }
+                          },
+                          {
+                            "expression": {
+                              "id": 28491,
+                              "name": "request",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 28477,
+                              "src": "18683:7:85",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_struct$_Request_$28388_memory_ptr",
+                                "typeString": "struct ISLAYRouterSlashingV2.Request memory"
+                              }
+                            },
+                            "id": 28492,
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "memberLocation": "18691:11:85",
+                            "memberName": "requestTime",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 28378,
+                            "src": "18683:19:85",
+                            "typeDescriptions": { "typeIdentifier": "t_uint32", "typeString": "uint32" }
+                          },
+                          {
+                            "expression": {
+                              "id": 28493,
+                              "name": "request",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 28477,
+                              "src": "18720:7:85",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_struct$_Request_$28388_memory_ptr",
+                                "typeString": "struct ISLAYRouterSlashingV2.Request memory"
+                              }
+                            },
+                            "id": 28494,
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "memberLocation": "18728:8:85",
+                            "memberName": "operator",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 28381,
+                            "src": "18720:16:85",
+                            "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                          },
+                          {
+                            "expression": {
+                              "id": 28495,
+                              "name": "request",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 28477,
+                              "src": "18754:7:85",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_struct$_Request_$28388_memory_ptr",
+                                "typeString": "struct ISLAYRouterSlashingV2.Request memory"
+                              }
+                            },
+                            "id": 28496,
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "memberLocation": "18762:17:85",
+                            "memberName": "requestResolution",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 28384,
+                            "src": "18754:25:85",
+                            "typeDescriptions": { "typeIdentifier": "t_uint32", "typeString": "uint32" }
+                          },
+                          {
+                            "expression": {
+                              "id": 28497,
+                              "name": "request",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 28477,
+                              "src": "18797:7:85",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_struct$_Request_$28388_memory_ptr",
+                                "typeString": "struct ISLAYRouterSlashingV2.Request memory"
+                              }
+                            },
+                            "id": 28498,
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "memberLocation": "18805:13:85",
+                            "memberName": "requestExpiry",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 28387,
+                            "src": "18797:21:85",
+                            "typeDescriptions": { "typeIdentifier": "t_uint32", "typeString": "uint32" }
+                          }
+                        ],
+                        "expression": {
+                          "argumentTypes": [
+                            { "typeIdentifier": "t_address", "typeString": "address" },
+                            { "typeIdentifier": "t_uint24", "typeString": "uint24" },
+                            { "typeIdentifier": "t_uint32", "typeString": "uint32" },
+                            { "typeIdentifier": "t_uint32", "typeString": "uint32" },
+                            { "typeIdentifier": "t_address", "typeString": "address" },
+                            { "typeIdentifier": "t_uint32", "typeString": "uint32" },
+                            { "typeIdentifier": "t_uint32", "typeString": "uint32" }
+                          ],
+                          "expression": {
+                            "id": 28483,
+                            "name": "abi",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": -1,
+                            "src": "18556:3:85",
+                            "typeDescriptions": { "typeIdentifier": "t_magic_abi", "typeString": "abi" }
+                          },
+                          "id": 28484,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": true,
+                          "lValueRequested": false,
+                          "memberLocation": "18560:6:85",
+                          "memberName": "encode",
+                          "nodeType": "MemberAccess",
+                          "src": "18556:10:85",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_function_abiencode_pure$__$returns$_t_bytes_memory_ptr_$",
+                            "typeString": "function () pure returns (bytes memory)"
+                          }
+                        },
+                        "id": 28499,
+                        "isConstant": false,
+                        "isLValue": false,
+                        "isPure": false,
+                        "kind": "functionCall",
+                        "lValueRequested": false,
+                        "nameLocations": [],
+                        "names": [],
+                        "nodeType": "FunctionCall",
+                        "src": "18556:276:85",
+                        "tryCall": false,
+                        "typeDescriptions": { "typeIdentifier": "t_bytes_memory_ptr", "typeString": "bytes memory" }
+                      }
+                    ],
+                    "expression": {
+                      "argumentTypes": [{ "typeIdentifier": "t_bytes_memory_ptr", "typeString": "bytes memory" }],
+                      "id": 28482,
+                      "name": "keccak256",
+                      "nodeType": "Identifier",
+                      "overloadedDeclarations": [],
+                      "referencedDeclaration": -8,
+                      "src": "18533:9:85",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_function_keccak256_pure$_t_bytes_memory_ptr_$returns$_t_bytes32_$",
+                        "typeString": "function (bytes memory) pure returns (bytes32)"
+                      }
+                    },
+                    "id": 28500,
+                    "isConstant": false,
+                    "isLValue": false,
+                    "isPure": false,
+                    "kind": "functionCall",
+                    "lValueRequested": false,
+                    "nameLocations": [],
+                    "names": [],
+                    "nodeType": "FunctionCall",
+                    "src": "18533:309:85",
+                    "tryCall": false,
+                    "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" }
+                  },
+                  "functionReturnParameters": 28481,
+                  "id": 28501,
+                  "nodeType": "Return",
+                  "src": "18526:316:85"
+                }
+              ]
+            },
+            "documentation": {
+              "id": 28474,
+              "nodeType": "StructuredDocumentation",
+              "src": "17163:965:85",
+              "text": " @dev Computes a keccak256 hash of the essential fields of a slashing request.\n The hash includes all fields that uniquely identify a request, excluding the status field\n which can change during the request lifecycle.\n The fields included in the hash are:\n - service: The address of the service that initiated the request\n - mbips: The percentage of tokens to slash presented in millis basis points\n - timestamp: The timestamp when the slashing condition occurred\n - requestTime: The timestamp when the request was submitted\n - operator: The address of the operator being slashed\n - requestResolution: The timestamp when the resolution window ends\n - requestExpiry: The timestamp when the request expires\n @param request The slashing request struct containing all the necessary information.\n @return A bytes32 hash that uniquely identifies the slashing request."
+            },
+            "implemented": true,
+            "kind": "function",
+            "modifiers": [],
+            "name": "hash",
+            "nameLocation": "18142:4:85",
+            "parameters": {
+              "id": 28478,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 28477,
+                  "mutability": "mutable",
+                  "name": "request",
+                  "nameLocation": "18184:7:85",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28503,
+                  "src": "18147:44:85",
+                  "stateVariable": false,
+                  "storageLocation": "memory",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_struct$_Request_$28388_memory_ptr",
+                    "typeString": "struct ISLAYRouterSlashingV2.Request"
+                  },
+                  "typeName": {
+                    "id": 28476,
+                    "nodeType": "UserDefinedTypeName",
+                    "pathNode": {
+                      "id": 28475,
+                      "name": "ISLAYRouterSlashingV2.Request",
+                      "nameLocations": ["18147:21:85", "18169:7:85"],
+                      "nodeType": "IdentifierPath",
+                      "referencedDeclaration": 28388,
+                      "src": "18147:29:85"
+                    },
+                    "referencedDeclaration": 28388,
+                    "src": "18147:29:85",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_struct$_Request_$28388_storage_ptr",
+                      "typeString": "struct ISLAYRouterSlashingV2.Request"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "18146:46:85"
+            },
+            "returnParameters": {
+              "id": 28481,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 28480,
+                  "mutability": "mutable",
+                  "name": "",
+                  "nameLocation": "-1:-1:-1",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 28503,
+                  "src": "18216:7:85",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" },
+                  "typeName": {
+                    "id": 28479,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "18216:7:85",
+                    "typeDescriptions": { "typeIdentifier": "t_bytes32", "typeString": "bytes32" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "18215:9:85"
+            },
+            "scope": 28504,
+            "stateMutability": "pure",
+            "virtual": false,
+            "visibility": "internal"
+          }
+        ],
+        "abstract": false,
+        "baseContracts": [],
+        "canonicalName": "SlashingRequestId",
+        "contractDependencies": [],
+        "contractKind": "library",
+        "documentation": {
+          "id": 28473,
+          "nodeType": "StructuredDocumentation",
+          "src": "17092:39:85",
+          "text": "@title Slashing Request ID Library"
+        },
+        "fullyImplemented": true,
+        "linearizedBaseContracts": [28504],
+        "name": "SlashingRequestId",
+        "nameLocation": "17139:17:85",
+        "scope": 28505,
+        "usedErrors": [],
+        "usedEvents": []
+      }
+    ],
+    "license": "BUSL-1.1"
+  },
+  "id": 85
+}

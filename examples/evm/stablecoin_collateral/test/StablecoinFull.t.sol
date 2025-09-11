@@ -32,8 +32,14 @@ contract Simple4626 is ERC20, ERC4626 {
 
 contract MockOracle is IPriceOracle {
     mapping(address => uint256) public px; // token => price 1e8
-    function set(address token, uint256 p1e8) external { px[token] = p1e8; }
-    function price(address token) external view returns (uint256) { return px[token]; }
+
+    function set(address token, uint256 p1e8) external {
+        px[token] = p1e8;
+    }
+
+    function price(address token) external view returns (uint256) {
+        return px[token];
+    }
 }
 
 contract MockWrapper1to1 is IWrapper1to1 {
@@ -80,7 +86,7 @@ contract StablecoinFullIntegrationTest is Test, TestSuiteV2 {
     // base & wrapped
     MockERC20 public BASE; // e.g., WBTC (8 decimals)
     MockERC20 public WRAPPED; // 1:1 wrapper token (8 decimals)
-    MockERC20 public DEBT;   // e.g., USDC (6d)
+    MockERC20 public DEBT; // e.g., USDC (6d)
 
     // SatLayer vault + PL + CG
     SLAYVaultV2 public vault;
@@ -111,7 +117,7 @@ contract StablecoinFullIntegrationTest is Test, TestSuiteV2 {
 
         // Create vault
         vm.prank(operator);
-        vault = vaultFactory.create(BASE);
+        vault = vaultFactory.create(BASE, "test", "T");
 
         // sanity
         assertEq(vault.delegated(), operator);
@@ -123,7 +129,7 @@ contract StablecoinFullIntegrationTest is Test, TestSuiteV2 {
         pl = new PositionLocker(vault);
         // grant CG role later when wiring
 
-        oracle  = new MockOracle();
+        oracle = new MockOracle();
 
         // prices (1e8): BTC = 50,000; USDC = 1
         oracle.set(address(BASE), 50_000 * 1e8);
@@ -156,30 +162,29 @@ contract StablecoinFullIntegrationTest is Test, TestSuiteV2 {
 
         // sensible defaults for deposit safety
         ConversionGateway.DepositSafety memory depSafeWrap = ConversionGateway.DepositSafety({
-            redeemToleranceBps: 25,      // allow 0.25% shortfall on 4626 redeem
-            unwrapMinOutBps:    9950,    // require at least 99.5% back on unwrap
-            emergencyMode:      false,   // normal operation
-            emergencyRedeemBps: 500,     // allow up to 5% shortfall if emergencyMode = true
-            emergencyUnwrapBps: 500      // allow up to 5% unwrap loss if emergencyMode = true
+            redeemToleranceBps: 25, // allow 0.25% shortfall on 4626 redeem
+            unwrapMinOutBps: 9950, // require at least 99.5% back on unwrap
+            emergencyMode: false, // normal operation
+            emergencyRedeemBps: 500, // allow up to 5% shortfall if emergencyMode = true
+            emergencyUnwrapBps: 500 // allow up to 5% unwrap loss if emergencyMode = true
         });
 
         ConversionGateway.DepositSafety memory depSafeIdent = ConversionGateway.DepositSafety({
-            redeemToleranceBps: 10,      // tighter: 0.10% slack
-            unwrapMinOutBps:    10_000,  // exactly 100% (identity path has no unwrap)
-            emergencyMode:      false,
-            emergencyRedeemBps: 200,     // 2% slack in emergency
-            emergencyUnwrapBps: 0        // unused since no wrapper
+            redeemToleranceBps: 10, // tighter: 0.10% slack
+            unwrapMinOutBps: 10_000, // exactly 100% (identity path has no unwrap)
+            emergencyMode: false,
+            emergencyRedeemBps: 200, // 2% slack in emergency
+            emergencyUnwrapBps: 0 // unused since no wrapper
         });
-
 
         // --- WRAP strategy (base -> wrap 1:1 -> deposit wrapped) ---
         {
             ConversionGateway.StrategyCfg memory s;
             s.kind = ConversionGateway.RouteKind.DepositWrap1to1;
             s.deposit = ConversionGateway.DepositCfg({
-                wrapper:   address(wrapper),
+                wrapper: address(wrapper),
                 connector: address(connWrapped),
-                safety:    depSafeWrap
+                safety: depSafeWrap
             });
             // leave s.borrow as empty/defaults
             vm.prank(gov);
@@ -190,11 +195,8 @@ contract StablecoinFullIntegrationTest is Test, TestSuiteV2 {
         {
             ConversionGateway.StrategyCfg memory s;
             s.kind = ConversionGateway.RouteKind.DepositIdentity;
-            s.deposit = ConversionGateway.DepositCfg({
-                wrapper:   address(0),
-                connector: address(connBase),
-                safety:    depSafeIdent
-            });
+            s.deposit =
+                ConversionGateway.DepositCfg({wrapper: address(0), connector: address(connBase), safety: depSafeIdent});
             vm.prank(gov);
             cg.setStrategy(STRAT_IDENT, s);
         }
@@ -344,7 +346,6 @@ contract StablecoinFullIntegrationTest is Test, TestSuiteV2 {
     }
 }
 
-
 /* ------------------------- Minimal Mock Adapter -------------------------
  * Venue adapter that:
  *  - tracks "supplied base collateral" and "venue debt"
@@ -354,11 +355,11 @@ contract StablecoinFullIntegrationTest is Test, TestSuiteV2 {
  * Everything is 1:1 and instantaneous for testing.
  */
 contract MockBorrowVenueAdapter is IBorrowVenueAdapter {
-    address public immutable base;      // collateral token
+    address public immutable base; // collateral token
     address public immutable debtAsset; // debt token
 
-    uint256 public collBal;   // total collateral credited to the vault
-    uint256 public debtBal;   // total outstanding venue debt
+    uint256 public collBal; // total collateral credited to the vault
+    uint256 public debtBal; // total outstanding venue debt
 
     constructor(address _base, address _debt) {
         base = _base;
@@ -412,23 +413,22 @@ contract MockBorrowVenueAdapter is IBorrowVenueAdapter {
         external
         view
         override
-        returns (bool hasApr, uint aprBps, bool haveHf, uint hfBps)
+        returns (bool hasApr, uint256 aprBps, bool haveHf, uint256 hfBps)
     {
         return (false, 0, false, 0); // default: no signals
     }
-    
 }
 
 /* ----------------------- Borrow Flow Integration ----------------------- */
 contract BorrowFlowIntegrationTest is Test, TestSuiteV2 {
     // actors
-    address public gov      = makeAddr("gov");
+    address public gov = makeAddr("gov");
     address public operator = makeAddr("operator"); // keeper/operator
-    address public alice    = makeAddr("alice");
+    address public alice = makeAddr("alice");
 
     // tokens
-    MockERC20 public BASE;       // e.g., WBTC (8 decimals)
-    MockERC20 public DEBT;       // e.g., USDC (6 decimals)
+    MockERC20 public BASE; // e.g., WBTC (8 decimals)
+    MockERC20 public DEBT; // e.g., USDC (6 decimals)
     MockOracle public oracle;
 
     // core SatLayer
@@ -438,7 +438,7 @@ contract BorrowFlowIntegrationTest is Test, TestSuiteV2 {
 
     // borrow stack
     MockBorrowVenueAdapter public adapter;
-    ExternalVaultConnector  public debtConn; // parks borrowed token per-user
+    ExternalVaultConnector public debtConn; // parks borrowed token per-user
 
     // strategy id
     bytes32 constant STRAT_BORROW = keccak256("ROUTE_BORROW");
@@ -458,7 +458,7 @@ contract BorrowFlowIntegrationTest is Test, TestSuiteV2 {
 
         // create SatLayer vault (BASE)
         vm.prank(operator);
-        vault = vaultFactory.create(BASE);
+        vault = vaultFactory.create(BASE, "test", "T");
         assertEq(vault.delegated(), operator);
         vm.prank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -474,25 +474,21 @@ contract BorrowFlowIntegrationTest is Test, TestSuiteV2 {
         cg = new ConversionGateway(gov, operator, operator, address(pl), oracle, IERC20(address(BASE)));
 
         // adapter + connector
-        adapter  = new MockBorrowVenueAdapter(address(BASE), address(DEBT));
+        adapter = new MockBorrowVenueAdapter(address(BASE), address(DEBT));
         // connector is an ERC-4626 adapter; here we "park" DEBT per-user (no external yield, but interface-compatible)
         debtConn = new ExternalVaultConnector(
-            gov,
-            address(cg),
-            IERC4626(address(new Simple4626(ERC20(address(DEBT)), "ext debt", "extDEBT")))
+            gov, address(cg), IERC4626(address(new Simple4626(ERC20(address(DEBT)), "ext debt", "extDEBT")))
         );
 
-   
         ConversionGateway.BorrowSafety memory bSafe = ConversionGateway.BorrowSafety({
-            redeemToleranceBps: 50,      // 0.50% slack when redeeming debt from connector
-            withdrawSlippageBps: 50,     // shave 0.50% from pro-rata collateral withdrawal
-            maxAprBps:        1500,      // block new borrows if APR > 15%
-            minHfBps:         1200,      // block new borrows if HF < 120% (safety margin)
-            emergencyMode:    false,
-            emergencyRedeemBps: 300,     // allow 3% shortfall in emergency
-            emergencyWithdrawBps: 300    // allow 3% extra shave in emergency
+            redeemToleranceBps: 50, // 0.50% slack when redeeming debt from connector
+            withdrawSlippageBps: 50, // shave 0.50% from pro-rata collateral withdrawal
+            maxAprBps: 1500, // block new borrows if APR > 15%
+            minHfBps: 1200, // block new borrows if HF < 120% (safety margin)
+            emergencyMode: false,
+            emergencyRedeemBps: 300, // allow 3% shortfall in emergency
+            emergencyWithdrawBps: 300 // allow 3% extra shave in emergency
         });
-
 
         // configure strategy (BorrowVsBase)
         ConversionGateway.StrategyCfg memory s;
@@ -501,10 +497,10 @@ contract BorrowFlowIntegrationTest is Test, TestSuiteV2 {
             adapter: address(adapter),
             debtAsset: address(DEBT),
             borrowedConnector: address(debtConn),
-            maxBorrowBps: 7000,           // 70% LTV cap
+            maxBorrowBps: 7000, // 70% LTV cap
             safety: bSafe
-            // add other fields here if your BorrowCfg has more
         });
+        // add other fields here if your BorrowCfg has more
 
         vm.prank(gov);
         cg.setStrategy(STRAT_BORROW, s);
@@ -580,7 +576,7 @@ contract BorrowFlowIntegrationTest is Test, TestSuiteV2 {
 
         // 4) unwind: redeem ALL user's DEBT from the connector, repay venue, withdraw proportional BASE, restake to PL
         uint256 connectorMinOut = entitlement; // strict: exactly what we redeem
-        uint256 minCollateralOut = 1;          // accept any positive base after rounding shaves
+        uint256 minCollateralOut = 1; // accept any positive base after rounding shaves
 
         vm.prank(operator);
         (uint256 baseOut, uint256 repaidDebt, uint256 redeemedDebt) =
@@ -599,7 +595,6 @@ contract BorrowFlowIntegrationTest is Test, TestSuiteV2 {
 
         // opt out all from that strategy
 
-
         StrategyId[] memory arr = new StrategyId[](1);
         arr[0] = STRAT_BORROW_ID;
 
@@ -607,4 +602,3 @@ contract BorrowFlowIntegrationTest is Test, TestSuiteV2 {
         pl.optOutAll(arr);
     }
 }
-

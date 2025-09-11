@@ -22,7 +22,7 @@ contract MockConversionGateway {
     // IConversionGatewayMulti
     function onClaimWithStrategy(address user, uint256 assets, bytes32 strategy, bytes calldata params) external {
         // The vault has already sent us `assets`. We just record.
-        emit OnClaimWithStrategy(user, assets, strategy,  params);
+        emit OnClaimWithStrategy(user, assets, strategy, params);
     }
 
     // helper: approve PL to pull assets back during repayAndRestake test
@@ -56,7 +56,8 @@ contract PositionLockerTest is Test, TestSuiteV2 {
 
         // Create vault
         vm.prank(operator);
-        vault = vaultFactory.create(underlying);
+        vault = vaultFactory.create(underlying, "test", "T");
+        //vault = vaultFactory.create(underlying);
         vm.prank(owner);
         router.setVaultWhitelist(address(vault), true);
 
@@ -206,7 +207,6 @@ contract PositionLockerTest is Test, TestSuiteV2 {
         //StrategyId [] calldata arr = [STRAT_A];
         StrategyId[] memory arr = new StrategyId[](1);
         arr[0] = STRAT_A;
-
 
         vm.prank(alice);
         vm.expectRevert(bytes("OUTSTANDING_DEBT"));
