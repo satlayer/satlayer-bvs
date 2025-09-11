@@ -10,7 +10,7 @@ import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import {MockERC20} from "@satlayer/contracts/test/MockERC20.sol";
 
-import "../src/Connector.sol";
+import "../src/ExternalVaultConnector.sol";
 
 contract Simple4626 is ERC20, ERC4626 {
     uint8 private immutable _dec;
@@ -27,7 +27,7 @@ contract Simple4626 is ERC20, ERC4626 {
     }
 }
 
-contract ConnectorTest is Test {
+contract ExternalVaultConnectorTest is Test {
     // roles
     address public gov = makeAddr("gov");
     address public cg = makeAddr("cg");

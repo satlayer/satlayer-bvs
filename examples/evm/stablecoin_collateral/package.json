@@ -11,7 +11,9 @@
     "build": "forge build",
     "docs": "mm-foundryup -b forge && node_modules/.bin/forge doc",
     "fmt": "forge fmt",
-    "test": "forge test"
+    "test:sol": "forge test",
+    "test:ts": "vitest run --reporter verbose",
+    "test": "forge test && vitest run --reporter verbose"
   },
   "lint-staged": {
     "!(*.sol)": [
@@ -22,6 +24,7 @@
     ]
   },
   "dependencies": {
+    "@aave/core-v3": "^1.19.3",
     "@openzeppelin/contracts": "^5.4.0",
     "@openzeppelin/contracts-upgradeable": "^5.4.0",
     "@satlayer/contracts": "workspace:*",
@@ -29,6 +32,13 @@
   },
   "devDependencies": {
     "@metamask/foundryup": "^1.0.1",
-    "@openzeppelin/foundry-upgrades": "^0.4.0"
+    "@openzeppelin/foundry-upgrades": "^0.4.0",
+    "@satlayer/testcontainers": "^2.4.0",
+    "@types/node": "^20.17.17",
+    "abitype": "^1.1.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2",
+    "viem": "^2.37.5",
+    "vitest": "^3.2.4"
   }
 }

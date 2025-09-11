@@ -13,16 +13,16 @@ import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 contract MockConversionGateway {
     IERC20 public immutable asset;
 
-    event OnClaimWithStrategy(address indexed user, uint256 assets, bytes32 indexed strat);
+    event OnClaimWithStrategy(address indexed user, uint256 assets, bytes32 indexed strat, bytes params);
 
     constructor(IERC20 _asset) {
         asset = _asset;
     }
 
     // IConversionGatewayMulti
-    function onClaimWithStrategy(address user, uint256 assets, bytes32 strategy) external {
+    function onClaimWithStrategy(address user, uint256 assets, bytes32 strategy, bytes calldata params) external {
         // The vault has already sent us `assets`. We just record.
-        emit OnClaimWithStrategy(user, assets, strategy);
+        emit OnClaimWithStrategy(user, assets, strategy,  params);
     }
 
     // helper: approve PL to pull assets back during repayAndRestake test
@@ -160,7 +160,7 @@ contract PositionLockerTest is Test, TestSuiteV2 {
 
         // Claim to CG → books user debt/transformed + sends underlaying to CG
         vm.prank(operator);
-        uint256 assetsOut = pl.claimTo(reqId);
+        uint256 assetsOut = pl.claimTo(reqId, "");
 
         // Check transformed  moved up
         (, uint256 transformedTotal,,) = pl.userTotals(alice);
@@ -200,7 +200,7 @@ contract PositionLockerTest is Test, TestSuiteV2 {
         skip(7 days);
 
         vm.prank(operator);
-        pl.claimTo(reqId); // books debt
+        pl.claimTo(reqId, ""); // books debt
 
         // Try to optOutAll while debt > dust => revert
         //StrategyId [] calldata arr = [STRAT_A];
@@ -229,7 +229,7 @@ contract PositionLockerTest is Test, TestSuiteV2 {
         skip(7 days);
 
         vm.prank(operator);
-        uint256 assetsOut = pl.claimTo(reqId); // debtAssets += assetsOut
+        uint256 assetsOut = pl.claimTo(reqId, ""); // debtAssets += assetsOut
 
         // Actual under-test value
         uint256 unlockableShares = pl.unlockable(alice, STRAT_A);
@@ -254,7 +254,7 @@ contract PositionLockerTest is Test, TestSuiteV2 {
         uint256 reqId = pl.requestFor(alice, shares / 3, STRAT_A);
         skip(7 days);
         vm.prank(operator);
-        pl.claimTo(reqId);
+        pl.claimTo(reqId, "");
 
         uint256 maxOut = pl.unlockable(alice, STRAT_A);
         assertGt(maxOut, 0);
