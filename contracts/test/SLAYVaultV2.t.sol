@@ -22,10 +22,10 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_initialize() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
-        assertEq(vault.name(), "SatLayer Wrapped Bitcoin");
-        assertEq(vault.symbol(), "satWBTC");
+        assertEq(vault.name(), "Restaked test Wrapped Bitcoin");
+        assertEq(vault.symbol(), "sat.T.WBTC");
         assertEq(vault.decimals(), underlying.decimals());
         assertEq(vault.asset(), address(underlying));
         assertEq(vault.delegated(), operator);
@@ -33,14 +33,14 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_delegated() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         assertEq(vault.delegated(), operator);
     }
 
     function test_erc165() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         assertTrue(vault.supportsInterface(type(IERC20).interfaceId));
         assertTrue(vault.supportsInterface(type(IERC20Metadata).interfaceId));
@@ -54,7 +54,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_whitelisted() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
         assertFalse(router.isVaultWhitelisted(address(vault)));
 
         vm.startPrank(owner);
@@ -71,7 +71,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_notWhitelisted() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         address account = address(this);
 
@@ -84,7 +84,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_paused() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -102,7 +102,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_deposit() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -160,7 +160,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         vm.assume(fuzzAmount > 0 && fuzzAmount <= 1000 * 10 ** 8);
 
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -202,7 +202,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         vm.assume(fuzzAmount > 0 && fuzzAmount <= 1000 * 10 ** 8);
 
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -250,7 +250,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         vm.assume(depositAmount > 0 && depositAmount <= 500 * 10 ** 8);
 
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -298,7 +298,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_redeem() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -340,7 +340,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_withdraw() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
         uint8 vaultDecimal = vault.decimals();
         uint256 vaultMinorUnit = 10 ** vaultDecimal;
 
@@ -398,7 +398,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
      */
     function test_lifecycle_deposit_withdrawal() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
         uint8 vaultDecimal = vault.decimals();
         uint256 vaultMinorUnit = 10 ** vaultDecimal;
 
@@ -514,7 +514,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_lifecycle_withdrawal_with_operator() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
         uint8 vaultDecimal = vault.decimals();
         uint256 vaultMinorUnit = 10 ** vaultDecimal;
 
@@ -624,7 +624,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
      */
     function test_lifecycle_withdrawal_with_operator_reverts() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
         uint8 vaultDecimal = vault.decimals();
         uint256 vaultMinorUnit = 10 ** vaultDecimal;
 
@@ -710,7 +710,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_lockSlashing() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         uint8 underlyingDecimal = underlying.decimals();
         uint256 underlyingMinorUnit = 10 ** underlyingDecimal;
@@ -748,7 +748,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_lockSlashing_reverts() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         uint8 underlyingDecimal = underlying.decimals();
         uint256 underlyingMinorUnit = 10 ** underlyingDecimal;
@@ -775,7 +775,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
     /// Test always revert, as required by ERC7540
     function test_previewWithdraw_reverts() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         vm.expectRevert(ISLAYVaultV2.PreviewNotSupported.selector);
         vault.previewWithdraw(100);
@@ -784,7 +784,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
     /// Test always revert, as required by ERC7540
     function test_previewRedeem_reverts() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         vm.expectRevert(ISLAYVaultV2.PreviewNotSupported.selector);
         vault.previewRedeem(100);
@@ -793,7 +793,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
     /// Not the same operator as SLAY Registry Operator
     function test_setOperator_isOperator() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         address staker = makeAddr("staker");
         address operatorAddress = makeAddr("operatorAddress");
@@ -816,7 +816,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_operatorChain() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         address staker = makeAddr("staker");
         address operator1 = makeAddr("operator1");
@@ -842,7 +842,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_totalActiveStaked() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
         assertEq(vault.totalActiveStaked(), 0);
 
         vm.startPrank(owner);
@@ -909,7 +909,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_totalActiveStaked_donation() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
         assertEq(vault.totalActiveStaked(), 0);
 
         vm.startPrank(owner);
@@ -965,7 +965,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_pendingRedeemRequest() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -1000,7 +1000,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_claimableRedeemRequest() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -1035,7 +1035,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_maxWithdraw() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -1070,7 +1070,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_maxRedeem() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -1105,7 +1105,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_requestRedeem_zeroAmount() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -1128,7 +1128,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_requestRedeem_insufficientAllowance() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -1155,7 +1155,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_requestRedeem_notControllerOrOperator() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -1182,7 +1182,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_withdraw_zeroAmount() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -1211,7 +1211,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_withdraw_noRequest() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -1234,7 +1234,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_withdraw_delayNotPassed() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -1260,7 +1260,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_withdraw_partialAmount() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -1289,7 +1289,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_withdraw_excessiveAmount() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -1318,7 +1318,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_redeem_zeroAmount() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -1347,7 +1347,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_redeem_noRequest() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -1370,7 +1370,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_redeem_delayNotPassed() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -1396,7 +1396,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_redeem_partialAmount() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -1425,7 +1425,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_redeem_excessiveAmount() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -1454,7 +1454,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
     function test_redeem_NotControllerOrOperator() public {
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -1483,7 +1483,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         address zeroOperator = address(0);
 
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         vm.prank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -1501,7 +1501,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         vm.startPrank(zeroOperator);
         registry.registerAsOperator(" ", " ");
         vm.expectRevert("Delegated is not a valid account");
-        vaultFactory.create(underlying);
+        vaultFactory.create(underlying, "test", "T");
         vm.stopPrank();
     }
 
@@ -1512,7 +1512,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         vm.warp(block.timestamp + 100);
 
         vm.prank(operator);
-        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
 
         address controller = makeAddr("controller");
 
@@ -1534,5 +1534,17 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         vm.expectRevert(ISLAYVaultV2.NotControllerOrOperator.selector);
 
         vault.withdraw(100, address(this), controller);
+    }
+
+    function test_getWithdrawalDelay() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying, "test", "T");
+
+        assertEq(vault.getWithdrawalDelay(), 7 days);
+
+        // proper withdrawal delay after operator specific delay set
+        vm.prank(operator);
+        registry.setWithdrawalDelay(10 days);
+        assertEq(vault.getWithdrawalDelay(), 10 days);
     }
 }
