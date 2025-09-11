@@ -293,11 +293,9 @@ test("BVS-driven: claimTo then unwindDepositAny (base path)-> fully unlockable",
   await mineUntilReceipt(eth, eth.getClient(), txrequestFor as any);
 
   // make claimable
-  await eth.mineBlock(1);
 
   await client.request({ method: "evm_increaseTime", params: [toHex(7 * 24 * 60 * 60)] });
 
-  await eth.mineBlock(1);
   await mineUntilReceipt(eth, eth.getClient(), txrequestFor as any);
 
   // === BVS opens a two-action request: claimTo(reqId,""), unwindDepositAny(alice, STRAT_IDENT, max)
@@ -337,14 +335,6 @@ test("BVS-driven: claimTo then unwindDepositAny (base path)-> fully unlockable",
       "0x", // extraData
       2, // PREFIX
     ],
-    [
-      cg.contractAddress as `0x${string}`,
-      UNWIND_ANY, // UNWIND_ANY selector (bytes4)
-      asBytes(unwindPrefix), // expectedArgs
-      expectedArgsHash2 as `0x${string}`,
-      "0x", // extraData
-      2,
-    ],
   ];
 
   // call openRequest
@@ -379,7 +369,63 @@ test("BVS-driven: claimTo then unwindDepositAny (base path)-> fully unlockable",
     { interval: 500, timeout: 30_000 },
   );
 
-  // Assertions like  Foundry test
+  //Simulating yield to the vault
+
+  const entitlement = (await Conn.read.assetsOf([alice.address])) as bigint;
+
+  const yield_value = entitlement / BigInt(10); // +10%
+
+  const mintTx = await BASEc.write.mint([extBase.contractAddress, yield_value]);
+  await mineUntilReceipt(eth, eth.getClient(), mintTx as any);
+
+  const entitlement_after = (await Conn.read.assetsOf([alice.address])) as bigint;
+
+  expect(entitlement_after).toBeGreaterThan(entitlement);
+
+  const actions2: readonly [
+    `0x${string}`, // target
+    Hex, // selector (bytes4)
+    Hex, // expectedArgs (bytes)
+    Hex, // extraData (bytes)
+    Hex,
+    number, // matchMode (uint8)
+  ][] = [
+    [
+      cg.contractAddress as `0x${string}`,
+      UNWIND_ANY, // UNWIND_ANY selector (bytes4)
+      asBytes(unwindPrefix), // expectedArgs
+      expectedArgsHash2 as `0x${string}`,
+      "0x", // extraData
+      2,
+    ],
+  ];
+
+  const txSimreq2 = await BVS.simulate.openRequest(
+    [chainId, actions2, completionAll, kRequired, quorumBps, minCount, ttlSeconds, operatorAllow],
+    { account: owner.address },
+  );
+
+  //const txSim = await bvs.contract.simulate.openRequest([chainId, actions, /*ALL*/ 1, /*k*/0, /*bps*/0, minCount, /*ttl*/3600, []], { account: owner });
+  const bvsReqId2 = txSimreq2.result as bigint;
+  const txopen2 = await BVS.write.openRequest([chainId, actions2, 1, 0, 0, minCount, 3600, []], { account: owner });
+  await mineUntilReceipt(eth, eth.getClient(), txopen2 as any);
+
+  // wait for node to execute  action & attest, then finalize
+
+  await vi.waitFor(
+    async () => {
+      const can = (await bvs.contract.read.canFinalize([bvsReqId2])) as CanFinalizeResult;
+      const ok = Boolean(can[0]);
+      if (ok) {
+        const fintx2 = await bvs.contract.write.finalizeRequest([bvsReqId2], { account: owner });
+        await mineUntilReceipt(eth, eth.getClient(), fintx2 as any);
+      }
+      expect(ok).toBe(true);
+    },
+    { interval: 500, timeout: 30_000 },
+  );
+
+  // Assertions
   // connector entitlement should be 0 after full unwind
 
   const ent = (await Conn.read.assetsOf([alice.address])) as bigint;

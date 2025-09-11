@@ -224,7 +224,6 @@ beforeAll(async () => {
   await PL.write.setStrategyEnabled([STRAT_BORROW_ID, true], { account: operator });
   const psHash = await PL.write.setPaused([false], { account: operator.address });
   await mineUntilReceipt(eth, eth.getClient(), psHash as any);
-  await eth.mineBlock(1);
 
   // deploy BVS + register operator
 
@@ -258,6 +257,7 @@ test("BVS-driven: claimTo then unwindBorrow (borrow path) -> fully unlockable", 
   const CG = getContract({ address: cg.contractAddress, abi: cgAbi, client });
   const BVS = getContract({ address: bvs.contractAddress, abi: bvsAbi, client });
   const BASEc = getContract({ address: BASE, abi: mockErc20Abi, client });
+  const DEBTc = getContract({ address: DEBT, abi: mockErc20Abi, client });
   const Conn = getContract({ address: connBorrow.contractAddress, abi: evcAbi, client });
 
   // fund alice & deposit to vault, then opt-in
@@ -377,7 +377,6 @@ test("BVS-driven: claimTo then unwindBorrow (borrow path) -> fully unlockable", 
 
   const bvsReqId = txSim.result as bigint;
   const txopen = await BVS.write.openRequest([chainId, actions, 1, 0, 0, minCount, 3600, []], { account: owner });
-  await eth.mineBlock(1);
   await mineUntilReceipt(eth, eth.getClient(), txopen as any);
 
   // wait for node to execute  action & attest, then finalize
@@ -393,6 +392,21 @@ test("BVS-driven: claimTo then unwindBorrow (borrow path) -> fully unlockable", 
     },
     { interval: 500, timeout: 30_000 },
   );
+
+  //Simulating yield to the vault
+
+  const entitlement = (await Conn.read.assetsOf([alice.address])) as bigint;
+
+  const yield_value = entitlement / BigInt(10); // +10%
+
+  const target_vault = await Conn.read.targetVault();
+
+  const mintTx = await DEBTc.write.mint([target_vault, yield_value]);
+  await mineUntilReceipt(eth, eth.getClient(), mintTx as any);
+
+  const entitlement_after = (await Conn.read.assetsOf([alice.address])) as bigint;
+
+  expect(entitlement_after).toBeGreaterThan(entitlement);
 
   const actions2: readonly [
     `0x${string}`, // target
@@ -420,7 +434,6 @@ test("BVS-driven: claimTo then unwindBorrow (borrow path) -> fully unlockable", 
   //const txSim = await bvs.contract.simulate.openRequest([chainId, actions, /*ALL*/ 1, /*k*/0, /*bps*/0, minCount, /*ttl*/3600, []], { account: owner });
   const bvsReqId2 = txSimreq2.result as bigint;
   const txopen2 = await BVS.write.openRequest([chainId, actions2, 1, 0, 0, minCount, 3600, []], { account: owner });
-  await eth.mineBlock(1);
 
   await mineUntilReceipt(eth, eth.getClient(), txopen2 as any);
 
@@ -439,7 +452,7 @@ test("BVS-driven: claimTo then unwindBorrow (borrow path) -> fully unlockable", 
     { interval: 500, timeout: 30_000 },
   );
 
-  // Assertions like Foundry test
+  // Assertions
   // connector entitlement should be 0 after full unwind
 
   const ent = (await Conn.read.assetsOf([alice.address])) as bigint;
