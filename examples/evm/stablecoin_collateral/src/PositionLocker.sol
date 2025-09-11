@@ -8,26 +8,7 @@ import {SLAYVaultV2} from "@satlayer/contracts/src/SLAYVaultV2.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
-
-interface IConversionGatewayMulti {
-    function onClaimWithStrategy(address user, uint256 baseAssets, bytes32 strategy, bytes calldata params) external;
-
-    // existing
-    function unwindDepositAny(address user, bytes32 strategy, uint256 requestedBaseOrWrapped, uint256 minOutAfterUnwrap)
-        external;
-    function unwindBorrow(
-        address user,
-        bytes32 strategy,
-        uint256 requestedDebtIn,
-        uint256 minCollateralOut,
-        bytes calldata adapterData,
-        uint256 connectorMinOut
-    ) external;
-}
-
-interface IConversionGatewayView {
-    function kindOf(bytes32 strategy) external view returns (uint8); // returns RouteKind enum value
-}
+import {IConversionGatewayMulti} from "./Interfaces/IConversionGatewayMulti.sol";
 
 /// @notice User-defined value type for strategies. Encode as bytes32 ids, e.g., keccak256("AAVE_USDC")
 type StrategyId is bytes32;
@@ -310,7 +291,7 @@ contract PositionLocker is AccessControl, ReentrancyGuard, Pausable {
     {
         require(strategyEnabled[strategy], "STRAT_DISABLED");
 
-        uint8 kind = IConversionGatewayView(conversionGateway).kindOf(StrategyId.unwrap(strategy));
+        uint8 kind = IConversionGatewayMulti(conversionGateway).kindOf(StrategyId.unwrap(strategy));
         require(
             kind == uint8(RouteKind.DepositIdentity) || kind == uint8(RouteKind.DepositWrap1to1), "NOT_DEPOSIT_KIND"
         );
@@ -336,7 +317,7 @@ contract PositionLocker is AccessControl, ReentrancyGuard, Pausable {
         require(strategyEnabled[strategy], "STRAT_DISABLED");
         require(requestedDebtIn > 0, "ZERO_REQ");
 
-        uint8 kind = IConversionGatewayView(conversionGateway).kindOf(StrategyId.unwrap(strategy));
+        uint8 kind = IConversionGatewayMulti(conversionGateway).kindOf(StrategyId.unwrap(strategy));
         require(kind == uint8(RouteKind.BorrowVsBase), "NOT_BORROW_KIND");
 
         IConversionGatewayMulti(conversionGateway).unwindBorrow(

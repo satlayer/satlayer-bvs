@@ -6,37 +6,12 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "./interfaces/IBorrowVenueAdapter.sol";
-
-interface IPL {
-    function repayAndRestake(address user, uint256 assets, bytes32 strategy) external;
-    function finalizeUnwind(address user, bytes32 strategy) external;
-}
-
-interface IWrapper1to1 {
-    function base() external view returns (address);
-    function wrapped() external view returns (address);
-    function wrap(uint256 amount) external returns (uint256 out); // expect out == amount (1:1)
-    function unwrap(uint256 amount) external returns (uint256 out); // expect out == amount (1:1)
-}
-
-interface IExternalVaultConnector {
-    function asset() external view returns (address); // ERC-4626 underlying
-    function depositFor(address user, uint256 assets) external returns (uint256 sharesOut);
-    function redeemFor(address user, uint256 requestedAssets, uint256 minAssetsOut)
-        external
-        returns (uint256 assetsOut, uint256 sharesBurned);
-    function assetsOf(address user) external view returns (uint256); // entitlement incl. yield
-}
-
-interface IPriceOracle {
-    function price(address token) external view returns (uint256); // 1e8
-}
-
-interface IRateAwareAdapter is IBorrowVenueAdapter {
-    function borrowAprBps(address debtAsset) external view returns (uint16);
-    function healthFactorBps() external view returns (uint16);
-}
+import {IBorrowVenueAdapter} from "./Interfaces/IBorrowVenueAdapter.sol";
+import {IPL} from "./Interfaces/IPL.sol";
+import {IPriceOracle} from "./Interfaces/IPriceOracle.sol";
+import {IWrapper1to1} from "./Interfaces/IWrapper1to1.sol";
+import {IExternalVaultConnector} from "./Interfaces/IExternalVaultConnector.sol";
+import {IRateAwareAdapter} from "./Interfaces/IRateAwareAdapter.sol";
 
 /**
  * @title ConversionGateway

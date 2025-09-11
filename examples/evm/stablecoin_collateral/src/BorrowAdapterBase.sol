@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
-import "./interfaces/IBorrowVenueAdapter.sol";
+import "./Interfaces/IBorrowVenueAdapter.sol";
 
 /**
  * @title BorrowAdapterBase
