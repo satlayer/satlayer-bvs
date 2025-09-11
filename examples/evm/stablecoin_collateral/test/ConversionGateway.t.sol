@@ -9,24 +9,30 @@ import "../src/ConversionGateway.sol";
 
 /* ------------------------ Mocks ------------------------ */
 
-
-
 contract MockOracle is IPriceOracle {
     mapping(address => uint256) public px; // token => price 1e8
-    function set(address token, uint256 p1e8) external { px[token] = p1e8; }
-    function price(address token) external view returns (uint256) { return px[token]; }
+
+    function set(address token, uint256 p1e8) external {
+        px[token] = p1e8;
+    }
+
+    function price(address token) external view returns (uint256) {
+        return px[token];
+    }
 }
 
 contract MockBorrowAdapter is IBorrowVenueAdapter {
     // simple venue accounting
     mapping(address => uint256) public collateralBal; // token => amount
-    mapping(address => uint256) public debtBal;       // token => amount
+    mapping(address => uint256) public debtBal; // token => amount
 
     // optional knobs to simulate behavior
     uint256 public withdrawNextOut; // force a specific withdraw out for testing slippage
-    uint256 public repayNextOut;    // force a specific repay out (<= input)
+    uint256 public repayNextOut; // force a specific repay out (<= input)
 
-    function setwithdrawNextOut(uint256 v) external { withdrawNextOut = v; }
+    function setwithdrawNextOut(uint256 v) external {
+        withdrawNextOut = v;
+    }
 
     // Collateral
     function supplyCollateral(address collateral, uint256 amount, bytes calldata) external override {
@@ -34,7 +40,11 @@ contract MockBorrowAdapter is IBorrowVenueAdapter {
         collateralBal[collateral] += amount;
     }
 
-    function withdrawCollateral(address collateral, uint256 amount, bytes calldata) external override returns (uint256) {
+    function withdrawCollateral(address collateral, uint256 amount, bytes calldata)
+        external
+        override
+        returns (uint256)
+    {
         uint256 out = withdrawNextOut > 0 ? withdrawNextOut : amount;
         require(collateralBal[collateral] >= out, "venue/coll<out");
         collateralBal[collateral] -= out;
@@ -73,15 +83,11 @@ contract MockBorrowAdapter is IBorrowVenueAdapter {
         external
         view
         override
-        returns (bool hasApr, uint aprBps, bool haveHf, uint hfBps)
+        returns (bool hasApr, uint256 aprBps, bool haveHf, uint256 hfBps)
     {
         return (false, 0, false, 0); // default: no signals
     }
-    
-
 }
-
-
 
 contract MockWrapper1to1 is IWrapper1to1 {
     MockERC20 public immutable _base;
@@ -94,10 +100,17 @@ contract MockWrapper1to1 is IWrapper1to1 {
         _wrapped = wrapped_;
     }
 
-    function base() external view override returns (address) { return address(_base); }
-    function wrapped() external view override returns (address) { return address(_wrapped); }
+    function base() external view override returns (address) {
+        return address(_base);
+    }
 
-    function setUnwrapNextOut(uint256 v) external { unwrapNextOut = v; }
+    function wrapped() external view override returns (address) {
+        return address(_wrapped);
+    }
+
+    function setUnwrapNextOut(uint256 v) external {
+        unwrapNextOut = v;
+    }
 
     // Pull base from caller and mint wrapped 1:1 to caller
     function wrap(uint256 amount) external override returns (uint256 out) {
@@ -122,9 +135,13 @@ contract MockExternalVaultConnector is IExternalVaultConnector {
     address public immutable _asset; // token this connector accepts / returns
     mapping(address => uint256) public ent; // per-user entitlement in asset units
 
-    constructor(address asset_) { _asset = asset_; }
+    constructor(address asset_) {
+        _asset = asset_;
+    }
 
-    function asset() external view override returns (address) { return _asset; }
+    function asset() external view override returns (address) {
+        return _asset;
+    }
 
     // Pull token from caller (CG) and credit user's entitlement 1:1
     function depositFor(address user, uint256 assets) external override returns (uint256 sharesOut) {
@@ -160,8 +177,9 @@ contract MockPL is IPL {
     uint256 public called;
     address public immutable asset; //underlaying
 
-
-    constructor(address asset_) { asset = asset_; }
+    constructor(address asset_) {
+        asset = asset_;
+    }
 
     function repayAndRestake(address user, uint256 assets, bytes32 strategy) external {
         MockERC20(asset).transferFrom(msg.sender, address(this), assets);
@@ -171,29 +189,27 @@ contract MockPL is IPL {
         called++;
     }
 
-    function finalizeUnwind(address user, bytes32 strat) external { 
+    function finalizeUnwind(address user, bytes32 strat) external {
         lastUser = user;
         lastStrat = strat;
-
     }
-
- }
+}
 
 /* ------------------------ Tests ------------------------ */
 
 contract ConversionGatewayTest is Test {
     // actors
-    address public gov    = makeAddr("gov");
+    address public gov = makeAddr("gov");
     address public keeper = makeAddr("keeper");
     address public pauser = makeAddr("pauser");
-    MockPL  public pl; // gets ROLE_PL
+    MockPL public pl; // gets ROLE_PL
 
     // tokens
-    MockERC20 public BASE;     // e.g. WBTC
-    MockERC20 public WRAPPED;  // 1:1 wrapper token
-    MockERC20 public OTHER;    // random ERC20 to test mismatches
+    MockERC20 public BASE; // e.g. WBTC
+    MockERC20 public WRAPPED; // 1:1 wrapper token
+    MockERC20 public OTHER; // random ERC20 to test mismatches
     MockOracle public oracle;
-    MockERC20 public DEBT;   // e.g., USDC (6d)
+    MockERC20 public DEBT; // e.g., USDC (6d)
 
     // system under test
     ConversionGateway public cg;
@@ -201,15 +217,15 @@ contract ConversionGatewayTest is Test {
     // mocks
     MockWrapper1to1 public wrapper;
     MockExternalVaultConnector public connWrapped; // expects WRAPPED
-    MockExternalVaultConnector public connBase;    // expects BASE
+    MockExternalVaultConnector public connBase; // expects BASE
 
-    bytes32 constant STRAT_WRAP  = keccak256("WRAP_DEPOSIT");
+    bytes32 constant STRAT_WRAP = keccak256("WRAP_DEPOSIT");
     bytes32 constant STRAT_IDENT = keccak256("IDENTITY_DEPOSIT");
 
     function setUp() public {
-        BASE    = new MockERC20("Wrapped BTC", "WBTC", 8);
+        BASE = new MockERC20("Wrapped BTC", "WBTC", 8);
         WRAPPED = new MockERC20("wWBTC", "wWBTC", 8);
-        OTHER   = new MockERC20("OTHER", "OTH", 18);
+        OTHER = new MockERC20("OTHER", "OTH", 18);
 
         pl = new MockPL(address(BASE));
         oracle = new MockOracle();
@@ -219,61 +235,35 @@ contract ConversionGatewayTest is Test {
 
         cg = new ConversionGateway(gov, keeper, pauser, address(pl), oracle, IERC20(address(BASE)));
 
-        wrapper     = new MockWrapper1to1(BASE, WRAPPED);
+        wrapper = new MockWrapper1to1(BASE, WRAPPED);
         connWrapped = new MockExternalVaultConnector(address(WRAPPED));
-        connBase    = new MockExternalVaultConnector(address(BASE));
-
-        // // --- set a WRAP strategy (wrap base -> wrapped -> deposit) ---
-        // {
-        //     ConversionGateway.StrategyCfg memory s;
-        //     s.kind = ConversionGateway.RouteKind.DepositWrap1to1;
-        //     s.deposit = ConversionGateway.DepositCfg({
-        //         wrapper:   address(wrapper),
-        //         connector: address(connWrapped)
-        //     });
-        //     // borrow cfg left empty
-        //     vm.prank(gov);
-        //     cg.setStrategy(STRAT_WRAP, s);
-        // }
-
-        // // --- set an IDENTITY strategy (no wrapper; deposit base directly) ---
-        // {
-        //     ConversionGateway.StrategyCfg memory s;
-        //     s.kind = ConversionGateway.RouteKind.DepositIdentity;
-        //     s.deposit = ConversionGateway.DepositCfg({
-        //         wrapper:   address(0),
-        //         connector: address(connBase)
-        //     });
-        //     vm.prank(gov);
-        //     cg.setStrategy(STRAT_IDENT, s);
-        // }
+        connBase = new MockExternalVaultConnector(address(BASE));
 
         // sensible defaults for deposit safety
         ConversionGateway.DepositSafety memory depSafeWrap = ConversionGateway.DepositSafety({
-            redeemToleranceBps: 25,      // allow 0.25% shortfall on 4626 redeem
-            unwrapMinOutBps:    9950,    // require at least 99.5% back on unwrap
-            emergencyMode:      false,   // normal operation
-            emergencyRedeemBps: 500,     // allow up to 5% shortfall if emergencyMode = true
-            emergencyUnwrapBps: 500      // allow up to 5% unwrap loss if emergencyMode = true
+            redeemToleranceBps: 25, // allow 0.25% shortfall on 4626 redeem
+            unwrapMinOutBps: 9950, // require at least 99.5% back on unwrap
+            emergencyMode: false, // normal operation
+            emergencyRedeemBps: 500, // allow up to 5% shortfall if emergencyMode = true
+            emergencyUnwrapBps: 500 // allow up to 5% unwrap loss if emergencyMode = true
         });
 
         ConversionGateway.DepositSafety memory depSafeIdent = ConversionGateway.DepositSafety({
-            redeemToleranceBps: 10,      // tighter: 0.10% slack
-            unwrapMinOutBps:    10_000,  // exactly 100% (identity path has no unwrap)
-            emergencyMode:      false,
-            emergencyRedeemBps: 200,     // 2% slack in emergency
-            emergencyUnwrapBps: 0        // unused since no wrapper
+            redeemToleranceBps: 10, // tighter: 0.10% slack
+            unwrapMinOutBps: 10_000, // exactly 100% (identity path has no unwrap)
+            emergencyMode: false,
+            emergencyRedeemBps: 200, // 2% slack in emergency
+            emergencyUnwrapBps: 0 // unused since no wrapper
         });
-
 
         // --- WRAP strategy (base -> wrap 1:1 -> deposit wrapped) ---
         {
             ConversionGateway.StrategyCfg memory s;
             s.kind = ConversionGateway.RouteKind.DepositWrap1to1;
             s.deposit = ConversionGateway.DepositCfg({
-                wrapper:   address(wrapper),
+                wrapper: address(wrapper),
                 connector: address(connWrapped),
-                safety:    depSafeWrap
+                safety: depSafeWrap
             });
             // leave s.borrow as empty/defaults
             vm.prank(gov);
@@ -284,11 +274,8 @@ contract ConversionGatewayTest is Test {
         {
             ConversionGateway.StrategyCfg memory s;
             s.kind = ConversionGateway.RouteKind.DepositIdentity;
-            s.deposit = ConversionGateway.DepositCfg({
-                wrapper:   address(0),
-                connector: address(connBase),
-                safety:    depSafeIdent
-            });
+            s.deposit =
+                ConversionGateway.DepositCfg({wrapper: address(0), connector: address(connBase), safety: depSafeIdent});
             vm.prank(gov);
             cg.setStrategy(STRAT_IDENT, s);
         }
@@ -306,21 +293,20 @@ contract ConversionGatewayTest is Test {
     /* --------------------- setStrategy validations --------------------- */
 
     function test_setStrategy_validations() public {
-
         ConversionGateway.DepositSafety memory depSafeWrap2 = ConversionGateway.DepositSafety({
-            redeemToleranceBps: 25,      // allow 0.25% shortfall on 4626 redeem
-            unwrapMinOutBps:    9950,    // require at least 99.5% back on unwrap
-            emergencyMode:      false,   // normal operation
-            emergencyRedeemBps: 500,     // allow up to 5% shortfall if emergencyMode = true
-            emergencyUnwrapBps: 500      // allow up to 5% unwrap loss if emergencyMode = true
+            redeemToleranceBps: 25, // allow 0.25% shortfall on 4626 redeem
+            unwrapMinOutBps: 9950, // require at least 99.5% back on unwrap
+            emergencyMode: false, // normal operation
+            emergencyRedeemBps: 500, // allow up to 5% shortfall if emergencyMode = true
+            emergencyUnwrapBps: 500 // allow up to 5% unwrap loss if emergencyMode = true
         });
 
         ConversionGateway.DepositSafety memory depSafeIdent2 = ConversionGateway.DepositSafety({
-            redeemToleranceBps: 10,      // tighter: 0.10% slack
-            unwrapMinOutBps:    10_000,  // exactly 100% (identity path has no unwrap)
-            emergencyMode:      false,
-            emergencyRedeemBps: 200,     // 2% slack in emergency
-            emergencyUnwrapBps: 0        // unused since no wrapper
+            redeemToleranceBps: 10, // tighter: 0.10% slack
+            unwrapMinOutBps: 10_000, // exactly 100% (identity path has no unwrap)
+            emergencyMode: false,
+            emergencyRedeemBps: 200, // 2% slack in emergency
+            emergencyUnwrapBps: 0 // unused since no wrapper
         });
 
         // (1) DepositWrap1to1: wrapper base mismatch
@@ -329,9 +315,9 @@ contract ConversionGatewayTest is Test {
             s.kind = ConversionGateway.RouteKind.DepositWrap1to1;
             MockWrapper1to1 badWrap = new MockWrapper1to1(OTHER, WRAPPED);
             s.deposit = ConversionGateway.DepositCfg({
-                wrapper:   address(badWrap),
+                wrapper: address(badWrap),
                 connector: address(connWrapped),
-                safety:    depSafeWrap2
+                safety: depSafeWrap2
             });
             vm.prank(gov);
             vm.expectRevert(bytes("WRAP_BASE_MISMATCH"));
@@ -344,9 +330,9 @@ contract ConversionGatewayTest is Test {
             s.kind = ConversionGateway.RouteKind.DepositWrap1to1;
             MockExternalVaultConnector badConn = new MockExternalVaultConnector(address(BASE));
             s.deposit = ConversionGateway.DepositCfg({
-                wrapper:   address(wrapper),
+                wrapper: address(wrapper),
                 connector: address(badConn),
-                safety:    depSafeWrap2
+                safety: depSafeWrap2
             });
             vm.prank(gov);
             vm.expectRevert(bytes("CONNECTOR_ASSET_MISMATCH"));
@@ -359,9 +345,9 @@ contract ConversionGatewayTest is Test {
             s.kind = ConversionGateway.RouteKind.DepositIdentity;
             MockExternalVaultConnector needsBase = new MockExternalVaultConnector(address(WRAPPED));
             s.deposit = ConversionGateway.DepositCfg({
-                wrapper:   address(0),
+                wrapper: address(0),
                 connector: address(needsBase),
-                safety:    depSafeIdent2
+                safety: depSafeIdent2
             });
             vm.prank(gov);
             vm.expectRevert(bytes("CONNECTOR_NEEDS_BASE_ASSET"));
@@ -410,8 +396,8 @@ contract ConversionGatewayTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector,
-                address(this),         // msg.sender here is the test contract
-                cg.ROLE_PL()           // role required by onlyPL
+                address(this), // msg.sender here is the test contract
+                cg.ROLE_PL() // role required by onlyPL
             )
         );
         cg.onClaimWithStrategy(user, 1, STRAT_WRAP, "");
@@ -497,7 +483,7 @@ contract ConversionGatewayTest is Test {
         _seedWrappedPosition(user, baseIn);
 
         // redeem 50e8; connector will return 50e8 wrapped back to CG.
-        // Make wrapper under-return 49e8 on unwrap → should revert UNWRAP_SLIPPAGE.
+        // Make wrapper under-return 49e8 on unwrap -> should revert UNWRAP_SLIPPAGE.
         wrapper.setUnwrapNextOut(49e8);
 
         vm.prank(keeper);
@@ -530,23 +516,22 @@ contract ConversionGatewayTest is Test {
     }
 }
 
-
 /* ====================== Tests (Borrow path) ====================== */
 
 contract ConversionGatewayBorrowTest is Test {
     // actors
-    address public gov    = makeAddr("gov");
+    address public gov = makeAddr("gov");
     address public keeper = makeAddr("keeper");
     address public pauser = makeAddr("pauser");
-    MockPL  public pl;
+    MockPL public pl;
 
     // tokens
-    MockERC20 public BASE;   // e.g., WBTC (8d)
-    MockERC20 public DEBT;   // e.g., USDC (6d)
+    MockERC20 public BASE; // e.g., WBTC (8d)
+    MockERC20 public DEBT; // e.g., USDC (6d)
 
     // mocks
-    MockOracle             public oracle;
-    MockBorrowAdapter      public adapter;
+    MockOracle public oracle;
+    MockBorrowAdapter public adapter;
     MockExternalVaultConnector public debtConn;
 
     // SUT
@@ -559,10 +544,10 @@ contract ConversionGatewayBorrowTest is Test {
         BASE = new MockERC20("Wrapped BTC", "WBTC", 8);
         DEBT = new MockERC20("USD Coin", "USDC", 6);
 
-        oracle  = new MockOracle();
+        oracle = new MockOracle();
 
-        debtConn= new MockExternalVaultConnector(address(DEBT));
-        pl      = new MockPL(address(BASE));
+        debtConn = new MockExternalVaultConnector(address(DEBT));
+        pl = new MockPL(address(BASE));
 
         // prices (1e8): BTC = 50,000; USDC = 1
         oracle.set(address(BASE), 50_000 * 1e8);
@@ -573,15 +558,14 @@ contract ConversionGatewayBorrowTest is Test {
         adapter = new MockBorrowAdapter();
 
         ConversionGateway.BorrowSafety memory bSafe = ConversionGateway.BorrowSafety({
-            redeemToleranceBps: 50,      // 0.50% slack when redeeming debt from connector
-            withdrawSlippageBps: 50,     // shave 0.50% from pro-rata collateral withdrawal
-            maxAprBps:        1500,      // block new borrows if APR > 15%
-            minHfBps:         1200,      // block new borrows if HF < 120% (safety margin)
-            emergencyMode:    false,
-            emergencyRedeemBps: 300,     // allow 3% shortfall in emergency
-            emergencyWithdrawBps: 300    // allow 3% extra shave in emergency
+            redeemToleranceBps: 50, // 0.50% slack when redeeming debt from connector
+            withdrawSlippageBps: 50, // shave 0.50% from pro-rata collateral withdrawal
+            maxAprBps: 1500, // block new borrows if APR > 15%
+            minHfBps: 1200, // block new borrows if HF < 120% (safety margin)
+            emergencyMode: false,
+            emergencyRedeemBps: 300, // allow 3% shortfall in emergency
+            emergencyWithdrawBps: 300 // allow 3% extra shave in emergency
         });
-
 
         // configure strategy (BorrowVsBase)
         ConversionGateway.StrategyCfg memory s;
@@ -590,9 +574,8 @@ contract ConversionGatewayBorrowTest is Test {
             adapter: address(adapter),
             debtAsset: address(DEBT),
             borrowedConnector: address(debtConn),
-            maxBorrowBps: 7000,           // 70% LTV cap
+            maxBorrowBps: 7000, // 70% LTV cap
             safety: bSafe
-            // add other fields here if your BorrowCfg has more
         });
 
         vm.prank(gov);
@@ -613,7 +596,7 @@ contract ConversionGatewayBorrowTest is Test {
         BASE.mint(address(cg), baseAmount);
 
         // PL calls onClaimWithStrategy
-        bytes memory adapterData   = ""; // not used by mock
+        bytes memory adapterData = ""; // not used by mock
         bytes memory connectorData = ""; // not used by mock
         bytes memory params = abi.encode(overrideBps, adapterData, connectorData, minBorrowOut);
 
@@ -666,7 +649,7 @@ contract ConversionGatewayBorrowTest is Test {
 
     function _seedBorrowPosition(address user, uint256 baseIn) internal returns (uint256 borrowedOut) {
         // baseIn BTC @ $50k, 70% -> borrowUsd
-        uint256 borrowUsd = (50_000e8 /*price*/ * baseIn * (10 ** (18 - 8)) ) / 1e8; // CG does this internally
+        uint256 borrowUsd = (50_000e8 /*price*/ * baseIn * (10 ** (18 - 8))) / 1e8; // CG does this internally
         borrowUsd = (borrowUsd * 7000) / 10_000; // 70%
         // convert to tokens (USDC): $ -> amount; but we rely on CG’s exact math in onClaim
         _onClaimBorrow(user, baseIn, 0, 1); // minBorrowOut=1 to avoid reverts
@@ -680,8 +663,14 @@ contract ConversionGatewayBorrowTest is Test {
 
         // keeper redeems all entitlement (type(uint).max), expects proportional collateral withdrawal
         vm.prank(keeper);
-        (uint256 collOut, uint256 repaid, uint256 redeemed) =
-            cg.unwindBorrow(user, STRAT_BORROW, type(uint256).max, /*minCollateralOut*/ 1, /*adapterData*/ "", /*connectorMinOut*/ entitlement);
+        (uint256 collOut, uint256 repaid, uint256 redeemed) = cg.unwindBorrow(
+            user,
+            STRAT_BORROW,
+            type(uint256).max, /*minCollateralOut*/
+            1, /*adapterData*/
+            "", /*connectorMinOut*/
+            entitlement
+        );
 
         // venue debt reduced
         assertEq(repaid, redeemed, "repay==redeem");
@@ -707,7 +696,7 @@ contract ConversionGatewayBorrowTest is Test {
         uint256 ask = ent + 123;
 
         // make adapter return slightly *less* collateral than CG pro-rata expects to trigger slippage guard
-        adapter.setwithdrawNextOut( 1); // nonsense small; CG wants > minCollateralOut
+        adapter.setwithdrawNextOut(1); // nonsense small; CG wants > minCollateralOut
 
         vm.prank(keeper);
         vm.expectRevert(bytes("COLLATERAL_SLIPPAGE"));
@@ -715,8 +704,9 @@ contract ConversionGatewayBorrowTest is Test {
 
         // now allow 0 minCollateralOut so it passes even with tiny withdrawal
         vm.prank(keeper);
-        (uint256 collOut, uint256 repaid, uint256 redeemed) =
-            cg.unwindBorrow(user, STRAT_BORROW, ask, /*minCollateralOut*/ 0, /*adapterData*/ "", /*connectorMinOut*/ ent);
+        (uint256 collOut, uint256 repaid, uint256 redeemed) = cg.unwindBorrow(
+            user, STRAT_BORROW, ask, /*minCollateralOut*/ 0, /*adapterData*/ "", /*connectorMinOut*/ ent
+        );
 
         assertEq(repaid, redeemed);
         assertEq(debtConn.assetsOf(user), 0);
@@ -733,7 +723,9 @@ contract ConversionGatewayBorrowTest is Test {
         // ask exact entitlement but set connectorMinOut too high -> connector revert bubbles to CG
         vm.prank(keeper);
         vm.expectRevert(bytes("redeem/min"));
-        cg.unwindBorrow(user, STRAT_BORROW, ent, /*minCollateralOut*/ 0, /*adapterData*/ "", /*connectorMinOut*/ ent + 1);
+        cg.unwindBorrow(
+            user, STRAT_BORROW, ent, /*minCollateralOut*/ 0, /*adapterData*/ "", /*connectorMinOut*/ ent + 1
+        );
     }
 
     function test_access_control() public {
@@ -744,6 +736,5 @@ contract ConversionGatewayBorrowTest is Test {
         // random cannot unwind
         vm.expectRevert();
         cg.unwindBorrow(user, STRAT_BORROW, 1, 0, "", 1);
-
     }
 }

@@ -1,19 +1,9 @@
 import { StartedAnvilContainer, SuperTestClient } from "@satlayer/testcontainers";
-import {
-  Account,
-  getContract,
-  GetContractReturnType,
-  WatchContractEventReturnType,
-  Hex,
-  encodeFunctionData,
-  PublicClient,
-  AbiParameter,
-} from "viem";
-import { anvil, mainnet } from "viem/chains";
+import { Account, getContract, GetContractReturnType, WatchContractEventReturnType, Hex } from "viem";
 import { abi as bvsAbi } from "../out/StablecoinCollateralBVS.sol/StablecoinCollateralBVS.json";
 
 import { decodeEventLog } from "viem";
-import type { Abi, Address } from "viem";
+import type { Address } from "viem";
 
 export type BVSRequest = {
   chainId: bigint;
@@ -75,7 +65,7 @@ async function mineUntilReceipt(
   throw new Error(`Receipt not found after ${maxTries} mined blocks: ${hash}`);
 }
 
-/** BVS enums (must match solidity) */
+/** BVS enums */
 
 enum MatchMode {
   NONE = 0,
@@ -111,65 +101,12 @@ export type HandlerCtx = {
   /** helpers */
   decodeArgs: (abi: any[]) => any[] | null; // try to decode expectedArgs against a target ABI
   buildCalldata: (fullArgs: Hex) => Hex; // selector + args
-  canExecute: () => boolean; // you can implement per-operator policy (whitelists, budgets…)
+  canExecute: () => boolean;
 };
-
-/** Registry for target ABIs the operator knows how to call */
-export interface TargetAbiRegistry {
-  getAbi(target: `0x${string}`): any[] | null;
-}
-
-export class MapTargetAbiRegistry implements TargetAbiRegistry {
-  private map = new Map<string, any[]>();
-  add(target: `0x${string}`, abi: any[]) {
-    this.map.set(target.toLowerCase(), abi);
-    return this;
-  }
-  getAbi(target: `0x${string}`) {
-    return this.map.get(target.toLowerCase()) ?? null;
-  }
-}
-
-/** Default generic handler: tries to execute when possible, else no-op so we can just attest later */
-// async function genericExecuteAndAttest(ctx: HandlerCtx): Promise<HandlerResult> {
-//   // We need full args to execute (selector is known).
-//   let argsHex: Hex | null = null;
-
-//   argsHex = ctx.expectedArgs;
-
-//   //TODO: implement different matchmodes
-
-//   if (!argsHex) return {};
-//   const calldata = ctx.buildCalldata(argsHex);
-
-//   // (Policy gate)
-//   if (!ctx.canExecute()) return {};
-
-//     const nonce = await ctx.client.getTransactionCount(ctx.operator);
-//     console.log("nonce", nonce)
-
-//   // Actually send the tx — NOTE: in many setups, the operator will NOT be the EOA
-//   // that is allowed to call the target. Plug your real sender here.
-//   const txHash = await ctx.client.sendTransaction({
-//     account: ctx.operator,     // Account de viem (p.ej. privateKeyToAccount)
-//     to: ctx.target , // 0x...
-//     data: calldata ,     // 0x...
-//     chain:  mainnet,
-//     nonce: nonce,
-//     });
-//     await mineUntilReceipt(ctx.eth, ctx.client, txHash as any);
-
-//     console.log("transaction mined")
-
-//     const nonce2 = await ctx.client.getTransactionCount(ctx.operator);
-//     console.log("nonce", nonce2)
-
-//   return { txHash };
-// }
 
 /** Default generic handler: tries to execute when possible, else no-op so we can just attest later */
 async function genericExecuteAndAttest(ctx: HandlerCtx): Promise<HandlerResult> {
-  // Build args (prefix/full/etc). If you already have them:
+  // Build args (prefix/full/etc).
   const argsHex = ctx.expectedArgs;
   if (!argsHex) return {};
 
@@ -211,12 +148,11 @@ export class OperatorNode {
     private readonly container: StartedAnvilContainer,
     private readonly operator: Account,
     private readonly bvsAddress: `0x${string}`,
-    private readonly targetAbiRegistry: TargetAbiRegistry,
   ) {
     this.bvs = getContract({ address: bvsAddress, abi: bvsAbi, client });
 
     // Default: all selectors use the generic handler unless overridden.
-    // You can register specific handlers below for PL/CG functions.
+
     this.handlers.set("default", genericExecuteAndAttest);
 
     // example: register a concrete handler for CG.unwindBorrow(bytes32,address,uint256,…)
@@ -229,40 +165,15 @@ export class OperatorNode {
   }
 
   public start() {
-    console.log(`[${this.label}] Listening for RequestOpened/RequestActionAdded…`);
-    // Listen for new Requests (NOTE not necessary as we only admit request with actions, leaving for info)
-    // this.unwatchOpen = this.client.watchContractEvent({
-    //   address: this.bvsAddress,
-    //   abi: bvsAbi,
-    //   eventName: "RequestOpened",
-    //   onLogs: async (logs) => {
-    //     console.log("getting logs");
-    //     for (const log of logs) {
-    //         const { args } = decodeEventLog({
-    //             abi: bvsAbi,
-    //             data: log.data,
-    //             topics: log.topics,
-    //         });
-
-    //       const id = (args as any).id as bigint;
-    //      const chainId = (args as any).chainId as bigint;
-
-    //       console.log(`[${this.label}] New RequestOpened id=${id} on chain ${chainId}`);
-    //       // Try to fetch and act now (or wait until all actions arrive; we also listen to RequestActionAdded)
-    //       await this.tryProcessRequest(id);
-    //     }
-    //   },
-    // });
+    console.log(`[${this.label}] Listening for RequestActionAdded…`);
 
     // Listen for actions being added (some setups emit actions after opening)
     this.unwatchAction = this.client.watchContractEvent({
       address: this.bvsAddress as Address,
       abi: bvsAbi, // <- literal (as const)
       eventName: "RequestActionAdded" as const, // <- literal
-      // strict opcional, pero ayuda a filtrar y tipar mejor
       strict: true,
       onLogs: async (logs) => {
-        console.log("getting logs2");
         for (const log of logs) {
           const { args } = decodeEventLog({
             abi: bvsAbi,
@@ -306,11 +217,11 @@ export class OperatorNode {
     console.log(status);
 
     if (status !== ReqStatus.Open) {
-      return; // no está “Open”
+      return;
     }
 
     // Pull actions: the contract stores them in an array mapping; we don’t know length directly.
-    // If your BVS exposes an actionCount(requestId) view, use it.
+    // If BVS exposes an actionCount(requestId) view, use it.
     // Otherwise, we can probe sequentially until it reverts.
     const actions: Array<{
       target: `0x${string}`;
@@ -325,12 +236,9 @@ export class OperatorNode {
     console.log("reading action lengths1....");
     while (true) {
       try {
-        // public mapping requestActions => Action[]; we need a view accessor. Expose one in BVS:
-        // function getAction(uint256 id, uint256 idx) external view returns (Action memory)
         const A = await (this.bvs.read as any).requestActions([requestId, BigInt(i)]);
         const done = await this.bvs.read.hasAttested([requestId, BigInt(i), this.operator.address]);
         if (done) continue;
-        // If your compiler generated a tuple: [target, selector, expectedArgs, expectedArgsHash, extraData, matchMode]
         actions.push({
           target: A[0],
           selector: A[1],
@@ -413,7 +321,7 @@ export class OperatorNode {
       },
     };
 
-    // If we know the target ABI, we *could* decide how to populate args or run a specialized handler
+    // If we know the target ABI, we could decide how to populate args or run a specialized handler
     const selectorKey = (A.selector as string).toLowerCase();
     const handler = this.handlers.get(selectorKey) ?? this.handlers.get("default")!;
 
@@ -441,9 +349,9 @@ export class OperatorNode {
   }
 }
 
-/** helper to compute a function selector from ABI entry (if needed) */
+/** helper to compute a function selector from ABI entry */
 function encodeSelector(fn: any): Hex {
-  // minimal utility: name + types → selector
+  // minimal utility: name + types -> selector
   const signature = `${fn.name}(${(fn.inputs ?? []).map((i: any) => i.type).join(",")})`;
   // viem: getFunctionSelector came later; we can locally hash keccak256(signature) and take 4 bytes
   const bytes = new TextEncoder().encode(signature);

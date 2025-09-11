@@ -4,8 +4,22 @@ pragma solidity ^0.8.24;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
-import {IBorrowVenueAdapter} from "./Interfaces/IBorrowVenueAdapter.sol";
+import "./interfaces/IBorrowVenueAdapter.sol";
 
+/**
+ * @title BorrowAdapterBase
+ * @notice Abstract base for “borrow venue” adapters (Aave, Compound, etc.).
+ *         It provides:
+ *           - Role-gated external entrypoints callable by a trusted controller (e.g., ConversionGateway).
+ *           - Pausing via OpenZeppelin’s Pausable.
+ *           - Common events.
+ *           - Virtual hooks (_supply/_withdraw/_borrow/_repay/_getRiskSignals) for venue-specific logic.
+ *
+ * @dev Concrete adapters inherit and implement the internal hooks and the two read-only balance views.
+ *      Access model:
+ *        - ROLE_GOV: can pause/unpause (ops/governance).
+ *        - ROLE_CG : the single orchestrator allowed to call supply/withdraw/borrow/repay.
+ */
 abstract contract BorrowAdapterBase is IBorrowVenueAdapter, AccessControl, Pausable {
     bytes32 public constant ROLE_GOV = keccak256("ROLE_GOV");
     bytes32 public constant ROLE_CG = keccak256("ROLE_CG"); // e.g., ConversionGateway

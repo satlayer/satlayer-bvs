@@ -1,0 +1,1793 @@
+{
+  "abi": [
+    {
+      "type": "function",
+      "name": "isOperator",
+      "inputs": [
+        { "name": "controller", "type": "address", "internalType": "address" },
+        { "name": "operator", "type": "address", "internalType": "address" }
+      ],
+      "outputs": [{ "name": "status", "type": "bool", "internalType": "bool" }],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "setOperator",
+      "inputs": [
+        { "name": "operator", "type": "address", "internalType": "address" },
+        { "name": "approved", "type": "bool", "internalType": "bool" }
+      ],
+      "outputs": [{ "name": "", "type": "bool", "internalType": "bool" }],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "OperatorSet",
+      "inputs": [
+        { "name": "controller", "type": "address", "indexed": true, "internalType": "address" },
+        { "name": "operator", "type": "address", "indexed": true, "internalType": "address" },
+        { "name": "approved", "type": "bool", "indexed": false, "internalType": "bool" }
+      ],
+      "anonymous": false
+    }
+  ],
+  "bytecode": { "object": "0x", "sourceMap": "", "linkReferences": {} },
+  "deployedBytecode": { "object": "0x", "sourceMap": "", "linkReferences": {} },
+  "methodIdentifiers": { "isOperator(address,address)": "b6363cf2", "setOperator(address,bool)": "558a7297" },
+  "rawMetadata": "{\"compiler\":{\"version\":\"0.8.24+commit.e11b9ed9\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"controller\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"operator\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"approved\",\"type\":\"bool\"}],\"name\":\"OperatorSet\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"controller\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"operator\",\"type\":\"address\"}],\"name\":\"isOperator\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"status\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"operator\",\"type\":\"address\"},{\"internalType\":\"bool\",\"name\":\"approved\",\"type\":\"bool\"}],\"name\":\"setOperator\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"details\":\"Interface of the base operator logic of ERC7540, as defined in https://eips.ethereum.org/EIPS/eip-7540\",\"events\":{\"OperatorSet(address,address,bool)\":{\"details\":\"The event emitted when an operator is set.\",\"params\":{\"approved\":\"The approval status.\",\"controller\":\"The address of the controller.\",\"operator\":\"The address of the operator.\"}}},\"kind\":\"dev\",\"methods\":{\"isOperator(address,address)\":{\"details\":\"Returns `true` if the `operator` is approved as an operator for an `controller`.\",\"params\":{\"controller\":\"The address of the controller.\",\"operator\":\"The address of the operator.\"},\"returns\":{\"status\":\"The approval status\"}},\"setOperator(address,bool)\":{\"details\":\"Sets or removes an operator for the caller.\",\"params\":{\"approved\":\"The approval status.\",\"operator\":\"The address of the operator.\"},\"returns\":{\"_0\":\"Whether the call was executed successfully or not\"}}},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"node_modules/@satlayer/contracts/src/interface/IERC7540.sol\":\"IERC7540Operator\"},\"evmVersion\":\"shanghai\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[\":@aave/=node_modules/@aave/\",\":@openzeppelin/contracts-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable/\",\":@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/\",\":@openzeppelin/foundry-upgrades/=node_modules/@openzeppelin/foundry-upgrades/src/\",\":@satlayer/contracts/=node_modules/@satlayer/contracts/\",\":forge-std/=node_modules/forge-std/src/\"]},\"sources\":{\"node_modules/@satlayer/contracts/src/interface/IERC165.sol\":{\"keccak256\":\"0x414b2861b1acbf816ccb7346d3f16cf6c1e002e9e5e40d2f1f26fa5ddc2ea600\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://698352fb240868ea8f1d1fe389993035eeab930f10d06934f80ccfb2b6ccbfbc\",\"dweb:/ipfs/QmT6WLHAgXxFhh12kWym895oTzXid1326iZiwT3pyfggoT\"]},\"node_modules/@satlayer/contracts/src/interface/IERC7540.sol\":{\"keccak256\":\"0x9e130f02e48f3a015fd9e41428b1c8fb359bb7193bba4bd97f5e068af5903025\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://67ebd6a0f3d0197aa74fe905b3135bd555a387bbc9d53975b1bd2134644dbf94\",\"dweb:/ipfs/QmfJytpVRmpytBunkrGLiugW3tPBZn12A3Ak9LAcV6Tj3m\"]},\"node_modules/@satlayer/contracts/src/interface/IERC7575.sol\":{\"keccak256\":\"0xb46aebdd749e632cf76466d2f75428f8e41e8283145818b621acd2624793782c\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://b32be8816d4658db66fdca29e9a9bc3a071bc47da19d6afa950eec5a32781ccb\",\"dweb:/ipfs/QmbJ27FAJz4rxV2xTzEPHkihYRrvhHH9mdkNSdxvba5Zxf\"]}},\"version\":1}",
+  "metadata": {
+    "compiler": { "version": "0.8.24+commit.e11b9ed9" },
+    "language": "Solidity",
+    "output": {
+      "abi": [
+        {
+          "inputs": [
+            { "internalType": "address", "name": "controller", "type": "address", "indexed": true },
+            { "internalType": "address", "name": "operator", "type": "address", "indexed": true },
+            { "internalType": "bool", "name": "approved", "type": "bool", "indexed": false }
+          ],
+          "type": "event",
+          "name": "OperatorSet",
+          "anonymous": false
+        },
+        {
+          "inputs": [
+            { "internalType": "address", "name": "controller", "type": "address" },
+            { "internalType": "address", "name": "operator", "type": "address" }
+          ],
+          "stateMutability": "view",
+          "type": "function",
+          "name": "isOperator",
+          "outputs": [{ "internalType": "bool", "name": "status", "type": "bool" }]
+        },
+        {
+          "inputs": [
+            { "internalType": "address", "name": "operator", "type": "address" },
+            { "internalType": "bool", "name": "approved", "type": "bool" }
+          ],
+          "stateMutability": "nonpayable",
+          "type": "function",
+          "name": "setOperator",
+          "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }]
+        }
+      ],
+      "devdoc": {
+        "kind": "dev",
+        "methods": {
+          "isOperator(address,address)": {
+            "details": "Returns `true` if the `operator` is approved as an operator for an `controller`.",
+            "params": { "controller": "The address of the controller.", "operator": "The address of the operator." },
+            "returns": { "status": "The approval status" }
+          },
+          "setOperator(address,bool)": {
+            "details": "Sets or removes an operator for the caller.",
+            "params": { "approved": "The approval status.", "operator": "The address of the operator." },
+            "returns": { "_0": "Whether the call was executed successfully or not" }
+          }
+        },
+        "version": 1
+      },
+      "userdoc": { "kind": "user", "methods": {}, "version": 1 }
+    },
+    "settings": {
+      "remappings": [
+        "@aave/=node_modules/@aave/",
+        "@openzeppelin/contracts-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable/",
+        "@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/",
+        "@openzeppelin/foundry-upgrades/=node_modules/@openzeppelin/foundry-upgrades/src/",
+        "@satlayer/contracts/=node_modules/@satlayer/contracts/",
+        "forge-std/=node_modules/forge-std/src/"
+      ],
+      "optimizer": { "enabled": true, "runs": 200 },
+      "metadata": { "bytecodeHash": "ipfs" },
+      "compilationTarget": { "node_modules/@satlayer/contracts/src/interface/IERC7540.sol": "IERC7540Operator" },
+      "evmVersion": "shanghai",
+      "libraries": {}
+    },
+    "sources": {
+      "node_modules/@satlayer/contracts/src/interface/IERC165.sol": {
+        "keccak256": "0x414b2861b1acbf816ccb7346d3f16cf6c1e002e9e5e40d2f1f26fa5ddc2ea600",
+        "urls": [
+          "bzz-raw://698352fb240868ea8f1d1fe389993035eeab930f10d06934f80ccfb2b6ccbfbc",
+          "dweb:/ipfs/QmT6WLHAgXxFhh12kWym895oTzXid1326iZiwT3pyfggoT"
+        ],
+        "license": "MIT"
+      },
+      "node_modules/@satlayer/contracts/src/interface/IERC7540.sol": {
+        "keccak256": "0x9e130f02e48f3a015fd9e41428b1c8fb359bb7193bba4bd97f5e068af5903025",
+        "urls": [
+          "bzz-raw://67ebd6a0f3d0197aa74fe905b3135bd555a387bbc9d53975b1bd2134644dbf94",
+          "dweb:/ipfs/QmfJytpVRmpytBunkrGLiugW3tPBZn12A3Ak9LAcV6Tj3m"
+        ],
+        "license": "MIT"
+      },
+      "node_modules/@satlayer/contracts/src/interface/IERC7575.sol": {
+        "keccak256": "0xb46aebdd749e632cf76466d2f75428f8e41e8283145818b621acd2624793782c",
+        "urls": [
+          "bzz-raw://b32be8816d4658db66fdca29e9a9bc3a071bc47da19d6afa950eec5a32781ccb",
+          "dweb:/ipfs/QmbJ27FAJz4rxV2xTzEPHkihYRrvhHH9mdkNSdxvba5Zxf"
+        ],
+        "license": "MIT"
+      }
+    },
+    "version": 1
+  },
+  "storageLayout": { "storage": [], "types": {} },
+  "ast": {
+    "absolutePath": "node_modules/@satlayer/contracts/src/interface/IERC7540.sol",
+    "id": 27594,
+    "exportedSymbols": {
+      "IERC7540": [27593],
+      "IERC7540Deposit": [27537],
+      "IERC7540Operator": [27465],
+      "IERC7540Redeem": [27585],
+      "IERC7575": [27765]
+    },
+    "nodeType": "SourceUnit",
+    "src": "32:6579:81",
+    "nodes": [
+      {
+        "id": 27432,
+        "nodeType": "PragmaDirective",
+        "src": "32:24:81",
+        "nodes": [],
+        "literals": ["solidity", ">=", "0.6", ".2"]
+      },
+      {
+        "id": 27434,
+        "nodeType": "ImportDirective",
+        "src": "58:40:81",
+        "nodes": [],
+        "absolutePath": "node_modules/@satlayer/contracts/src/interface/IERC7575.sol",
+        "file": "./IERC7575.sol",
+        "nameLocation": "-1:-1:-1",
+        "scope": 27594,
+        "sourceUnit": 27784,
+        "symbolAliases": [
+          {
+            "foreign": {
+              "id": 27433,
+              "name": "IERC7575",
+              "nodeType": "Identifier",
+              "overloadedDeclarations": [],
+              "referencedDeclaration": 27765,
+              "src": "66:8:81",
+              "typeDescriptions": {}
+            },
+            "nameLocation": "-1:-1:-1"
+          }
+        ],
+        "unitAlias": ""
+      },
+      {
+        "id": 27465,
+        "nodeType": "ContractDefinition",
+        "src": "216:1042:81",
+        "nodes": [
+          {
+            "id": 27444,
+            "nodeType": "EventDefinition",
+            "src": "479:87:81",
+            "nodes": [],
+            "anonymous": false,
+            "documentation": {
+              "id": 27436,
+              "nodeType": "StructuredDocumentation",
+              "src": "249:225:81",
+              "text": " @dev The event emitted when an operator is set.\n @param controller The address of the controller.\n @param operator The address of the operator.\n @param approved The approval status."
+            },
+            "eventSelector": "ceb576d9f15e4e200fdb5096d64d5dfd667e16def20c1eefd14256d8e3faa267",
+            "name": "OperatorSet",
+            "nameLocation": "485:11:81",
+            "parameters": {
+              "id": 27443,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 27438,
+                  "indexed": true,
+                  "mutability": "mutable",
+                  "name": "controller",
+                  "nameLocation": "513:10:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27444,
+                  "src": "497:26:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 27437,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "497:7:81",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 27440,
+                  "indexed": true,
+                  "mutability": "mutable",
+                  "name": "operator",
+                  "nameLocation": "541:8:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27444,
+                  "src": "525:24:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 27439,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "525:7:81",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 27442,
+                  "indexed": false,
+                  "mutability": "mutable",
+                  "name": "approved",
+                  "nameLocation": "556:8:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27444,
+                  "src": "551:13:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_bool", "typeString": "bool" },
+                  "typeName": {
+                    "id": 27441,
+                    "name": "bool",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "551:4:81",
+                    "typeDescriptions": { "typeIdentifier": "t_bool", "typeString": "bool" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "496:69:81"
+            }
+          },
+          {
+            "id": 27454,
+            "nodeType": "FunctionDefinition",
+            "src": "812:78:81",
+            "nodes": [],
+            "documentation": {
+              "id": 27445,
+              "nodeType": "StructuredDocumentation",
+              "src": "572:235:81",
+              "text": " @dev Sets or removes an operator for the caller.\n @param operator The address of the operator.\n @param approved The approval status.\n @return Whether the call was executed successfully or not"
+            },
+            "functionSelector": "558a7297",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "setOperator",
+            "nameLocation": "821:11:81",
+            "parameters": {
+              "id": 27450,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 27447,
+                  "mutability": "mutable",
+                  "name": "operator",
+                  "nameLocation": "841:8:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27454,
+                  "src": "833:16:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 27446,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "833:7:81",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 27449,
+                  "mutability": "mutable",
+                  "name": "approved",
+                  "nameLocation": "856:8:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27454,
+                  "src": "851:13:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_bool", "typeString": "bool" },
+                  "typeName": {
+                    "id": 27448,
+                    "name": "bool",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "851:4:81",
+                    "typeDescriptions": { "typeIdentifier": "t_bool", "typeString": "bool" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "832:33:81"
+            },
+            "returnParameters": {
+              "id": 27453,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 27452,
+                  "mutability": "mutable",
+                  "name": "",
+                  "nameLocation": "-1:-1:-1",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27454,
+                  "src": "884:4:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_bool", "typeString": "bool" },
+                  "typeName": {
+                    "id": 27451,
+                    "name": "bool",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "884:4:81",
+                    "typeDescriptions": { "typeIdentifier": "t_bool", "typeString": "bool" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "883:6:81"
+            },
+            "scope": 27465,
+            "stateMutability": "nonpayable",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "id": 27464,
+            "nodeType": "FunctionDefinition",
+            "src": "1162:94:81",
+            "nodes": [],
+            "documentation": {
+              "id": 27455,
+              "nodeType": "StructuredDocumentation",
+              "src": "896:261:81",
+              "text": " @dev Returns `true` if the `operator` is approved as an operator for an `controller`.\n @param controller The address of the controller.\n @param operator The address of the operator.\n @return status The approval status"
+            },
+            "functionSelector": "b6363cf2",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "isOperator",
+            "nameLocation": "1171:10:81",
+            "parameters": {
+              "id": 27460,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 27457,
+                  "mutability": "mutable",
+                  "name": "controller",
+                  "nameLocation": "1190:10:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27464,
+                  "src": "1182:18:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 27456,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1182:7:81",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 27459,
+                  "mutability": "mutable",
+                  "name": "operator",
+                  "nameLocation": "1210:8:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27464,
+                  "src": "1202:16:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 27458,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1202:7:81",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "1181:38:81"
+            },
+            "returnParameters": {
+              "id": 27463,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 27462,
+                  "mutability": "mutable",
+                  "name": "status",
+                  "nameLocation": "1248:6:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27464,
+                  "src": "1243:11:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_bool", "typeString": "bool" },
+                  "typeName": {
+                    "id": 27461,
+                    "name": "bool",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1243:4:81",
+                    "typeDescriptions": { "typeIdentifier": "t_bool", "typeString": "bool" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "1242:13:81"
+            },
+            "scope": 27465,
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "external"
+          }
+        ],
+        "abstract": false,
+        "baseContracts": [],
+        "canonicalName": "IERC7540Operator",
+        "contractDependencies": [],
+        "contractKind": "interface",
+        "documentation": {
+          "id": 27435,
+          "nodeType": "StructuredDocumentation",
+          "src": "100:116:81",
+          "text": "@dev Interface of the base operator logic of ERC7540, as defined in\n https://eips.ethereum.org/EIPS/eip-7540"
+        },
+        "fullyImplemented": false,
+        "linearizedBaseContracts": [27465],
+        "name": "IERC7540Operator",
+        "nameLocation": "226:16:81",
+        "scope": 27594,
+        "usedErrors": [],
+        "usedEvents": [27444]
+      },
+      {
+        "id": 27537,
+        "nodeType": "ContractDefinition",
+        "src": "1393:2843:81",
+        "nodes": [
+          {
+            "id": 27480,
+            "nodeType": "EventDefinition",
+            "src": "1445:145:81",
+            "nodes": [],
+            "anonymous": false,
+            "eventSelector": "bb58420bb8ce44e11b84e214cc0de10ce5e7c24d0355b2815c3d758b514cae72",
+            "name": "DepositRequest",
+            "nameLocation": "1451:14:81",
+            "parameters": {
+              "id": 27479,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 27470,
+                  "indexed": true,
+                  "mutability": "mutable",
+                  "name": "controller",
+                  "nameLocation": "1491:10:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27480,
+                  "src": "1475:26:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 27469,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1475:7:81",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 27472,
+                  "indexed": true,
+                  "mutability": "mutable",
+                  "name": "owner",
+                  "nameLocation": "1519:5:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27480,
+                  "src": "1503:21:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 27471,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1503:7:81",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 27474,
+                  "indexed": true,
+                  "mutability": "mutable",
+                  "name": "requestId",
+                  "nameLocation": "1542:9:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27480,
+                  "src": "1526:25:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" },
+                  "typeName": {
+                    "id": 27473,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1526:7:81",
+                    "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 27476,
+                  "indexed": false,
+                  "mutability": "mutable",
+                  "name": "sender",
+                  "nameLocation": "1561:6:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27480,
+                  "src": "1553:14:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 27475,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1553:7:81",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 27478,
+                  "indexed": false,
+                  "mutability": "mutable",
+                  "name": "assets",
+                  "nameLocation": "1577:6:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27480,
+                  "src": "1569:14:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" },
+                  "typeName": {
+                    "id": 27477,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1569:7:81",
+                    "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "1465:124:81"
+            }
+          },
+          {
+            "id": 27492,
+            "nodeType": "FunctionDefinition",
+            "src": "2403:112:81",
+            "nodes": [],
+            "documentation": {
+              "id": 27481,
+              "nodeType": "StructuredDocumentation",
+              "src": "1595:802:81",
+              "text": " @dev Transfers assets from sender into the Vault and submits a Request for asynchronous deposit.\n - MUST support ERC-20 approve / transferFrom on asset as a deposit Request flow.\n - MUST revert if all of assets cannot be requested for deposit.\n - owner MUST be msg.sender unless some unspecified explicit approval is given by the caller,\n    approval of ERC-20 tokens from owner to sender is NOT enough.\n @param assets the amount of deposit assets to transfer from owner\n @param controller the controller of the request who will be able to operate the request\n @param owner the source of the deposit assets\n NOTE: most implementations will require pre-approval of the Vault with the Vault's underlying asset token."
+            },
+            "functionSelector": "85b77f45",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "requestDeposit",
+            "nameLocation": "2412:14:81",
+            "parameters": {
+              "id": 27488,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 27483,
+                  "mutability": "mutable",
+                  "name": "assets",
+                  "nameLocation": "2435:6:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27492,
+                  "src": "2427:14:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" },
+                  "typeName": {
+                    "id": 27482,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "2427:7:81",
+                    "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 27485,
+                  "mutability": "mutable",
+                  "name": "controller",
+                  "nameLocation": "2451:10:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27492,
+                  "src": "2443:18:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 27484,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "2443:7:81",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 27487,
+                  "mutability": "mutable",
+                  "name": "owner",
+                  "nameLocation": "2471:5:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27492,
+                  "src": "2463:13:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 27486,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "2463:7:81",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "2426:51:81"
+            },
+            "returnParameters": {
+              "id": 27491,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 27490,
+                  "mutability": "mutable",
+                  "name": "requestId",
+                  "nameLocation": "2504:9:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27492,
+                  "src": "2496:17:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" },
+                  "typeName": {
+                    "id": 27489,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "2496:7:81",
+                    "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "2495:19:81"
+            },
+            "scope": 27537,
+            "stateMutability": "nonpayable",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "id": 27502,
+            "nodeType": "FunctionDefinition",
+            "src": "2848:140:81",
+            "nodes": [],
+            "documentation": {
+              "id": 27493,
+              "nodeType": "StructuredDocumentation",
+              "src": "2521:322:81",
+              "text": " @dev Returns the amount of requested assets in Pending state.\n - MUST NOT include any assets in Claimable state for deposit or mint.\n - MUST NOT show any variations depending on the caller.\n - MUST NOT revert unless due to integer overflow caused by an unreasonably large input."
+            },
+            "functionSelector": "26c6f96c",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "pendingDepositRequest",
+            "nameLocation": "2857:21:81",
+            "parameters": {
+              "id": 27498,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 27495,
+                  "mutability": "mutable",
+                  "name": "requestId",
+                  "nameLocation": "2887:9:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27502,
+                  "src": "2879:17:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" },
+                  "typeName": {
+                    "id": 27494,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "2879:7:81",
+                    "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 27497,
+                  "mutability": "mutable",
+                  "name": "controller",
+                  "nameLocation": "2906:10:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27502,
+                  "src": "2898:18:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 27496,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "2898:7:81",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "2878:39:81"
+            },
+            "returnParameters": {
+              "id": 27501,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 27500,
+                  "mutability": "mutable",
+                  "name": "pendingAssets",
+                  "nameLocation": "2973:13:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27502,
+                  "src": "2965:21:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" },
+                  "typeName": {
+                    "id": 27499,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "2965:7:81",
+                    "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "2964:23:81"
+            },
+            "scope": 27537,
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "id": 27512,
+            "nodeType": "FunctionDefinition",
+            "src": "3339:144:81",
+            "nodes": [],
+            "documentation": {
+              "id": 27503,
+              "nodeType": "StructuredDocumentation",
+              "src": "2994:340:81",
+              "text": " @dev Returns the amount of requested assets in Claimable state for the controller to deposit or mint.\n - MUST NOT include any assets in Pending state.\n - MUST NOT show any variations depending on the caller.\n - MUST NOT revert unless due to integer overflow caused by an unreasonably large input."
+            },
+            "functionSelector": "995ea21a",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "claimableDepositRequest",
+            "nameLocation": "3348:23:81",
+            "parameters": {
+              "id": 27508,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 27505,
+                  "mutability": "mutable",
+                  "name": "requestId",
+                  "nameLocation": "3380:9:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27512,
+                  "src": "3372:17:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" },
+                  "typeName": {
+                    "id": 27504,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "3372:7:81",
+                    "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 27507,
+                  "mutability": "mutable",
+                  "name": "controller",
+                  "nameLocation": "3399:10:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27512,
+                  "src": "3391:18:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 27506,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "3391:7:81",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "3371:39:81"
+            },
+            "returnParameters": {
+              "id": 27511,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 27510,
+                  "mutability": "mutable",
+                  "name": "claimableAssets",
+                  "nameLocation": "3466:15:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27512,
+                  "src": "3458:23:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" },
+                  "typeName": {
+                    "id": 27509,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "3458:7:81",
+                    "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "3457:25:81"
+            },
+            "scope": 27537,
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "id": 27524,
+            "nodeType": "FunctionDefinition",
+            "src": "3751:105:81",
+            "nodes": [],
+            "documentation": {
+              "id": 27513,
+              "nodeType": "StructuredDocumentation",
+              "src": "3489:257:81",
+              "text": " @dev Mints shares Vault shares to receiver by claiming the Request of the controller.\n - MUST emit the Deposit event.\n - controller MUST equal msg.sender unless the controller has approved the msg.sender as an operator."
+            },
+            "functionSelector": "2e2d2984",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "deposit",
+            "nameLocation": "3760:7:81",
+            "parameters": {
+              "id": 27520,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 27515,
+                  "mutability": "mutable",
+                  "name": "assets",
+                  "nameLocation": "3776:6:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27524,
+                  "src": "3768:14:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" },
+                  "typeName": {
+                    "id": 27514,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "3768:7:81",
+                    "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 27517,
+                  "mutability": "mutable",
+                  "name": "receiver",
+                  "nameLocation": "3792:8:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27524,
+                  "src": "3784:16:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 27516,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "3784:7:81",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 27519,
+                  "mutability": "mutable",
+                  "name": "controller",
+                  "nameLocation": "3810:10:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27524,
+                  "src": "3802:18:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 27518,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "3802:7:81",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "3767:54:81"
+            },
+            "returnParameters": {
+              "id": 27523,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 27522,
+                  "mutability": "mutable",
+                  "name": "shares",
+                  "nameLocation": "3848:6:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27524,
+                  "src": "3840:14:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" },
+                  "typeName": {
+                    "id": 27521,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "3840:7:81",
+                    "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "3839:16:81"
+            },
+            "scope": 27537,
+            "stateMutability": "nonpayable",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "id": 27536,
+            "nodeType": "FunctionDefinition",
+            "src": "4132:102:81",
+            "nodes": [],
+            "documentation": {
+              "id": 27525,
+              "nodeType": "StructuredDocumentation",
+              "src": "3862:265:81",
+              "text": " @dev Mints exactly shares Vault shares to receiver by claiming the Request of the controller.\n - MUST emit the Deposit event.\n - controller MUST equal msg.sender unless the controller has approved the msg.sender as an operator."
+            },
+            "functionSelector": "da39b3e7",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "mint",
+            "nameLocation": "4141:4:81",
+            "parameters": {
+              "id": 27532,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 27527,
+                  "mutability": "mutable",
+                  "name": "shares",
+                  "nameLocation": "4154:6:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27536,
+                  "src": "4146:14:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" },
+                  "typeName": {
+                    "id": 27526,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "4146:7:81",
+                    "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 27529,
+                  "mutability": "mutable",
+                  "name": "receiver",
+                  "nameLocation": "4170:8:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27536,
+                  "src": "4162:16:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 27528,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "4162:7:81",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 27531,
+                  "mutability": "mutable",
+                  "name": "controller",
+                  "nameLocation": "4188:10:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27536,
+                  "src": "4180:18:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 27530,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "4180:7:81",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "4145:54:81"
+            },
+            "returnParameters": {
+              "id": 27535,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 27534,
+                  "mutability": "mutable",
+                  "name": "assets",
+                  "nameLocation": "4226:6:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27536,
+                  "src": "4218:14:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" },
+                  "typeName": {
+                    "id": 27533,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "4218:7:81",
+                    "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "4217:16:81"
+            },
+            "scope": 27537,
+            "stateMutability": "nonpayable",
+            "virtual": false,
+            "visibility": "external"
+          }
+        ],
+        "abstract": false,
+        "baseContracts": [
+          {
+            "baseName": {
+              "id": 27467,
+              "name": "IERC7540Operator",
+              "nameLocations": ["1422:16:81"],
+              "nodeType": "IdentifierPath",
+              "referencedDeclaration": 27465,
+              "src": "1422:16:81"
+            },
+            "id": 27468,
+            "nodeType": "InheritanceSpecifier",
+            "src": "1422:16:81"
+          }
+        ],
+        "canonicalName": "IERC7540Deposit",
+        "contractDependencies": [],
+        "contractKind": "interface",
+        "documentation": {
+          "id": 27466,
+          "nodeType": "StructuredDocumentation",
+          "src": "1260:133:81",
+          "text": "@dev Interface of the asynchronous deposit Vault interface of ERC7540, as defined in\n https://eips.ethereum.org/EIPS/eip-7540"
+        },
+        "fullyImplemented": false,
+        "linearizedBaseContracts": [27537, 27465],
+        "name": "IERC7540Deposit",
+        "nameLocation": "1403:15:81",
+        "scope": 27594,
+        "usedErrors": [],
+        "usedEvents": [27444, 27480]
+      },
+      {
+        "id": 27585,
+        "nodeType": "ContractDefinition",
+        "src": "4371:2040:81",
+        "nodes": [
+          {
+            "id": 27552,
+            "nodeType": "EventDefinition",
+            "src": "4422:144:81",
+            "nodes": [],
+            "anonymous": false,
+            "eventSelector": "1fdc681a13d8c5da54e301c7ce6542dcde4581e4725043fdab2db12ddc574506",
+            "name": "RedeemRequest",
+            "nameLocation": "4428:13:81",
+            "parameters": {
+              "id": 27551,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 27542,
+                  "indexed": true,
+                  "mutability": "mutable",
+                  "name": "controller",
+                  "nameLocation": "4467:10:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27552,
+                  "src": "4451:26:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 27541,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "4451:7:81",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 27544,
+                  "indexed": true,
+                  "mutability": "mutable",
+                  "name": "owner",
+                  "nameLocation": "4495:5:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27552,
+                  "src": "4479:21:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 27543,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "4479:7:81",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 27546,
+                  "indexed": true,
+                  "mutability": "mutable",
+                  "name": "requestId",
+                  "nameLocation": "4518:9:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27552,
+                  "src": "4502:25:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" },
+                  "typeName": {
+                    "id": 27545,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "4502:7:81",
+                    "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 27548,
+                  "indexed": false,
+                  "mutability": "mutable",
+                  "name": "sender",
+                  "nameLocation": "4537:6:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27552,
+                  "src": "4529:14:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 27547,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "4529:7:81",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 27550,
+                  "indexed": false,
+                  "mutability": "mutable",
+                  "name": "assets",
+                  "nameLocation": "4553:6:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27552,
+                  "src": "4545:14:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" },
+                  "typeName": {
+                    "id": 27549,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "4545:7:81",
+                    "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "4441:124:81"
+            }
+          },
+          {
+            "id": 27564,
+            "nodeType": "FunctionDefinition",
+            "src": "5303:111:81",
+            "nodes": [],
+            "documentation": {
+              "id": 27553,
+              "nodeType": "StructuredDocumentation",
+              "src": "4572:726:81",
+              "text": " @dev Assumes control of shares from sender into the Vault and submits a Request for asynchronous redeem.\n - MUST support a redeem Request flow where the control of shares is taken from sender directly\n   where msg.sender has ERC-20 approval over the shares of owner.\n - MUST revert if all of shares cannot be requested for redeem.\n @param shares the amount of shares to be redeemed to transfer from owner\n @param controller the controller of the request who will be able to operate the request\n @param owner the source of the shares to be redeemed\n NOTE: most implementations will require pre-approval of the Vault with the Vault's share token."
+            },
+            "functionSelector": "7d41c86e",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "requestRedeem",
+            "nameLocation": "5312:13:81",
+            "parameters": {
+              "id": 27560,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 27555,
+                  "mutability": "mutable",
+                  "name": "shares",
+                  "nameLocation": "5334:6:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27564,
+                  "src": "5326:14:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" },
+                  "typeName": {
+                    "id": 27554,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "5326:7:81",
+                    "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 27557,
+                  "mutability": "mutable",
+                  "name": "controller",
+                  "nameLocation": "5350:10:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27564,
+                  "src": "5342:18:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 27556,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "5342:7:81",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 27559,
+                  "mutability": "mutable",
+                  "name": "owner",
+                  "nameLocation": "5370:5:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27564,
+                  "src": "5362:13:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 27558,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "5362:7:81",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "5325:51:81"
+            },
+            "returnParameters": {
+              "id": 27563,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 27562,
+                  "mutability": "mutable",
+                  "name": "requestId",
+                  "nameLocation": "5403:9:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27564,
+                  "src": "5395:17:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" },
+                  "typeName": {
+                    "id": 27561,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "5395:7:81",
+                    "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "5394:19:81"
+            },
+            "scope": 27585,
+            "stateMutability": "nonpayable",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "id": 27574,
+            "nodeType": "FunctionDefinition",
+            "src": "5750:139:81",
+            "nodes": [],
+            "documentation": {
+              "id": 27565,
+              "nodeType": "StructuredDocumentation",
+              "src": "5420:325:81",
+              "text": " @dev Returns the amount of requested shares in Pending state.\n - MUST NOT include any shares in Claimable state for redeem or withdraw.\n - MUST NOT show any variations depending on the caller.\n - MUST NOT revert unless due to integer overflow caused by an unreasonably large input."
+            },
+            "functionSelector": "f5a23d8d",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "pendingRedeemRequest",
+            "nameLocation": "5759:20:81",
+            "parameters": {
+              "id": 27570,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 27567,
+                  "mutability": "mutable",
+                  "name": "requestId",
+                  "nameLocation": "5788:9:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27574,
+                  "src": "5780:17:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" },
+                  "typeName": {
+                    "id": 27566,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "5780:7:81",
+                    "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 27569,
+                  "mutability": "mutable",
+                  "name": "controller",
+                  "nameLocation": "5807:10:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27574,
+                  "src": "5799:18:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 27568,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "5799:7:81",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "5779:39:81"
+            },
+            "returnParameters": {
+              "id": 27573,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 27572,
+                  "mutability": "mutable",
+                  "name": "pendingShares",
+                  "nameLocation": "5874:13:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27574,
+                  "src": "5866:21:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" },
+                  "typeName": {
+                    "id": 27571,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "5866:7:81",
+                    "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "5865:23:81"
+            },
+            "scope": 27585,
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "id": 27584,
+            "nodeType": "FunctionDefinition",
+            "src": "6266:143:81",
+            "nodes": [],
+            "documentation": {
+              "id": 27575,
+              "nodeType": "StructuredDocumentation",
+              "src": "5895:366:81",
+              "text": " @dev Returns the amount of requested shares in Claimable state for the controller to redeem or withdraw.\n - MUST NOT include any shares in Pending state for redeem or withdraw.\n - MUST NOT show any variations depending on the caller.\n - MUST NOT revert unless due to integer overflow caused by an unreasonably large input."
+            },
+            "functionSelector": "eaed1d07",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "claimableRedeemRequest",
+            "nameLocation": "6275:22:81",
+            "parameters": {
+              "id": 27580,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 27577,
+                  "mutability": "mutable",
+                  "name": "requestId",
+                  "nameLocation": "6306:9:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27584,
+                  "src": "6298:17:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" },
+                  "typeName": {
+                    "id": 27576,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "6298:7:81",
+                    "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 27579,
+                  "mutability": "mutable",
+                  "name": "controller",
+                  "nameLocation": "6325:10:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27584,
+                  "src": "6317:18:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 27578,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "6317:7:81",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "6297:39:81"
+            },
+            "returnParameters": {
+              "id": 27583,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 27582,
+                  "mutability": "mutable",
+                  "name": "claimableShares",
+                  "nameLocation": "6392:15:81",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27584,
+                  "src": "6384:23:81",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" },
+                  "typeName": {
+                    "id": 27581,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "6384:7:81",
+                    "typeDescriptions": { "typeIdentifier": "t_uint256", "typeString": "uint256" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "6383:25:81"
+            },
+            "scope": 27585,
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "external"
+          }
+        ],
+        "abstract": false,
+        "baseContracts": [
+          {
+            "baseName": {
+              "id": 27539,
+              "name": "IERC7540Operator",
+              "nameLocations": ["4399:16:81"],
+              "nodeType": "IdentifierPath",
+              "referencedDeclaration": 27465,
+              "src": "4399:16:81"
+            },
+            "id": 27540,
+            "nodeType": "InheritanceSpecifier",
+            "src": "4399:16:81"
+          }
+        ],
+        "canonicalName": "IERC7540Redeem",
+        "contractDependencies": [],
+        "contractKind": "interface",
+        "documentation": {
+          "id": 27538,
+          "nodeType": "StructuredDocumentation",
+          "src": "4238:133:81",
+          "text": "@dev Interface of the asynchronous deposit Vault interface of ERC7540, as defined in\n https://eips.ethereum.org/EIPS/eip-7540"
+        },
+        "fullyImplemented": false,
+        "linearizedBaseContracts": [27585, 27465],
+        "name": "IERC7540Redeem",
+        "nameLocation": "4381:14:81",
+        "scope": 27594,
+        "usedErrors": [],
+        "usedEvents": [27444, 27552]
+      },
+      {
+        "id": 27593,
+        "nodeType": "ContractDefinition",
+        "src": "6544:66:81",
+        "nodes": [],
+        "abstract": false,
+        "baseContracts": [
+          {
+            "baseName": {
+              "id": 27587,
+              "name": "IERC7540Deposit",
+              "nameLocations": ["6566:15:81"],
+              "nodeType": "IdentifierPath",
+              "referencedDeclaration": 27537,
+              "src": "6566:15:81"
+            },
+            "id": 27588,
+            "nodeType": "InheritanceSpecifier",
+            "src": "6566:15:81"
+          },
+          {
+            "baseName": {
+              "id": 27589,
+              "name": "IERC7540Redeem",
+              "nameLocations": ["6583:14:81"],
+              "nodeType": "IdentifierPath",
+              "referencedDeclaration": 27585,
+              "src": "6583:14:81"
+            },
+            "id": 27590,
+            "nodeType": "InheritanceSpecifier",
+            "src": "6583:14:81"
+          },
+          {
+            "baseName": {
+              "id": 27591,
+              "name": "IERC7575",
+              "nameLocations": ["6599:8:81"],
+              "nodeType": "IdentifierPath",
+              "referencedDeclaration": 27765,
+              "src": "6599:8:81"
+            },
+            "id": 27592,
+            "nodeType": "InheritanceSpecifier",
+            "src": "6599:8:81"
+          }
+        ],
+        "canonicalName": "IERC7540",
+        "contractDependencies": [],
+        "contractKind": "interface",
+        "documentation": {
+          "id": 27586,
+          "nodeType": "StructuredDocumentation",
+          "src": "6413:131:81",
+          "text": "@dev Interface of the fully asynchronous Vault interface of ERC7540, as defined in\n https://eips.ethereum.org/EIPS/eip-7540"
+        },
+        "fullyImplemented": false,
+        "linearizedBaseContracts": [27593, 27765, 27430, 27585, 27537, 27465],
+        "name": "IERC7540",
+        "nameLocation": "6554:8:81",
+        "scope": 27594,
+        "usedErrors": [],
+        "usedEvents": [27444, 27480, 27552, 27610, 27622]
+      }
+    ],
+    "license": "MIT"
+  },
+  "id": 81
+}

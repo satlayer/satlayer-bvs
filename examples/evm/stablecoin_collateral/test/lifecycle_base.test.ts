@@ -1,27 +1,9 @@
 // bvs.pl.cg.lifecycle.test.ts
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
 import { AnvilContainer, ChainName, EVMContracts, StartedAnvilContainer } from "@satlayer/testcontainers";
-import {
-  Account,
-  encodeAbiParameters,
-  getContract,
-  parseAbi,
-  parseEther,
-  parseUnits,
-  getFunctionSelector,
-  parseAbiItem,
-  Hex,
-  toHex,
-} from "viem";
-
-import { createPublicClient, http } from "viem";
-
-import { anvil, mainnet } from "viem/chains";
-
-import { stringToHex } from "viem";
+import { Account, encodeAbiParameters, getContract, parseAbi, parseEther, parseUnits, Hex, toHex } from "viem";
 
 import { createWalletClient } from "viem";
-import type { Abi, Address } from "viem";
 
 import {
   abi as bvsAbi,
@@ -33,20 +15,13 @@ import { abi as mockErc20Abi } from "@satlayer/contracts/out/MockERC20.sol/MockE
 import { abi as plAbi } from "../out/PositionLocker.sol/PositionLocker.json";
 import { abi as cgAbi, bytecode as cgBytecode } from "../out/ConversionGateway.sol/ConversionGateway.json";
 import { abi as evcAbi, bytecode as evcBytecode } from "../out/ExternalVaultConnector.sol/ExternalVaultConnector.json";
-import { abi as wrapAbi, bytecode as wrapBytecode } from "../out/ConversionGateway.t.sol/MockWrapper1to1.json";
 import { abi as s4626Abi, bytecode as s4626Bytecode } from "../out/ExternalVaultConnector.t.sol/Simple4626.json";
 import { abi as oracleAbi } from "../out/ConversionGateway.t.sol/MockOracle.json";
 import { bytecode as oraclebytecode } from "../out/ConversionGateway.t.sol/MockOracle.json";
 
 import { bytecode as plbytecode } from "../out/PositionLocker.sol/PositionLocker.json";
 
-import { OperatorNode, TargetAbiRegistry } from "../src/operatorNode";
-import type { HandlerCtx } from "../src/operatorNode";
-
-// --- selectors we will call via BVS ---
-const sel_claimTo = "0x" + Buffer.from("claimTo(uint256,bytes)").toString("hex").slice(0, 8); // compute properly or hardcode
-const sel_unwindDepositAny =
-  "0x" + Buffer.from("unwindDepositAny(address,bytes32,uint256)").toString("hex").slice(0, 8);
+import { OperatorNode } from "../src/operatorNode";
 
 // util to compute function selector (safe, not node Buffer)
 const selector = (
@@ -66,17 +41,7 @@ function asBytes(x?: Hex | Uint8Array | string | null): Hex {
   return toHex(x);
 }
 
-function stepper() {
-  let i = 0;
-  return async <T>(label: string, p: Promise<T> | (() => Promise<T>)) => {
-    const n = ++i;
-    const t0 = Date.now();
-    console.log(`\n[STEP ${n}] ${label}…`);
-    const res = await (typeof p === "function" ? (p as any)() : p);
-    console.log(`[STEP ${n}] done in ${Date.now() - t0}ms`);
-    return res;
-  };
-}
+/* ========================= Mine helpers ========================= */
 
 async function mineUntilReceipt(
   eth: StartedAnvilContainer,
@@ -104,23 +69,6 @@ async function sendAndMine(
   return receipt;
 }
 
-class SimpleAbiRegistry implements TargetAbiRegistry {
-  private map = new Map<`0x${string}`, any[]>();
-  add(target: `0x${string}`, abi: any[]) {
-    this.map.set(target, abi);
-  }
-  getAbi(target: `0x${string}`) {
-    return this.map.get(target) ?? null;
-  }
-}
-
-type Recipe = (args: {
-  ctx: any; // HandlerCtx
-  fnAbi: any; // ABI function item
-  // helpers:
-  encode: typeof encodeAbiParameters;
-}) => Promise<Hex | null> | Hex | null;
-
 type CanFinalizeResult = readonly [boolean, bigint, readonly bigint[], bigint];
 
 let eth: StartedAnvilContainer;
@@ -146,7 +94,6 @@ let node: OperatorNode;
 
 const STRAT_IDENT = "0x" + require("js-sha3").keccak_256("ROUTE_WRAP");
 const STRAT_IDENT_ID = STRAT_IDENT as `0x${string}`;
-const abiRegistry = new SimpleAbiRegistry();
 
 beforeAll(async () => {
   // chain + infra
@@ -157,12 +104,6 @@ beforeAll(async () => {
   owner = eth.getAccount() as Account;
   operator = eth.generateAccount("operator") as Account;
   alice = eth.generateAccount("alice") as Account;
-
-  const opWallet = createWalletClient({
-    account: operator,
-    chain: mainnet, // pon foundry/anvil si no viene seteada
-    transport: http(),
-  });
 
   await eth.setBalance(owner.address, parseEther("1"));
   await eth.setBalance(operator.address, parseEther("1"));
@@ -193,8 +134,6 @@ beforeAll(async () => {
     constructorArgs: [vault],
   });
 
-  abiRegistry.add(pl.contractAddress, plAbi);
-
   // oracle
 
   oracle = await eth.deployContract({
@@ -221,8 +160,6 @@ beforeAll(async () => {
       BASE,
     ],
   });
-  abiRegistry.add(cg.contractAddress, cgAbi);
-  // wrapper (1:1)
 
   // ext 4626 (asset = WRAPPED) and connector
 
@@ -240,7 +177,7 @@ beforeAll(async () => {
     constructorArgs: [owner.address, cg.contractAddress, extBase.contractAddress],
   });
 
-  // configure strategy on CG (wrap→deposit)
+  // configure strategy on CG (wrap->deposit)
   const CG = getContract({ address: cg.contractAddress, abi: cgAbi, client: eth.getClient() });
   const sDeposit = {
     wrapper: "0x0000000000000000000000000000000000000000",
@@ -293,81 +230,20 @@ beforeAll(async () => {
   await contracts.registry.write.registerServiceToOperator([bvs.contractAddress], { account: operator });
   await eth.mineBlock(1);
 
-  // 4) Registry mínimo de ABIs por target (ejemplo)
-  type TargetAbiRegistry = Map<`0x${string}`, any>; // o un wrapper con get/set
-  const registry: TargetAbiRegistry = new Map();
-  // p.ej. si vas a invocar el ConversionGateway, registra su ABI:
-  registry.set(cg.contractAddress as `0x${string}`, cgAbi);
-
-  // 5) (Opcional) ParamResolver si tu BVS usa “expectedArgs” dinámicos
-  const paramResolver = undefined;
-
-  // 6) Construye el node correctamente:
+  //node
   const node = new OperatorNode(
     "OP",
     eth.getClient(),
     eth, // StartedAnvilContainer
     operator, // Account
-    bvs.contractAddress, // <- AQUÍ va la dirección del BVS
-    abiRegistry, // <- AQUÍ va tu TargetAbiRegistry
+    bvs.contractAddress,
   );
-
-  // register handler for PL.claimTo(uint256,bytes)
-  const CLAIM_TO = selector("claimTo(uint256,bytes)");
-  //   node.onSelector(CLAIM_TO, async (ctx) => {
-  //     const txHash = await ctx.operator.wallet.sendTransaction({
-  //       to: ctx.action.target,
-  //       data: (ctx.action.selector + ctx.action.expectedArgs.slice(2)) as Hex,
-  //       account: ctx.operator.address,
-  //     });
-  //     return { txHash };
-  //   });
-
-  //     // Registrar handler para un selector concreto (p.ej. CLAIM_TO)
-  //     node.addHandler(CLAIM_TO as Hex, async (ctx) => {
-  //     const data = (ctx.selector + ctx.expectedArgs.slice(2)) as Hex; // selector || selector+args
-  //     const txHash = await ctx.client.sendTransaction({
-  //         account: ctx.operator,     // Account de viem (p.ej. privateKeyToAccount)
-  //         to: ctx.target , // 0x...
-  //         data: data ,     // 0x...
-  //         chain:  anvil,
-  //     });
-  //     return { txHash };
-  //     });
-
-  // resolver.addSelectorOverrides(CLAIM_TO as Hex, {
-  // // for PREFIX: append the bytes argument = "0x"
-  // tail: async () => [ "0x" ],  // matches claimTo(uint256,bytes)
-  // });
-
-  // handler for CG.unwindDepositAny(address,bytes32,uint256)
-  const UNWIND_ANY = selector("unwindDepositAny(address,bytes32,uint256)");
-  //   node.onSelector(UNWIND_ANY, async (ctx) => {
-  //     const txHash = await ctx.operator.wallet.sendTransaction({
-  //       to: ctx.action.target,
-  //       data: (ctx.action.selector + ctx.action.expectedArgs.slice(2)) as Hex,
-  //       account: ctx.operator.address,
-  //     });
-  //     return { txHash };
-
-  //   });
-
-  // resolver.addSelectorOverrides(UNWIND_ANY as Hex, {
-  // // for PREFIX: append the bytes argument = "0x"
-  // tail: async () => [ "0x" ],  // matches claimTo(uint256,bytes)
-  // });
 
   node.start();
 }, 180_000);
 
-// afterAll(async () => {
-//   node.stop();
-//   await eth.stop();
-// });
-
-test("BVS-driven: claimTo then unwindDepositAny (wrap path) → fully unlockable", async () => {
+test("BVS-driven: claimTo then unwindDepositAny (base path)-> fully unlockable", async () => {
   const client = eth.getClient();
-  const step = stepper();
 
   const Vault = getContract({ address: vault, abi: vaultAbi, client });
   const PL = getContract({ address: pl.contractAddress, abi: plAbi, client });
@@ -380,16 +256,13 @@ test("BVS-driven: claimTo then unwindDepositAny (wrap path) → fully unlockable
   const depositAmt = parseUnits("500", 8);
 
   // 1) mint/approve/deposit
-  await step("mint base", BASEc.write.mint([alice.address, parseUnits("500", 8)]));
+  await BASEc.write.mint([alice.address, parseUnits("500", 8)]);
   await eth.mineBlock(1);
 
   const approveBaseHash = await BASEc.write.approve([Vault.address, depositAmt], { account: alice });
   await eth.mineBlock(1);
 
-  const depositHash = await step(
-    "deposit",
-    Vault.write.deposit([parseUnits("500", 8), alice.address], { account: alice }),
-  );
+  const depositHash = await Vault.write.deposit([parseUnits("500", 8), alice.address], { account: alice });
   await mineUntilReceipt(eth, client, depositHash as any);
 
   // 2) opt-in
@@ -399,60 +272,12 @@ test("BVS-driven: claimTo then unwindDepositAny (wrap path) → fully unlockable
     client,
   }).read.balanceOf([alice.address])) as bigint;
 
-  //await sendAndMine(eth, client, PL.write.optIn([balShares, STRAT_IDENT_ID], { account: alice }));
-
-  // // 1) Mint BASE to Alice (owner mints)
-  // const mintHash = await BASEc.write.mint([alice.address, depositAmt], { account: owner });
-
-  // // 2) Approve Vault to pull BASE
-  // const approveBaseHash = await BASEc.write.approve([Vault.address, depositAmt], { account: alice });
-
-  // // 3) Deposit BASE -> Vault (mints shares to Alice)
-  // console.log('depositing');
-  // const depositHash = await Vault.write.deposit([depositAmt, alice.address], { account: alice });
-  // eth.mineBlock(20);
-  // await step('wait mint', client.waitForTransactionReceipt({ hash: depositHash, timeout: 5 }));
-
-  // await client.waitForTransactionReceipt({ hash: depositHash });
-
-  // // 4) Read share balance AFTER deposit is mined
-  // const balShares = await Vault.read.balanceOf([alice.address]) as bigint;
-  // console.log('vault shares:', balShares.toString());
-  // if (balShares === 0n) throw new Error('No shares minted — check deposit preconditions.');
-
-  // 5) Approve PL to transfer Vault shares
-  console.log("approving");
   const approveSharesHash = await Vault.write.approve([PL.address, balShares], { account: alice });
-  //await client.waitForTransactionReceipt({ hash: approveSharesHash });
   await mineUntilReceipt(eth, eth.getClient(), approveSharesHash as any);
-  eth.mineBlock(20);
 
-  // await BASEc.write.mint([alice.address, depositAmt]);
-  // await BASEc.write.approve([vault, depositAmt], { account: alice });
-  // eth.mineBlock(1);
-
-  // await Vault.write.deposit([depositAmt, alice.address], { account: alice });
-
-  // eth.mineBlock(1);
-
-  // //shares = vault.deposit(baseAssets, user);
-
-  // // opt-in all shares to WRAP strategy
-  // const balShares = await getContract({ address: vault, abi: parseAbi(["function balanceOf(address) view returns (uint256)"]), client })
-  //   .read.balanceOf([alice.address]) as bigint;
-
-  // console.log(balShares);
-
-  // await getContract({ address: vault, abi: parseAbi(["function approve(address,uint256) returns (bool)"]), client })
-  //   .write.approve([pl.contractAddress, balShares], {
-  //   account: alice.address,
-  //   gas: 300_000n,
-  //   chain: mainnet
-  // });
   const psHash = await PL.write.setPaused([false], { account: operator.address });
   await mineUntilReceipt(eth, eth.getClient(), psHash as any);
 
-  console.log("optin");
   // struct StrategyId is bytes32 wrapper; PL.optIn(shares, StrategyId)
   const txoptin = await PL.write.optIn([balShares, STRAT_IDENT_ID], { account: alice });
   await mineUntilReceipt(eth, eth.getClient(), txoptin as any);
@@ -461,10 +286,7 @@ test("BVS-driven: claimTo then unwindDepositAny (wrap path) → fully unlockable
   const reqShares = balShares / 2n;
   const reqSim = await PL.simulate.requestFor([alice.address, reqShares, STRAT_IDENT_ID], {
     account: operator.address,
-    chain: mainnet,
   });
-
-  console.log("reqSim.result:", reqSim.result);
 
   const reqId = reqSim.result as bigint;
   const txrequestFor = await PL.write.requestFor([alice.address, reqShares, STRAT_IDENT_ID], { account: operator });
@@ -483,62 +305,21 @@ test("BVS-driven: claimTo then unwindDepositAny (wrap path) → fully unlockable
   const CLAIM_TO = selector("claimTo(uint256,bytes)");
   const UNWIND_ANY = selector("unwindDepositAny(address,bytes32,uint256)");
 
-  // const argsClaim = encodeAbiParameters(
-  //   [{ type: "uint256" }, { type: "bytes" }],
-  //   [reqId, "0x"]
-  // );
-
-  const expectedArgs: Hex = asBytes(/* maybe undefined in your code */);
-
   const claimPrefix = encodeAbiParameters(
     [{ type: "uint256" }, { type: "bytes" }], // only reqId as prefix
     [reqId, asBytes("0x")],
   );
 
-  const actClaim = {
-    target: pl.contractAddress as `0x${string}`,
-    selector: asBytes(CLAIM_TO),
-    expectedArgs: asBytes(claimPrefix),
-    extraData: asBytes(),
-    matchMode: 2, // PREFIX
-  };
-
   const maxVal = BigInt(2 ** 256) - BigInt(1);
 
-  // Action 1: CG.unwindDepositAny(user, strategy, <fill amount off-chain>)
+  //  CG.unwindDepositAny(user, strategy, <fill amount off-chain>)
   const unwindPrefix = encodeAbiParameters(
     [{ type: "address" }, { type: "bytes32" }, { type: "uint256" }],
     [alice.address, STRAT_IDENT_ID, maxVal],
   );
 
-  const actUnwind = {
-    target: cg.contractAddress as `0x${string}`,
-    selector: asBytes(UNWIND_ANY),
-    expectedArgs: asBytes(unwindPrefix),
-    extraData: asBytes(),
-    matchMode: 2, // PREFIX
-  };
-  // const argsUnwind = encodeAbiParameters(
-  //   [{ type: "address" }, { type: "bytes32" }, { type: "uint256" }],
-  //   [alice.address, STRAT_IDENT_ID, BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")]
-  // );
-
-  // const actions = [
-  //   { target: pl.contractAddress, selector: CLAIM_TO,          expectedArgs: argsClaim,  extraData: "0x", matchMode: 1 },
-  //   { target: cg.contractAddress, selector: UNWIND_ANY,        expectedArgs: argsUnwind, extraData: "0x", matchMode: 1 },
-  // ];
-
-  //   struct Action {
-  //     address target;
-  //     bytes4  selector;
-  //     bytes   expectedArgs;     // bounded
-  //     bytes32 expectedArgsHash; // keccak256(expectedArgs)
-  //     bytes   extraData;        // bounded, optional
-  //     MatchMode matchMode;
-  // }
   const expectedArgsHash = "0x" + require("js-sha3").keccak_256(claimPrefix);
   const expectedArgsHash2 = "0x" + require("js-sha3").keccak_256(unwindPrefix);
-  //const STRAT_IDENT_ID = STRAT_IDENT as `0x${string}`;
   console.log(CLAIM_TO);
   const actions: readonly [
     `0x${string}`, // target
@@ -573,26 +354,17 @@ test("BVS-driven: claimTo then unwindDepositAny (wrap path) → fully unlockable
   const minCount = 1;
   const ttlSeconds = 3600;
   const operatorAllow = [] as `0x${string}`[];
-  console.log(actions);
 
-  console.log("openRequest");
   const txSim = await BVS.simulate.openRequest(
     [chainId, actions, completionAll, kRequired, quorumBps, minCount, ttlSeconds, operatorAllow],
     { account: owner.address },
   );
 
-  // const txSim = await BVS.simulate.openRequest([chainId, actions, /*ALL*/ 1, /*k*/0, /*bps*/0, minCount, /*ttl*/3600, []], {
-  //   account: owner.address});
-  console.log("openRequest2");
-  //const txSim = await bvs.contract.simulate.openRequest([chainId, actions, /*ALL*/ 1, /*k*/0, /*bps*/0, minCount, /*ttl*/3600, []], { account: owner });
   const bvsReqId = txSim.result as bigint;
   const txopen = await BVS.write.openRequest([chainId, actions, 1, 0, 0, minCount, 3600, []], { account: owner });
-  await eth.mineBlock(1);
-  console.log("endingRequest");
   await mineUntilReceipt(eth, eth.getClient(), txopen as any);
 
   // wait for node to execute both actions & attest, then finalize
-  console.log("canFinalize");
   await vi.waitFor(
     async () => {
       const can = (await bvs.contract.read.canFinalize([bvsReqId])) as CanFinalizeResult;
@@ -607,9 +379,9 @@ test("BVS-driven: claimTo then unwindDepositAny (wrap path) → fully unlockable
     { interval: 500, timeout: 30_000 },
   );
 
-  // Assertions like your Foundry test
+  // Assertions like  Foundry test
   // connector entitlement should be 0 after full unwind
-  console.log("Readings");
+
   const ent = (await Conn.read.assetsOf([alice.address])) as bigint;
   expect(ent).toBe(0n);
 

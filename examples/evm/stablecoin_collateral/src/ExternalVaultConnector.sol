@@ -86,8 +86,11 @@ contract ExternalVaultConnector is AccessControl, ReentrancyGuard {
         require(user != address(0) && requestedAssets > 0, "BAD_ARGS");
 
         // Convert requested assets -> shares; clip to user's available shares
-        uint256 sharesNeeded = targetVault.convertToShares(requestedAssets);
+        //uint256 sharesNeeded = targetVault.convertToShares(requestedAssets);
         uint256 userSh = userShares[user];
+        uint256 sharesNeeded =
+            requestedAssets == type(uint256).max ? userSh : targetVault.previewWithdraw(requestedAssets);
+
         if (sharesNeeded > userSh) sharesNeeded = userSh;
         require(sharesNeeded > 0, "NO_BALANCE");
 

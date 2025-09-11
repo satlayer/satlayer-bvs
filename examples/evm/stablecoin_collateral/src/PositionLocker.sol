@@ -9,17 +9,12 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 
-// interface IConversionGatewayMulti {
-//     function onClaimWithStrategy(address user, uint256 baseAssets, bytes32 strategy) external;
-//     function unwindWrapAny(address user, bytes32 strategy, uint256 requestedBaseOrWrapped, uint256 minOutAfterUnwrap)
-//         external;
-// }
-// Add alongside your other interfaces in PositionLocker.sol
 interface IConversionGatewayMulti {
-    function onClaimWithStrategy(address user, uint256 baseAssets, bytes32 strategy,bytes calldata params ) external;
+    function onClaimWithStrategy(address user, uint256 baseAssets, bytes32 strategy, bytes calldata params) external;
 
     // existing
-    function unwindDepositAny(address user, bytes32 strategy, uint256 requestedBaseOrWrapped, uint256 minOutAfterUnwrap) external;
+    function unwindDepositAny(address user, bytes32 strategy, uint256 requestedBaseOrWrapped, uint256 minOutAfterUnwrap)
+        external;
     function unwindBorrow(
         address user,
         bytes32 strategy,
@@ -33,8 +28,6 @@ interface IConversionGatewayMulti {
 interface IConversionGatewayView {
     function kindOf(bytes32 strategy) external view returns (uint8); // returns RouteKind enum value
 }
-
-
 
 /// @notice User-defined value type for strategies. Encode as bytes32 ids, e.g., keccak256("AAVE_USDC")
 type StrategyId is bytes32;
@@ -139,16 +132,18 @@ contract PositionLocker is AccessControl, ReentrancyGuard, Pausable {
     uint256 public dustThreshold; // treat <= dust as 0
     uint16 public bufferBps = 50; // keep +0.50% shares to cover drift
 
-
     // Mirror the CG enum locally (must match CG)
-    enum RouteKind { DepositIdentity, DepositWrap1to1, BorrowVsBase }
+    enum RouteKind {
+        DepositIdentity,
+        DepositWrap1to1,
+        BorrowVsBase
+    }
 
     // Events
     event CapsUpdated(uint16 perUser, uint16 globalCap, uint16 epochRate, uint48 epochLen);
     event Paused(bool on);
     event ConversionGatewayUpdated(address indexed cg);
     event StrategyEnabled(StrategyId indexed strat, bool enabled);
-    
 
     event OptIn(address indexed user, uint256 shares, StrategyId indexed strategy);
     event Requested(address indexed user, uint256 indexed reqId, StrategyId indexed strategy, uint256 shares);
@@ -304,37 +299,24 @@ contract PositionLocker is AccessControl, ReentrancyGuard, Pausable {
         emit OptOut(msg.sender, shares, strategy);
     }
 
-    // /// @notice User can call when they want to unwind their assets.
-    // function userUnwindWrapAny(
-    //     StrategyId strategy,
-    //     uint256 requestedBaseOrWrapped, // pass type(uint256).max for "all"
-    //     uint256 minOutAfterUnwrap // usually == requested if 1:1
-    // ) external nonReentrant whenNotPaused {
-    //     require(strategyEnabled[strategy], "STRAT_DISABLED");
-    //     IConversionGatewayMulti(conversionGateway).unwindWrapAny(
-    //         msg.sender, StrategyId.unwrap(strategy), requestedBaseOrWrapped, minOutAfterUnwrap
-    //     );
-    // }
-
     /// @notice User can unwind from a *deposit* strategy (identity or 1:1 wrap).
     /// @param strategy  StrategyId configured as DepositIdentity or DepositWrap1to1
     /// @param requestedBaseOrWrapped  Amount to redeem from connector (pass type(uint256).max for "all")
     /// @param minOutAfterUnwrap  Minimum base you expect after (un)wrap (use 0 for strict 1:1)
-    function userUnwindDepositAny(
-        StrategyId strategy,
-        uint256 requestedBaseOrWrapped,
-        uint256 minOutAfterUnwrap
-    ) external nonReentrant whenNotPaused {
+    function userUnwindDepositAny(StrategyId strategy, uint256 requestedBaseOrWrapped, uint256 minOutAfterUnwrap)
+        external
+        nonReentrant
+        whenNotPaused
+    {
         require(strategyEnabled[strategy], "STRAT_DISABLED");
 
         uint8 kind = IConversionGatewayView(conversionGateway).kindOf(StrategyId.unwrap(strategy));
-        require(kind == uint8(RouteKind.DepositIdentity) || kind == uint8(RouteKind.DepositWrap1to1), "NOT_DEPOSIT_KIND");
+        require(
+            kind == uint8(RouteKind.DepositIdentity) || kind == uint8(RouteKind.DepositWrap1to1), "NOT_DEPOSIT_KIND"
+        );
 
         IConversionGatewayMulti(conversionGateway).unwindDepositAny(
-            msg.sender,
-            StrategyId.unwrap(strategy),
-            requestedBaseOrWrapped,
-            minOutAfterUnwrap
+            msg.sender, StrategyId.unwrap(strategy), requestedBaseOrWrapped, minOutAfterUnwrap
         );
     }
 
@@ -358,16 +340,9 @@ contract PositionLocker is AccessControl, ReentrancyGuard, Pausable {
         require(kind == uint8(RouteKind.BorrowVsBase), "NOT_BORROW_KIND");
 
         IConversionGatewayMulti(conversionGateway).unwindBorrow(
-            msg.sender,
-            StrategyId.unwrap(strategy),
-            requestedDebtIn,
-            minCollateralOut,
-            adapterData,
-            connectorMinOut
+            msg.sender, StrategyId.unwrap(strategy), requestedDebtIn, minCollateralOut, adapterData, connectorMinOut
         );
     }
-
-
 
     /* ===== Keeper: Request / Claim / Repay ===== */
 
@@ -493,7 +468,7 @@ contract PositionLocker is AccessControl, ReentrancyGuard, Pausable {
         SubPos storage S = P.sub[strat];
 
         // only when fully free of debt
-            // Clear any borrow-accounting that may linger after venue/connector are fully cleared.
+        // Clear any borrow-accounting that may linger after venue/connector are fully cleared.
         if (S.debtAssets != 0) {
             S.debtAssets = 0;
         }
@@ -503,10 +478,9 @@ contract PositionLocker is AccessControl, ReentrancyGuard, Pausable {
             S.transformedAssets = 0;
             // keep global & per-user totals in sync
             P.transformedTotal -= rem;
-            globalTransformed   -= rem;
+            globalTransformed -= rem;
         }
     }
-
 
     /* ===== Views & Helpers ===== */
 

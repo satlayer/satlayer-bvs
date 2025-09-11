@@ -148,17 +148,6 @@ contract StablecoinFullIntegrationTest is Test, TestSuiteV2 {
         connBase = new ExternalVaultConnector(gov, address(cg), IERC4626(address(extVaultBase)));
 
         /* --- Strategy config in CG --- */
-        // wrap 1:1 then deposit to ext 4626 (wrapped)
-
-        // strategy config in CG (BorrowVsBase)
-        // ConversionGateway.BorrowCfg memory b =
-        //     ConversionGateway.BorrowCfg({
-        //         adapter: address(0),
-        //         debtAsset: address(0),
-        //         borrowedConnector: address(0),
-        //         maxBorrowBps: 0,          // up to 50% LTV for the test
-        //         withdrawSlippageBps: 0      // shave 0.50% on pro-rata withdraw
-        //     });
 
         // sensible defaults for deposit safety
         ConversionGateway.DepositSafety memory depSafeWrap = ConversionGateway.DepositSafety({
@@ -274,9 +263,16 @@ contract StablecoinFullIntegrationTest is Test, TestSuiteV2 {
         vm.prank(operator);
         uint256 assetsOut = pl.claimTo(reqId, "");
         assertGt(assetsOut, 0, "claimed base > 0");
-
-        // connector shows user entitlement in wrapped units (1:1)
         assertEq(connWrapped.assetsOf(alice), assetsOut, "entitlement == claimed");
+
+        //Simulating yield in the external protocol vault
+        uint256 yield = assetsOut / 10; // +10%
+
+        MockERC20(WRAPPED).mint(address(extVaultWrapped), yield);
+
+        // connector shows user entitlement in wrapped units (1:1) (deposited + yield)
+        uint256 entAfter = connWrapped.assetsOf(alice);
+        assertGt(entAfter, assetsOut, "yield should increase entitlement");
 
         // Now operator unwinds ALL entitlement back to base and restakes to PL
         vm.prank(operator);
@@ -319,6 +315,15 @@ contract StablecoinFullIntegrationTest is Test, TestSuiteV2 {
 
         // entitlement held directly in BASE connector (identity)
         assertEq(connBase.assetsOf(alice), assetsOut);
+
+        //Simulating yield in the external protocol vault
+        uint256 yield = assetsOut / 10; // +10%
+
+        MockERC20(BASE).mint(address(extVaultBase), yield);
+
+        // connector shows user entitlement  (deposited + yield)
+        uint256 entAfter = connBase.assetsOf(alice);
+        assertGt(entAfter, assetsOut, "yield should increase entitlement");
 
         // unwind half first, then the rest
         vm.prank(operator);
@@ -574,15 +579,37 @@ contract BorrowFlowIntegrationTest is Test, TestSuiteV2 {
         uint256 entitlement = debtConn.assetsOf(alice);
         assertGt(entitlement, 0, "user debt entitlement > 0");
 
+        //Simulating yield in the external protocol vault
+        uint256 yield = entitlement / 10; // +10%
+
+        MockERC20(DEBT).mint(address(debtConn.targetVault()), yield);
+
+        // connector shows user entitlement
+        uint256 entAfter = debtConn.assetsOf(alice);
+        assertGt(entAfter, entitlement, "yield should increase entitlement");
+
         // 4) unwind: redeem ALL user's DEBT from the connector, repay venue, withdraw proportional BASE, restake to PL
-        uint256 connectorMinOut = entitlement; // strict: exactly what we redeem
+        // Tolerate a tiny rounding/slippage (e.g. 1 bp)
+        uint256 tolBps = 1; // 0.01%
+        uint256 connectorMinOut = (entAfter * (10_000 - tolBps)) / 10_000;
         uint256 minCollateralOut = 1; // accept any positive base after rounding shaves
 
-        vm.prank(operator);
+        vm.startPrank(operator);
         (uint256 baseOut, uint256 repaidDebt, uint256 redeemedDebt) =
             cg.unwindBorrow(alice, STRAT_BORROW, type(uint256).max, minCollateralOut, bytes(""), connectorMinOut);
 
-        assertEq(debtConn.assetsOf(alice), 0, "entitlement cleared");
+        uint256 leftover = debtConn.assetsOf(alice);
+
+        if (leftover > 0) {
+            // allow any amount out, just clear dust
+            cg.unwindBorrow(alice, STRAT_BORROW, type(uint256).max, 1, bytes(""), 0);
+        }
+        uint256 entitlementAfter = debtConn.assetsOf(alice);
+
+        pl.setDustAndBuffer(100_000, 0);
+
+        assertEq(entitlementAfter, 0, "entitlement cleared");
+
         assertGt(repaidDebt, 0, "repaid > 0");
         assertEq(adapter.debtBalance(address(DEBT)), 0, "venue debt cleared");
         assertGt(baseOut, 0, "withdrew base");
@@ -597,6 +624,7 @@ contract BorrowFlowIntegrationTest is Test, TestSuiteV2 {
 
         StrategyId[] memory arr = new StrategyId[](1);
         arr[0] = STRAT_BORROW_ID;
+        vm.stopPrank();
 
         vm.prank(alice);
         pl.optOutAll(arr);

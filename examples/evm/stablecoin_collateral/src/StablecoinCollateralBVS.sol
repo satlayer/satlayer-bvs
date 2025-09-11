@@ -14,31 +14,44 @@ import {RelationshipV2} from "@satlayer/contracts/src/RelationshipV2.sol";
 contract StablecoinCollateralBVS is Ownable {
     ISLAYRegistryV2 public immutable slayRegistry;
 
-    enum ReqStatus { Open, Finalized, Expired, Cancelled }
-    enum MatchMode { NONE, EXACT, PREFIX }
-    enum CompletionMode { ANY, ALL, AT_LEAST_K }
+    enum ReqStatus {
+        Open,
+        Finalized,
+        Expired,
+        Cancelled
+    }
+    enum MatchMode {
+        NONE,
+        EXACT,
+        PREFIX
+    }
+    enum CompletionMode {
+        ANY,
+        ALL,
+        AT_LEAST_K
+    }
 
     struct Action {
         address target;
-        bytes4  selector;
-        bytes   expectedArgs;     // bounded
+        bytes4 selector;
+        bytes expectedArgs; // bounded
         bytes32 expectedArgsHash; // keccak256(expectedArgs)
-        bytes   extraData;        // bounded, optional
+        bytes extraData; // bounded, optional
         MatchMode matchMode;
     }
 
     struct Request {
-        uint64  chainId;
+        uint64 chainId;
         CompletionMode completion;
-        uint16  kRequired;            // only if completion == AT_LEAST_K
-        uint16  quorumBps;            // per-action quorum
-        uint16  minCount;             // floor per action
-        uint48  createdAt;
-        uint48  expiresAt;
+        uint16 kRequired; // only if completion == AT_LEAST_K
+        uint16 quorumBps; // per-action quorum
+        uint16 minCount; // floor per action
+        uint48 createdAt;
+        uint48 expiresAt;
         ReqStatus status;
-        uint16  attestedCount;        // optional aggregate counter (not used in finalize)
-        uint32  finalizedAt;
-        bool    hasOperatorAllowlist;  // if true, must be in operatorAllowed
+        uint16 attestedCount; // optional aggregate counter (not used in finalize)
+        uint32 finalizedAt;
+        bool hasOperatorAllowlist; // if true, must be in operatorAllowed
     }
 
     // reqId => Request / Actions
@@ -61,25 +74,25 @@ contract StablecoinCollateralBVS is Ownable {
     uint256 public constant MAX_EXTRA = 256;
 
     uint256 public nextRequestId;
-    uint public activeOperatorCount;
+    uint256 public activeOperatorCount;
 
     /* --------------------------------- Events -------------------------------- */
 
     event RequestOpened(
         uint256 indexed id,
-        uint64  chainId,
+        uint64 chainId,
         CompletionMode completion,
-        uint16  kRequired,
-        uint16  quorumBps,
-        uint16  minCount,
-        uint48  expiresAt
+        uint16 kRequired,
+        uint16 quorumBps,
+        uint16 minCount,
+        uint48 expiresAt
     );
 
     event RequestActionAdded(
         uint256 indexed id,
         uint256 indexed index,
         address target,
-        bytes4  selector,
+        bytes4 selector,
         MatchMode matchMode,
         bytes32 expectedArgsHash
     );
@@ -105,7 +118,6 @@ contract StablecoinCollateralBVS is Ownable {
         bytes4 selector,
         bytes32 txHash,
         bytes args
-        // NOTE: args/extraData omitted from indexing to keep event light; can add non-indexed if you want
     );
 
     event OperatorRegistered(address indexed operator, bool added);
@@ -165,14 +177,14 @@ contract StablecoinCollateralBVS is Ownable {
 
         id = nextRequestId++;
         Request storage R = requests[id];
-        R.chainId    = chainId;
+        R.chainId = chainId;
         R.completion = completion;
-        R.kRequired  = kRequired;
-        R.quorumBps  = quorumBps;
-        R.minCount   = minCount;
-        R.createdAt  = uint48(block.timestamp);
-        R.expiresAt  = ttlSeconds == 0 ? 0 : uint48(block.timestamp) + ttlSeconds;
-        R.status     = ReqStatus.Open;
+        R.kRequired = kRequired;
+        R.quorumBps = quorumBps;
+        R.minCount = minCount;
+        R.createdAt = uint48(block.timestamp);
+        R.expiresAt = ttlSeconds == 0 ? 0 : uint48(block.timestamp) + ttlSeconds;
+        R.status = ReqStatus.Open;
 
         Action[] storage dst = requestActions[id];
         for (uint256 i = 0; i < actions.length; i++) {
@@ -181,12 +193,12 @@ contract StablecoinCollateralBVS is Ownable {
             require(A.extraData.length <= MAX_EXTRA, "extra too large");
 
             Action memory B;
-            B.target           = A.target;
-            B.selector         = A.selector;
-            B.matchMode        = A.matchMode;
-            B.expectedArgs     = A.expectedArgs;
+            B.target = A.target;
+            B.selector = A.selector;
+            B.matchMode = A.matchMode;
+            B.expectedArgs = A.expectedArgs;
             B.expectedArgsHash = keccak256(A.expectedArgs);
-            B.extraData        = A.extraData;
+            B.extraData = A.extraData;
 
             dst.push(B);
             emit RequestActionAdded(id, i, B.target, B.selector, B.matchMode, B.expectedArgsHash);
@@ -212,16 +224,11 @@ contract StablecoinCollateralBVS is Ownable {
 
         // Prefer a count-at-time API to freeze quorum at creation.
         uint256 active;
-        // try slayRegistry.getActiveOperatorCountAt(address(this), R.createdAt) returns (uint256 v) {
-        //     active = v;
-        // } catch {
-        //     active = slayRegistry.getActiveOperatorCount(address(this));
-        // }
 
         active = slayRegistry.getActiveOperatorCount(address(this));
 
         uint256 reqByQuorum = R.quorumBps > 0
-            ? (active * uint256(R.quorumBps) + 9_999) / 10_000  // ceil
+            ? (active * uint256(R.quorumBps) + 9_999) / 10_000 // ceil
             : 0;
 
         uint256 req = reqByQuorum;
@@ -237,12 +244,7 @@ contract StablecoinCollateralBVS is Ownable {
     /**
      * @notice Operator attests that they executed an action. Service verifies off-chain.
      */
-    function attest(
-        uint256 requestId,
-        uint256 actionIndex,
-        bytes32 txHash,
-        bytes calldata extraData
-    ) external {
+    function attest(uint256 requestId, uint256 actionIndex, bytes32 txHash, bytes calldata extraData) external {
         require(txHash != bytes32(0), "txHash=0");
         require(extraData.length <= MAX_EXTRA, "extra too big");
 
@@ -252,26 +254,26 @@ contract StablecoinCollateralBVS is Ownable {
         if (R.expiresAt != 0 && block.timestamp > R.expiresAt) {
             R.status = ReqStatus.Expired;
             emit RequestExpired(requestId);
-            
         } else {
+            Action[] storage actions = requestActions[requestId];
+            require(actionIndex < actions.length, "bad actionIndex");
 
-        Action[] storage actions = requestActions[requestId];
-        require(actionIndex < actions.length, "bad actionIndex");
+            if (R.hasOperatorAllowlist) {
+                require(operatorAllowed[requestId][msg.sender], "op not allowlisted");
+            }
 
-        if (R.hasOperatorAllowlist) {
-            require(operatorAllowed[requestId][msg.sender], "op not allowlisted");
-        }
+            require(isActiveOperatorAt(msg.sender, R.createdAt), "operator not active@createdAt");
+            require(!hasAttested[requestId][actionIndex][msg.sender], "dup attestation");
 
-        require(isActiveOperatorAt(msg.sender, R.createdAt), "operator not active@createdAt");
-        require(!hasAttested[requestId][actionIndex][msg.sender], "dup attestation");
+            hasAttested[requestId][actionIndex][msg.sender] = true;
+            attestedTxHash[requestId][actionIndex][msg.sender] = txHash;
 
-        hasAttested[requestId][actionIndex][msg.sender] = true;
-        attestedTxHash[requestId][actionIndex][msg.sender] = txHash;
+            actionAttestCount[requestId][actionIndex] += 1;
+            unchecked {
+                R.attestedCount += 1;
+            }
 
-        actionAttestCount[requestId][actionIndex] += 1;
-        unchecked { R.attestedCount += 1; }
-
-        emit Attested(requestId, actionIndex, msg.sender, txHash, extraData);
+            emit Attested(requestId, actionIndex, msg.sender, txHash, extraData);
         }
     }
 
@@ -289,7 +291,9 @@ contract StablecoinCollateralBVS is Ownable {
         uint256 satisfied = 0;
         for (uint256 i = 0; i < n; i++) {
             if (actionAttestCount[requestId][i] >= required) {
-                unchecked { satisfied++; }
+                unchecked {
+                    satisfied++;
+                }
             }
         }
 
@@ -310,7 +314,6 @@ contract StablecoinCollateralBVS is Ownable {
         emit RequestFinalized(requestId, required, n, R.finalizedAt);
     }
 
-
     function cancelRequest(uint256 requestId, string calldata reason) external onlyOwner {
         Request storage R = requests[requestId];
         require(R.status == ReqStatus.Open, "not open");
@@ -321,13 +324,9 @@ contract StablecoinCollateralBVS is Ownable {
     /* ------------------------------ Unsolicited ------------------------------ */
 
     /// Operators can self-report actions even without an open request (light index).
-    function notifyUnsolicited(
-        uint64 chainId,
-        address target,
-        bytes4 selector,
-        bytes32 txHash,
-        bytes calldata args
-    ) external {
+    function notifyUnsolicited(uint64 chainId, address target, bytes4 selector, bytes32 txHash, bytes calldata args)
+        external
+    {
         require(
             slayRegistry.getRelationshipStatus(address(this), msg.sender) == RelationshipV2.Status.Active,
             "operator not active"
@@ -348,7 +347,6 @@ contract StablecoinCollateralBVS is Ownable {
         Action[] storage acts = requestActions[requestId];
         counts = new uint16[](acts.length);
         required = _requiredCount(requestId);
-        
 
         for (uint256 i = 0; i < acts.length; i++) {
             uint16 c = actionAttestCount[requestId][i];
@@ -365,14 +363,14 @@ contract StablecoinCollateralBVS is Ownable {
         }
     }
 
-    function checkRequestStatus( uint requestId) public view returns (ReqStatus status){
+    function checkRequestStatus(uint256 requestId) public view returns (ReqStatus status) {
         Request storage R = requests[requestId];
         return R.status;
     }
 
     function actionCount(uint256 requestId) external view returns (uint256) {
-    return requestActions[requestId].length;
-}
+        return requestActions[requestId].length;
+    }
 
     function getAction(uint256 requestId, uint256 index)
         external
@@ -393,6 +391,4 @@ contract StablecoinCollateralBVS is Ownable {
     function getRequest(uint256 requestId) external view returns (Request memory) {
         return requests[requestId];
     }
-
-
 }

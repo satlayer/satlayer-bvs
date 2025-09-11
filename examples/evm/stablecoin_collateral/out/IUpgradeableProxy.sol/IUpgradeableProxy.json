@@ -1,0 +1,252 @@
+{
+  "abi": [
+    {
+      "type": "function",
+      "name": "upgradeTo",
+      "inputs": [{ "name": "", "type": "address", "internalType": "address" }],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "upgradeToAndCall",
+      "inputs": [
+        { "name": "", "type": "address", "internalType": "address" },
+        { "name": "", "type": "bytes", "internalType": "bytes" }
+      ],
+      "outputs": [],
+      "stateMutability": "payable"
+    }
+  ],
+  "bytecode": { "object": "0x", "sourceMap": "", "linkReferences": {} },
+  "deployedBytecode": { "object": "0x", "sourceMap": "", "linkReferences": {} },
+  "methodIdentifiers": { "upgradeTo(address)": "3659cfe6", "upgradeToAndCall(address,bytes)": "4f1ef286" },
+  "rawMetadata": "{\"compiler\":{\"version\":\"0.8.24+commit.e11b9ed9\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"upgradeTo\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"name\":\"upgradeToAndCall\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{\"upgradeTo(address)\":{\"notice\":\"Upgrades the proxy to a new implementation without calling a function on the new implementation.\"},\"upgradeToAndCall(address,bytes)\":{\"notice\":\"Upgrades the proxy to a new implementation and calls a function on the new implementation. If UPGRADE_INTERFACE_VERSION is \\\"5.0.0\\\", bytes can be empty if no function should be called on the new implementation.\"}},\"version\":1}},\"settings\":{\"compilationTarget\":{\"node_modules/@openzeppelin/foundry-upgrades/src/internal/interfaces/IUpgradeableProxy.sol\":\"IUpgradeableProxy\"},\"evmVersion\":\"shanghai\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[\":@aave/=node_modules/@aave/\",\":@openzeppelin/contracts-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable/\",\":@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/\",\":@openzeppelin/foundry-upgrades/=node_modules/@openzeppelin/foundry-upgrades/src/\",\":@satlayer/contracts/=node_modules/@satlayer/contracts/\",\":forge-std/=node_modules/forge-std/src/\"]},\"sources\":{\"node_modules/@openzeppelin/foundry-upgrades/src/internal/interfaces/IUpgradeableProxy.sol\":{\"keccak256\":\"0x781b564b90bba0c0e8e12fb66b1c910f42d369db469f2e88592b4cff29de99a5\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://45fcab02a43fde934445b88e905aba3f58a70b75dd6ee6eb86a3d593424aeb03\",\"dweb:/ipfs/QmXmhAgrctaYUDLoTRgUjwD4deoXu1E2QT1kftVGcVa56j\"]}},\"version\":1}",
+  "metadata": {
+    "compiler": { "version": "0.8.24+commit.e11b9ed9" },
+    "language": "Solidity",
+    "output": {
+      "abi": [
+        {
+          "inputs": [{ "internalType": "address", "name": "", "type": "address" }],
+          "stateMutability": "nonpayable",
+          "type": "function",
+          "name": "upgradeTo"
+        },
+        {
+          "inputs": [
+            { "internalType": "address", "name": "", "type": "address" },
+            { "internalType": "bytes", "name": "", "type": "bytes" }
+          ],
+          "stateMutability": "payable",
+          "type": "function",
+          "name": "upgradeToAndCall"
+        }
+      ],
+      "devdoc": { "kind": "dev", "methods": {}, "version": 1 },
+      "userdoc": {
+        "kind": "user",
+        "methods": {
+          "upgradeTo(address)": {
+            "notice": "Upgrades the proxy to a new implementation without calling a function on the new implementation."
+          },
+          "upgradeToAndCall(address,bytes)": {
+            "notice": "Upgrades the proxy to a new implementation and calls a function on the new implementation. If UPGRADE_INTERFACE_VERSION is \"5.0.0\", bytes can be empty if no function should be called on the new implementation."
+          }
+        },
+        "version": 1
+      }
+    },
+    "settings": {
+      "remappings": [
+        "@aave/=node_modules/@aave/",
+        "@openzeppelin/contracts-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable/",
+        "@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/",
+        "@openzeppelin/foundry-upgrades/=node_modules/@openzeppelin/foundry-upgrades/src/",
+        "@satlayer/contracts/=node_modules/@satlayer/contracts/",
+        "forge-std/=node_modules/forge-std/src/"
+      ],
+      "optimizer": { "enabled": true, "runs": 200 },
+      "metadata": { "bytecodeHash": "ipfs" },
+      "compilationTarget": {
+        "node_modules/@openzeppelin/foundry-upgrades/src/internal/interfaces/IUpgradeableProxy.sol": "IUpgradeableProxy"
+      },
+      "evmVersion": "shanghai",
+      "libraries": {}
+    },
+    "sources": {
+      "node_modules/@openzeppelin/foundry-upgrades/src/internal/interfaces/IUpgradeableProxy.sol": {
+        "keccak256": "0x781b564b90bba0c0e8e12fb66b1c910f42d369db469f2e88592b4cff29de99a5",
+        "urls": [
+          "bzz-raw://45fcab02a43fde934445b88e905aba3f58a70b75dd6ee6eb86a3d593424aeb03",
+          "dweb:/ipfs/QmXmhAgrctaYUDLoTRgUjwD4deoXu1E2QT1kftVGcVa56j"
+        ],
+        "license": "MIT"
+      }
+    },
+    "version": 1
+  },
+  "storageLayout": { "storage": [], "types": {} },
+  "ast": {
+    "absolutePath": "node_modules/@openzeppelin/foundry-upgrades/src/internal/interfaces/IUpgradeableProxy.sol",
+    "id": 22735,
+    "exportedSymbols": { "IUpgradeableProxy": [22734] },
+    "nodeType": "SourceUnit",
+    "src": "32:531:71",
+    "nodes": [
+      {
+        "id": 22719,
+        "nodeType": "PragmaDirective",
+        "src": "32:23:71",
+        "nodes": [],
+        "literals": ["solidity", "^", "0.8", ".0"]
+      },
+      {
+        "id": 22734,
+        "nodeType": "ContractDefinition",
+        "src": "57:505:71",
+        "nodes": [
+          {
+            "id": 22725,
+            "nodeType": "FunctionDefinition",
+            "src": "211:37:71",
+            "nodes": [],
+            "documentation": {
+              "id": 22720,
+              "nodeType": "StructuredDocumentation",
+              "src": "91:115:71",
+              "text": " Upgrades the proxy to a new implementation without calling a function on the new implementation."
+            },
+            "functionSelector": "3659cfe6",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "upgradeTo",
+            "nameLocation": "220:9:71",
+            "parameters": {
+              "id": 22723,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 22722,
+                  "mutability": "mutable",
+                  "name": "",
+                  "nameLocation": "-1:-1:-1",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 22725,
+                  "src": "230:7:71",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 22721,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "230:7:71",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "229:9:71"
+            },
+            "returnParameters": { "id": 22724, "nodeType": "ParameterList", "parameters": [], "src": "247:0:71" },
+            "scope": 22734,
+            "stateMutability": "nonpayable",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "id": 22733,
+            "nodeType": "FunctionDefinition",
+            "src": "494:66:71",
+            "nodes": [],
+            "documentation": {
+              "id": 22726,
+              "nodeType": "StructuredDocumentation",
+              "src": "254:235:71",
+              "text": " Upgrades the proxy to a new implementation and calls a function on the new implementation.\n If UPGRADE_INTERFACE_VERSION is \"5.0.0\", bytes can be empty if no function should be called on the new implementation."
+            },
+            "functionSelector": "4f1ef286",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "upgradeToAndCall",
+            "nameLocation": "503:16:71",
+            "parameters": {
+              "id": 22731,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 22728,
+                  "mutability": "mutable",
+                  "name": "",
+                  "nameLocation": "-1:-1:-1",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 22733,
+                  "src": "520:7:71",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" },
+                  "typeName": {
+                    "id": 22727,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "520:7:71",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": { "typeIdentifier": "t_address", "typeString": "address" }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 22730,
+                  "mutability": "mutable",
+                  "name": "",
+                  "nameLocation": "-1:-1:-1",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 22733,
+                  "src": "529:12:71",
+                  "stateVariable": false,
+                  "storageLocation": "memory",
+                  "typeDescriptions": { "typeIdentifier": "t_bytes_memory_ptr", "typeString": "bytes" },
+                  "typeName": {
+                    "id": 22729,
+                    "name": "bytes",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "529:5:71",
+                    "typeDescriptions": { "typeIdentifier": "t_bytes_storage_ptr", "typeString": "bytes" }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "519:23:71"
+            },
+            "returnParameters": { "id": 22732, "nodeType": "ParameterList", "parameters": [], "src": "559:0:71" },
+            "scope": 22734,
+            "stateMutability": "payable",
+            "virtual": false,
+            "visibility": "external"
+          }
+        ],
+        "abstract": false,
+        "baseContracts": [],
+        "canonicalName": "IUpgradeableProxy",
+        "contractDependencies": [],
+        "contractKind": "interface",
+        "fullyImplemented": false,
+        "linearizedBaseContracts": [22734],
+        "name": "IUpgradeableProxy",
+        "nameLocation": "67:17:71",
+        "scope": 22735,
+        "usedErrors": [],
+        "usedEvents": []
+      }
+    ],
+    "license": "MIT"
+  },
+  "id": 71
+}
