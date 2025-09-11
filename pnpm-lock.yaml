@@ -98,7 +98,7 @@ importers:
         specifier: ^2.2.0
         version: 2.2.0(react@19.1.1)
       '@tailwindcss/postcss':
-        specifier: ^4.1.12
+        specifier: ^4.1.13
         version: 4.1.13
       next:
         specifier: ^15.5.2
@@ -116,7 +116,7 @@ importers:
         specifier: ^8.5.6
         version: 8.5.6
       posthog-js:
-        specifier: ^1.261.3
+        specifier: ^1.261.7
         version: 1.261.7
       react:
         specifier: ^19.1.1
@@ -125,7 +125,7 @@ importers:
         specifier: ^19.1.1
         version: 19.1.1(react@19.1.1)
       tailwindcss:
-        specifier: ^4.1.12
+        specifier: ^4.1.13
         version: 4.1.13
     devDependencies:
       '@eslint/eslintrc':
@@ -147,7 +147,7 @@ importers:
         specifier: 15.5.2
         version: 15.5.2(eslint@9.35.0(jiti@2.5.1))(typescript@5.9.2)
       pagefind:
-        specifier: ^1.3.0
+        specifier: ^1.4.0
         version: 1.4.0
 
   examples: {}
@@ -262,16 +262,16 @@ importers:
         specifier: ^4.0.0
         version: 4.0.0(e61b51a0e5b4c5d2eb2f438d51232f34)
       '@layerzerolabs/lz-evm-messagelib-v2':
-        specifier: ^3.0.125
+        specifier: ^3.0.127
         version: 3.0.127(@axelar-network/axelar-gmp-sdk-solidity@5.10.0)(@chainlink/contracts-ccip@0.7.6(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@eth-optimism/contracts@0.6.0(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@layerzerolabs/lz-evm-protocol-v2@3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4))(@layerzerolabs/lz-evm-v1-0.7@3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
       '@layerzerolabs/lz-evm-protocol-v2':
-        specifier: ^3.0.125
+        specifier: ^3.0.127
         version: 3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
       '@layerzerolabs/lz-evm-v1-0.7':
-        specifier: ^3.0.125
+        specifier: ^3.0.127
         version: 3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@layerzerolabs/lz-v2-utilities':
-        specifier: ^3.0.125
+        specifier: ^3.0.127
         version: 3.0.127
       '@layerzerolabs/oapp-evm':
         specifier: ^0.3.2
@@ -298,8 +298,8 @@ importers:
         specifier: latest
         version: 5.9.2
       viem:
-        specifier: ^2.36.0
-        version: 2.37.5(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.25.76)
+        specifier: ^2.37.3
+        version: 2.37.3(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.25.76)
     devDependencies:
       '@satlayer/cosmwasm-optimizer':
         specifier: workspace:*
@@ -372,8 +372,8 @@ importers:
         specifier: ^9.6.0
         version: 9.6.0
       viem:
-        specifier: ^2.36.0
-        version: 2.37.5(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.25.76)
+        specifier: ^2.37.3
+        version: 2.37.3(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.25.76)
     devDependencies:
       '@types/node':
         specifier: ^20
@@ -397,16 +397,16 @@ importers:
         specifier: ^4.0.0
         version: 4.0.0(f5b0762ee5f254366222c6ba95e2f6bf)
       '@layerzerolabs/lz-evm-messagelib-v2':
-        specifier: ^3.0.125
+        specifier: ^3.0.127
         version: 3.0.127(@axelar-network/axelar-gmp-sdk-solidity@5.10.0)(@chainlink/contracts-ccip@0.7.6(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@eth-optimism/contracts@0.6.0(bufferutil@4.0.9)(ethers@6.14.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@layerzerolabs/lz-evm-protocol-v2@3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4))(@layerzerolabs/lz-evm-v1-0.7@3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
       '@layerzerolabs/lz-evm-protocol-v2':
-        specifier: ^3.0.125
+        specifier: ^3.0.127
         version: 3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
       '@layerzerolabs/lz-evm-v1-0.7':
-        specifier: ^3.0.125
+        specifier: ^3.0.127
         version: 3.0.127(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.12.4(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@layerzerolabs/lz-v2-utilities':
-        specifier: ^3.0.125
+        specifier: ^3.0.127
         version: 3.0.127
       '@layerzerolabs/oapp-evm':
         specifier: ^0.3.2
@@ -439,8 +439,8 @@ importers:
         specifier: latest
         version: 5.9.2
       viem:
-        specifier: ^2.36.0
-        version: 2.37.5(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@4.0.0-beta.20250424T163858)
+        specifier: ^2.37.3
+        version: 2.37.3(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@4.0.0-beta.20250424T163858)
     devDependencies:
       '@types/node':
         specifier: ^20
@@ -464,8 +464,8 @@ importers:
         specifier: ^0.4.0
         version: 0.4.0(@openzeppelin/defender-deploy-client-cli@0.0.1-alpha.10)(@openzeppelin/upgrades-core@1.44.1)
       viem:
-        specifier: 2.36.0
-        version: 2.36.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.25.76)
+        specifier: 2.37.3
+        version: 2.37.3(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.25.76)
     devDependencies:
       '@satlayer/contracts':
         specifier: workspace:*
@@ -486,50 +486,38 @@ importers:
         specifier: ^3.1.4
         version: 3.2.4(@types/debug@4.1.12)(@types/node@20.17.17)(jiti@2.5.1)(lightningcss@1.30.1)(yaml@2.8.1)
 
-  examples/evm/stablecoin_collateral:
+  examples/evm/threshold-security:
     dependencies:
-      '@aave/core-v3':
-        specifier: ^1.19.3
-        version: 1.19.3
       '@openzeppelin/contracts':
         specifier: ^5.4.0
         version: 5.4.0
       '@openzeppelin/contracts-upgradeable':
         specifier: ^5.4.0
         version: 5.4.0(@openzeppelin/contracts@5.4.0)
+      '@openzeppelin/foundry-upgrades':
+        specifier: ^0.4.0
+        version: 0.4.0(@openzeppelin/defender-deploy-client-cli@0.0.1-alpha.10)(@openzeppelin/upgrades-core@1.44.1)
       '@satlayer/contracts':
         specifier: workspace:*
         version: link:../../../contracts
       forge-std:
-        specifier: https://github.com/foundry-rs/forge-std/tarball/v1.9.7
-        version: https://github.com/foundry-rs/forge-std/tarball/v1.9.7
-    devDependencies:
-      '@metamask/foundryup':
-        specifier: ^1.0.1
-        version: 1.0.1
-      '@openzeppelin/foundry-upgrades':
-        specifier: ^0.4.0
-        version: 0.4.0(@openzeppelin/defender-deploy-client-cli@0.0.1-alpha.10)(@openzeppelin/upgrades-core@1.44.1)
-      '@satlayer/testcontainers':
-        specifier: ^2.4.0
-        version: 2.4.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.25.76)
-      '@types/node':
-        specifier: ^20.17.17
-        version: 20.17.17
-      abitype:
-        specifier: ^1.1.0
-        version: 1.1.0(typescript@5.9.2)(zod@3.25.76)
-      ts-node:
-        specifier: ^10.9.2
-        version: 10.9.2(@types/node@20.17.17)(typescript@5.9.2)
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.2
+        specifier: https://github.com/foundry-rs/forge-std/tarball/v1.9.6
+        version: https://github.com/foundry-rs/forge-std/tarball/v1.9.6
       viem:
-        specifier: ^2.37.5
-        version: 2.37.5(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.25.76)
+        specifier: 2.37.3
+        version: 2.37.3(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.25.76)
+    devDependencies:
+      '@satlayer/testcontainers':
+        specifier: workspace:*
+        version: link:../../../packages/testcontainers
+      '@types/node':
+        specifier: ^20
+        version: 20.17.17
+      typescript:
+        specifier: latest
+        version: 5.9.2
       vitest:
-        specifier: ^3.2.4
+        specifier: ^3.1.4
         version: 3.2.4(@types/debug@4.1.12)(@types/node@20.17.17)(jiti@2.5.1)(lightningcss@1.30.1)(yaml@2.8.1)
 
   modules: {}
@@ -623,7 +611,7 @@ importers:
   packages/config-eslint:
     dependencies:
       '@eslint/js':
-        specifier: ^9.34.0
+        specifier: ^9.35.0
         version: 9.35.0
       eslint-config-prettier:
         specifier: ^10.1.8
@@ -745,14 +733,10 @@ importers:
         specifier: ^11.5.1
         version: 11.5.1
       viem:
-        specifier: ^2.36.0
-        version: 2.37.5(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.25.76)
+        specifier: ^2.37.3
+        version: 2.37.3(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.25.76)
 
 packages:
-
-  '@aave/core-v3@1.19.3':
-    resolution: {integrity: sha512-Xr7+VcoU5b4mPwM4IUCnskw3lciwrnL4Xloyad8GOddYeixnri2lZYobNmErm1LwE50vqjI0O+9QGNKY2TDkeQ==}
-    engines: {node: '>=16.0.0'}
 
   '@adraffy/ens-normalize@1.10.1':
     resolution: {integrity: sha512-96Z2IP3mYmF1Xg2cDm8f1gWGf/HUVedQ3FMifV4kG/PQ4yEP51xDtRAEfhVNt5f/uzpNkZHwWQuUcu6D6K+Ekw==}
@@ -2014,10 +1998,6 @@ packages:
     resolution: {integrity: sha512-HxngEd2XUcg9xi20JkwlLCtYwfoFw4JGkuZpT+WlsPD4gB/cxkvTD8fSsoAnphGZhFdZYKeQIPCuFlWPm1uE0g==}
     engines: {node: ^14.21.3 || >=16}
 
-  '@noble/curves@1.9.6':
-    resolution: {integrity: sha512-GIKz/j99FRthB8icyJQA51E8Uk5hXmdyThjgQXRKiv9h0zeRlzSCLIzFw6K1LotZ3XuB7yzlf76qk7uBmTdFqA==}
-    engines: {node: ^14.21.3 || >=16}
-
   '@noble/hashes@1.2.0':
     resolution: {integrity: sha512-FZfhjEDbT5GRswV3C6uvLPHMiVD6lQBmpoX5+eSiPaMTXte/IKqI5dykDxzZB/WBeK/CDuQRBWarPdi3FNY2zQ==}
 
@@ -2401,42 +2381,6 @@ packages:
 
   '@safe-global/safe-deployments@1.37.42':
     resolution: {integrity: sha512-hu/GEQhO5lmHsSeVJavtVysdqy16VAumd3pgILN9bTj82ImlHWgkFNYXyeOSbjPvmizdnVVEUzH49yBmoM6oMQ==}
-
-  '@satlayer/bvs-guardrail@2.4.0':
-    resolution: {integrity: sha512-VVHgKxz9fvPVAYrCJa+m2NgEtFuom5CxdKIkFeKeviF/7guBlZoMBgCxY88IxULZ7Z14MkUjzTQu2psz3CyIsg==}
-
-  '@satlayer/bvs-pauser@2.4.0':
-    resolution: {integrity: sha512-6UZcZy9YWtU8QVTDa7fE4oqdRXutcrSefQJm4ZCUUgzE3tIMUP93NPs5Hm/JjFtosMCGxrNrinHQv22Q0IsZ2g==}
-
-  '@satlayer/bvs-registry@2.4.0':
-    resolution: {integrity: sha512-jCd4TEoKDk2TB8ayro1FMlbHYdLsGdeL6bUMzbuTNEIdpnaSZp0wc3+uvq07ypB3pTjtRDEeTGdVBu7GdPevdQ==}
-
-  '@satlayer/bvs-rewards@2.4.0':
-    resolution: {integrity: sha512-HVbrVpraStQ1Es1Gmt1SXmRlo1WUzpf4FcJEQjNVMMJM80xXpDhjUBmSst3NtUiCUBEhh7/rVfyRcHK+OF20Fg==}
-
-  '@satlayer/bvs-vault-bank-tokenized@2.4.0':
-    resolution: {integrity: sha512-2BperRh/M57qsyHEUTQU4VgK6MeyRVkFJGs04hSXblXDjrfOTl4McjJFJEZAIIvR9fCA7DgSahlefVUKwPssug==}
-
-  '@satlayer/bvs-vault-bank@2.4.0':
-    resolution: {integrity: sha512-7PLoeu00h5TTSfNDpWCAzU/8a4FuieS64G3iQ3iKN9eILzsBvtaow7+AjbdDKWgRXXhnM9kQQavnhhsQSHatsA==}
-
-  '@satlayer/bvs-vault-cw20-tokenized@2.4.0':
-    resolution: {integrity: sha512-NNtrHXkFir/15YmPmsvqie1p3f/pKDI8Q76iUF+k3z71ItX0wGKqS5d8Sj1M49ccIy/Nq7745834zpQZKUFgag==}
-
-  '@satlayer/bvs-vault-cw20@2.4.0':
-    resolution: {integrity: sha512-7IotMCYRlV0UUyvXwIIpHp/DI7TRMuAl0jeqhWaSEXruKkPcA44syRSEpzqjo1IG6VuNrhK/xfP+3u5WkiF52g==}
-
-  '@satlayer/bvs-vault-router@2.4.0':
-    resolution: {integrity: sha512-KpXPp1Yxz/J33KCN6+tc/iE6krHOVua3Zm5vLDh6de9yuSGy7Y6fboqsZyoNhYYHvspE9levOE1U+CNnbcCYvA==}
-
-  '@satlayer/contracts@2.4.0':
-    resolution: {integrity: sha512-3IKIDUoRE0GRo52tO2wx1K7aEj/RwhKIs5n4LjnxnNso+obOHijDuyXQECORntZu+wLbIWeSo0hsa8ntJe8Flw==}
-
-  '@satlayer/cosmwasm-schema@2.4.0':
-    resolution: {integrity: sha512-5veactVlf/hEQI2NYvAktGXC16scy+NQsCUaHw+FBq2rQ6DzxeVqj4ECzZVdXoImYD/y1QNkGwRKENw2rGnwjw==}
-
-  '@satlayer/testcontainers@2.4.0':
-    resolution: {integrity: sha512-Hpb0JAaGd3xiEeKDgcZAeBbQNgipfqVrzHqvsYBj3er/Qlvw3oB9GREjpHKwpgLZey0IuYJEdCKOrAojy/TmHA==}
 
   '@scure/base@1.1.9':
     resolution: {integrity: sha512-8YKhl8GHiNI/pU2VMaofa2Tor7PJRAjwQLBBuilkJ9L5+13yVbC7JO/wS7piioAvPSwR3JKM1IJ/u4xQzbcXKg==}
@@ -3341,17 +3285,6 @@ packages:
 
   '@zod/core@0.9.0':
     resolution: {integrity: sha512-bVfPiV2kDUkAJ4ArvV4MHcPZA8y3xOX6/SjzSy2kX2ACopbaaAP4wk6hd/byRmfi9MLNai+4SFJMmcATdOyclg==}
-
-  abitype@1.0.8:
-    resolution: {integrity: sha512-ZeiI6h3GnW06uYDLx0etQtX/p8E24UaHHBj57RSjK7YBFe7iuVn07EDpOeP451D06sF27VOz9JJPlIKJmXgkEg==}
-    peerDependencies:
-      typescript: '>=5.0.4'
-      zod: ^3 >=3.22.0
-    peerDependenciesMeta:
-      typescript:
-        optional: true
-      zod:
-        optional: true
 
   abitype@1.0.9:
     resolution: {integrity: sha512-oN0S++TQmlwWuB+rkA6aiEefLv3SP+2l/tC5mux/TLj6qdA6rF15Vbpex4fHovLsMkwLwTIRj8/Q8vXCS3GfOg==}
@@ -6491,14 +6424,6 @@ packages:
     resolution: {integrity: sha512-qFOyK5PjiWZd+QQIh+1jhdb9LpxTF0qs7Pm8o5QHYZ0M3vKqSqzsZaEB6oWlxZ+q2sJBMI/Ktgd2N5ZwQoRHfg==}
     engines: {node: '>= 0.4'}
 
-  ox@0.9.1:
-    resolution: {integrity: sha512-NVI0cajROntJWtFnxZQ1aXDVy+c6DLEXJ3wwON48CgbPhmMJrpRTfVbuppR+47RmXm3lZ/uMaKiFSkLdAO1now==}
-    peerDependencies:
-      typescript: '>=5.4.0'
-    peerDependenciesMeta:
-      typescript:
-        optional: true
-
   ox@0.9.3:
     resolution: {integrity: sha512-KzyJP+fPV4uhuuqrTZyok4DC7vFzi7HLUFiUNEmpbyh59htKWkOC98IONC1zgXJPbHAhQgqs6B0Z6StCGhmQvg==}
     peerDependencies:
@@ -7931,16 +7856,8 @@ packages:
   vfile@6.0.3:
     resolution: {integrity: sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==}
 
-  viem@2.36.0:
-    resolution: {integrity: sha512-Xz7AkGtR43K+NY74X2lBevwfRrsXuifGUzt8QiULO47NXIcT7g3jcA4nIvl5m2OTE5v8SlzishwXmg64xOIVmQ==}
-    peerDependencies:
-      typescript: '>=5.0.4'
-    peerDependenciesMeta:
-      typescript:
-        optional: true
-
-  viem@2.37.5:
-    resolution: {integrity: sha512-bLKvKgLcge6KWBMLk8iP9weu5tHNr0hkxPNwQd+YQrHEgek7ogTBBeE10T0V6blwBMYmeZFZHLnMhDmPjp63/A==}
+  viem@2.37.3:
+    resolution: {integrity: sha512-hwoZqkFSy13GCFzIftgfIH8hNENvdlcHIvtLt73w91tL6rKmZjQisXWTahi1Vn5of8/JQ1FBKfwUus3YkDXwbw==}
     peerDependencies:
       typescript: '>=5.0.4'
     peerDependenciesMeta:
@@ -8387,8 +8304,6 @@ packages:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
 
 snapshots:
-
-  '@aave/core-v3@1.19.3': {}
 
   '@adraffy/ens-normalize@1.10.1': {}
 
@@ -8930,6 +8845,7 @@ snapshots:
   '@cspotcode/source-map-support@0.8.1':
     dependencies:
       '@jridgewell/trace-mapping': 0.3.9
+    optional: true
 
   '@dabh/diagnostics@2.0.3':
     dependencies:
@@ -9689,6 +9605,7 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
+    optional: true
 
   '@js-sdsl/ordered-map@4.4.2': {}
 
@@ -10070,10 +9987,6 @@ snapshots:
       '@noble/hashes': 1.8.0
 
   '@noble/curves@1.9.2':
-    dependencies:
-      '@noble/hashes': 1.8.0
-
-  '@noble/curves@1.9.6':
     dependencies:
       '@noble/hashes': 1.8.0
 
@@ -10469,61 +10382,6 @@ snapshots:
   '@safe-global/safe-deployments@1.37.42':
     dependencies:
       semver: 7.7.2
-
-  '@satlayer/bvs-guardrail@2.4.0': {}
-
-  '@satlayer/bvs-pauser@2.4.0': {}
-
-  '@satlayer/bvs-registry@2.4.0': {}
-
-  '@satlayer/bvs-rewards@2.4.0': {}
-
-  '@satlayer/bvs-vault-bank-tokenized@2.4.0': {}
-
-  '@satlayer/bvs-vault-bank@2.4.0': {}
-
-  '@satlayer/bvs-vault-cw20-tokenized@2.4.0': {}
-
-  '@satlayer/bvs-vault-cw20@2.4.0': {}
-
-  '@satlayer/bvs-vault-router@2.4.0': {}
-
-  '@satlayer/contracts@2.4.0':
-    dependencies:
-      '@openzeppelin/contracts': 5.4.0
-      '@openzeppelin/contracts-upgradeable': 5.4.0(@openzeppelin/contracts@5.4.0)
-      '@pythnetwork/pyth-sdk-solidity': 4.2.0
-
-  '@satlayer/cosmwasm-schema@2.4.0': {}
-
-  '@satlayer/testcontainers@2.4.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.25.76)':
-    dependencies:
-      '@cosmjs/cosmwasm-stargate': 0.34.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
-      '@cosmjs/crypto': 0.34.0
-      '@cosmjs/proto-signing': 0.34.0
-      '@cosmjs/stargate': 0.34.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
-      '@openzeppelin/upgrades-core': 1.44.1
-      '@satlayer/bvs-guardrail': 2.4.0
-      '@satlayer/bvs-pauser': 2.4.0
-      '@satlayer/bvs-registry': 2.4.0
-      '@satlayer/bvs-rewards': 2.4.0
-      '@satlayer/bvs-vault-bank': 2.4.0
-      '@satlayer/bvs-vault-bank-tokenized': 2.4.0
-      '@satlayer/bvs-vault-cw20': 2.4.0
-      '@satlayer/bvs-vault-cw20-tokenized': 2.4.0
-      '@satlayer/bvs-vault-router': 2.4.0
-      '@satlayer/contracts': 2.4.0
-      '@satlayer/cosmwasm-schema': 2.4.0
-      testcontainers: 11.5.1
-      viem: 2.37.5(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.25.76)
-    transitivePeerDependencies:
-      - bare-buffer
-      - bufferutil
-      - encoding
-      - supports-color
-      - typescript
-      - utf-8-validate
-      - zod
 
   '@scure/base@1.1.9': {}
 
@@ -11088,13 +10946,17 @@ snapshots:
       minimatch: 10.0.3
       path-browserify: 1.0.1
 
-  '@tsconfig/node10@1.0.11': {}
+  '@tsconfig/node10@1.0.11':
+    optional: true
 
-  '@tsconfig/node12@1.0.11': {}
+  '@tsconfig/node12@1.0.11':
+    optional: true
 
-  '@tsconfig/node14@1.0.3': {}
+  '@tsconfig/node14@1.0.3':
+    optional: true
 
-  '@tsconfig/node16@1.0.4': {}
+  '@tsconfig/node16@1.0.4':
+    optional: true
 
   '@tybys/wasm-util@0.10.0':
     dependencies:
@@ -11668,7 +11530,7 @@ snapshots:
       picocolors: 1.1.1
       picomatch: 3.0.1
       prettier: 3.6.2
-      viem: 2.37.5(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.25.76)
+      viem: 2.37.3(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.25.76)
       zod: 3.25.76
     optionalDependencies:
       typescript: 5.9.2
@@ -11677,11 +11539,6 @@ snapshots:
       - utf-8-validate
 
   '@zod/core@0.9.0': {}
-
-  abitype@1.0.8(typescript@5.9.2)(zod@3.25.76):
-    optionalDependencies:
-      typescript: 5.9.2
-      zod: 3.25.76
 
   abitype@1.0.9(typescript@5.9.2)(zod@3.25.76):
     optionalDependencies:
@@ -11720,6 +11577,7 @@ snapshots:
   acorn-walk@8.3.4:
     dependencies:
       acorn: 8.15.0
+    optional: true
 
   acorn@8.14.1: {}
 
@@ -11815,7 +11673,8 @@ snapshots:
       tar-stream: 3.1.7
       zip-stream: 6.0.1
 
-  arg@4.1.3: {}
+  arg@4.1.3:
+    optional: true
 
   arg@5.0.2: {}
 
@@ -12473,7 +12332,8 @@ snapshots:
       safe-buffer: 5.2.1
       sha.js: 2.4.11
 
-  create-require@1.1.1: {}
+  create-require@1.1.1:
+    optional: true
 
   cross-fetch@4.1.0:
     dependencies:
@@ -12784,7 +12644,8 @@ snapshots:
     dependencies:
       dequal: 2.0.3
 
-  diff@4.0.2: {}
+  diff@4.0.2:
+    optional: true
 
   diff@5.2.0: {}
 
@@ -14807,7 +14668,8 @@ snapshots:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  make-error@1.3.6: {}
+  make-error@1.3.6:
+    optional: true
 
   map-age-cleaner@0.1.3:
     dependencies:
@@ -15767,21 +15629,6 @@ snapshots:
       get-intrinsic: 1.3.0
       object-keys: 1.1.1
       safe-push-apply: 1.0.0
-
-  ox@0.9.1(typescript@5.9.2)(zod@3.25.76):
-    dependencies:
-      '@adraffy/ens-normalize': 1.11.0
-      '@noble/ciphers': 1.3.0
-      '@noble/curves': 1.9.6
-      '@noble/hashes': 1.8.0
-      '@scure/bip32': 1.7.0
-      '@scure/bip39': 1.6.0
-      abitype: 1.1.0(typescript@5.9.2)(zod@3.25.76)
-      eventemitter3: 5.0.1
-    optionalDependencies:
-      typescript: 5.9.2
-    transitivePeerDependencies:
-      - zod
 
   ox@0.9.3(typescript@5.9.2)(zod@3.25.76):
     dependencies:
@@ -17197,6 +17044,7 @@ snapshots:
       typescript: 5.9.2
       v8-compile-cache-lib: 3.0.1
       yn: 3.1.1
+    optional: true
 
   tsconfig-paths@3.15.0:
     dependencies:
@@ -17515,7 +17363,8 @@ snapshots:
 
   uuid@9.0.1: {}
 
-  v8-compile-cache-lib@3.0.1: {}
+  v8-compile-cache-lib@3.0.1:
+    optional: true
 
   varint@5.0.2: {}
 
@@ -17542,24 +17391,7 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.2
 
-  viem@2.36.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.25.76):
-    dependencies:
-      '@noble/curves': 1.9.6
-      '@noble/hashes': 1.8.0
-      '@scure/bip32': 1.7.0
-      '@scure/bip39': 1.6.0
-      abitype: 1.0.8(typescript@5.9.2)(zod@3.25.76)
-      isows: 1.0.7(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
-      ox: 0.9.1(typescript@5.9.2)(zod@3.25.76)
-      ws: 8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
-    optionalDependencies:
-      typescript: 5.9.2
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
-      - zod
-
-  viem@2.37.5(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.25.76):
+  viem@2.37.3(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.25.76):
     dependencies:
       '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0
@@ -17576,7 +17408,7 @@ snapshots:
       - utf-8-validate
       - zod
 
-  viem@2.37.5(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@4.0.0-beta.20250424T163858):
+  viem@2.37.3(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@4.0.0-beta.20250424T163858):
     dependencies:
       '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0
@@ -18121,7 +17953,8 @@ snapshots:
       y18n: 5.0.8
       yargs-parser: 21.1.1
 
-  yn@3.1.1: {}
+  yn@3.1.1:
+    optional: true
 
   yocto-queue@0.1.0: {}
 
