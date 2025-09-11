@@ -7,13 +7,13 @@ import {
   Hex,
   encodeFunctionData,
   PublicClient,
-  AbiParameter
+  AbiParameter,
 } from "viem";
-import { anvil, mainnet } from 'viem/chains';
+import { anvil, mainnet } from "viem/chains";
 import { abi as bvsAbi } from "../out/StablecoinCollateralBVS.sol/StablecoinCollateralBVS.json";
 
-import { decodeEventLog } from 'viem';
-import type { Abi, Address } from 'viem';
+import { decodeEventLog } from "viem";
+import type { Abi, Address } from "viem";
 
 export type BVSRequest = {
   chainId: bigint;
@@ -31,14 +31,14 @@ export type BVSRequest = {
 
 const opQueues = new Map<`0x${string}`, Promise<unknown>>();
 
-function enqueueForOperator<T>(
-  operatorAddr: `0x${string}`,
-  job: () => Promise<T>
-): Promise<T> {
+function enqueueForOperator<T>(operatorAddr: `0x${string}`, job: () => Promise<T>): Promise<T> {
   const prev = opQueues.get(operatorAddr) ?? Promise.resolve();
-  const next = prev.then(job, job);          // chain the work
-  opQueues.set(operatorAddr, next.catch(() => {})); // keep chain even on error
-  return next;                                // resolves to job()'s result
+  const next = prev.then(job, job); // chain the work
+  opQueues.set(
+    operatorAddr,
+    next.catch(() => {}),
+  ); // keep chain even on error
+  return next; // resolves to job()'s result
 }
 
 type BVSRequestDecoded = readonly [
@@ -52,7 +52,7 @@ type BVSRequestDecoded = readonly [
   number, // status (enum -> number)
   number, // attestedCount (uint16/uint32 -> number)
   number, // finalizedAt (uint32 -> number)
-  boolean // hasOperatorAllowlist
+  boolean, // hasOperatorAllowlist
 ];
 
 export const ReqStatus = {
@@ -63,9 +63,9 @@ export const ReqStatus = {
 } as const;
 async function mineUntilReceipt(
   eth: StartedAnvilContainer,
-  client: ReturnType<StartedAnvilContainer['getClient']>,
+  client: ReturnType<StartedAnvilContainer["getClient"]>,
   hash: Hex,
-  maxTries = 10
+  maxTries = 10,
 ) {
   for (let i = 0; i < maxTries; i++) {
     await eth.mineBlock(1);
@@ -77,13 +77,17 @@ async function mineUntilReceipt(
 
 /** BVS enums (must match solidity) */
 
-enum MatchMode { NONE = 0, EXACT = 1, PREFIX = 2 }
+enum MatchMode {
+  NONE = 0,
+  EXACT = 1,
+  PREFIX = 2,
+}
 
 /** Shape returned by a handler: either executed tx hash, or an external tx to attest, plus optional notes */
 type HandlerResult = {
-  txHash?: Hex;                 // tx we sent
-  externallyProvidedTx?: Hex;   // tx we didn't send but will attest
-  notes?: Hex;                  // arbitrary small blob to put in `extraData` on attest
+  txHash?: Hex; // tx we sent
+  externallyProvidedTx?: Hex; // tx we didn't send but will attest
+  notes?: Hex; // arbitrary small blob to put in `extraData` on attest
 };
 
 /** What the handler receives */
@@ -93,24 +97,22 @@ export type HandlerCtx = {
   operator: Account;
   requestId: bigint;
   actionIndex: number;
-  eth :StartedAnvilContainer;
+  eth: StartedAnvilContainer;
 
   /** Resolved request + action */
   chainId: bigint;
   target: `0x${string}`;
-  selector: Hex;          // 0x12345678
+  selector: Hex; // 0x12345678
   matchMode: MatchMode;
-  expectedArgs: Hex;      // may be 0x
+  expectedArgs: Hex; // may be 0x
   expectedArgsHash: Hex;
-  extraData: Hex;         // optional from governance
+  extraData: Hex; // optional from governance
 
   /** helpers */
-  decodeArgs: (abi: any[]) => any[] | null;      // try to decode expectedArgs against a target ABI
-  buildCalldata: (fullArgs: Hex) => Hex;         // selector + args
-  canExecute: () => boolean;                     // you can implement per-operator policy (whitelists, budgets…)
+  decodeArgs: (abi: any[]) => any[] | null; // try to decode expectedArgs against a target ABI
+  buildCalldata: (fullArgs: Hex) => Hex; // selector + args
+  canExecute: () => boolean; // you can implement per-operator policy (whitelists, budgets…)
 };
-
-
 
 /** Registry for target ABIs the operator knows how to call */
 export interface TargetAbiRegistry {
@@ -137,7 +139,6 @@ export class MapTargetAbiRegistry implements TargetAbiRegistry {
 
 //   //TODO: implement different matchmodes
 
-
 //   if (!argsHex) return {};
 //   const calldata = ctx.buildCalldata(argsHex);
 
@@ -146,7 +147,6 @@ export class MapTargetAbiRegistry implements TargetAbiRegistry {
 
 //     const nonce = await ctx.client.getTransactionCount(ctx.operator);
 //     console.log("nonce", nonce)
-    
 
 //   // Actually send the tx — NOTE: in many setups, the operator will NOT be the EOA
 //   // that is allowed to call the target. Plug your real sender here.
@@ -155,16 +155,14 @@ export class MapTargetAbiRegistry implements TargetAbiRegistry {
 //     to: ctx.target , // 0x...
 //     data: calldata ,     // 0x...
 //     chain:  mainnet,
-//     nonce: nonce, 
+//     nonce: nonce,
 //     });
 //     await mineUntilReceipt(ctx.eth, ctx.client, txHash as any);
-
 
 //     console.log("transaction mined")
 
 //     const nonce2 = await ctx.client.getTransactionCount(ctx.operator);
 //     console.log("nonce", nonce2)
-
 
 //   return { txHash };
 // }
@@ -186,8 +184,7 @@ async function genericExecuteAndAttest(ctx: HandlerCtx): Promise<HandlerResult> 
       account: ctx.operator,
       to: ctx.target as `0x${string}`,
       data: calldata as `0x${string}`,
-      chain: ctx.eth.getChainInfo().viemChain ,
-
+      chain: ctx.eth.getChainInfo().viemChain,
     });
 
     await mineUntilReceipt(ctx.eth, ctx.client, txHash as any);
@@ -198,11 +195,8 @@ async function genericExecuteAndAttest(ctx: HandlerCtx): Promise<HandlerResult> 
   });
 }
 
-
 /** Operator node */
 export class OperatorNode {
-
-
   private unwatchOpen?: WatchContractEventReturnType;
   private unwatchAction?: WatchContractEventReturnType;
 
@@ -220,7 +214,6 @@ export class OperatorNode {
     private readonly targetAbiRegistry: TargetAbiRegistry,
   ) {
     this.bvs = getContract({ address: bvsAddress, abi: bvsAbi, client });
-
 
     // Default: all selectors use the generic handler unless overridden.
     // You can register specific handlers below for PL/CG functions.
@@ -261,31 +254,29 @@ export class OperatorNode {
     //   },
     // });
 
-
     // Listen for actions being added (some setups emit actions after opening)
-        this.unwatchAction = this.client.watchContractEvent({
-        address: this.bvsAddress as Address,
-        abi: bvsAbi,                              // <- literal (as const)
-        eventName: 'RequestActionAdded' as const, // <- literal
-        // strict opcional, pero ayuda a filtrar y tipar mejor
-        strict: true,
-        onLogs: async (logs) => {
-
-            console.log("getting logs2");
-            for (const log of logs) {
-            const { args } = decodeEventLog({
-                abi: bvsAbi,
-                data: log.data,
-                topics: log.topics,
-            });
+    this.unwatchAction = this.client.watchContractEvent({
+      address: this.bvsAddress as Address,
+      abi: bvsAbi, // <- literal (as const)
+      eventName: "RequestActionAdded" as const, // <- literal
+      // strict opcional, pero ayuda a filtrar y tipar mejor
+      strict: true,
+      onLogs: async (logs) => {
+        console.log("getting logs2");
+        for (const log of logs) {
+          const { args } = decodeEventLog({
+            abi: bvsAbi,
+            data: log.data,
+            topics: log.topics,
+          });
 
           const id = (args as any).id as bigint;
-         const idx = (args as any).index as bigint;
+          const idx = (args as any).index as bigint;
           console.log(`[${this.label}] New RequestOpened id=${id}`);
-            await this.tryProcessRequest(id);
-            }
-        },
-        });
+          await this.tryProcessRequest(id);
+        }
+      },
+    });
   }
 
   public stop() {
@@ -297,27 +288,26 @@ export class OperatorNode {
   private async tryProcessRequest(requestId: bigint) {
     console.log("tryProcessRequest");
     // Fetch request header
-    const R = await this.bvs.read.requests([requestId as bigint]) as BVSRequestDecoded;
+    const R = (await this.bvs.read.requests([requestId as bigint])) as BVSRequestDecoded;
     const [
-    chainId,
-    completion,
-    kRequired,
-    quorumBps,
-    minCount,
-    createdAt,
-    expiresAt,
-    status,
-    attestedCount,
-    finalizedAt,
-    hasAllow,
+      chainId,
+      completion,
+      kRequired,
+      quorumBps,
+      minCount,
+      createdAt,
+      expiresAt,
+      status,
+      attestedCount,
+      finalizedAt,
+      hasAllow,
     ] = R;
 
-    console.log(status)
+    console.log(status);
 
     if (status !== ReqStatus.Open) {
-    return; // no está “Open”
+      return; // no está “Open”
     }
-
 
     // Pull actions: the contract stores them in an array mapping; we don’t know length directly.
     // If your BVS exposes an actionCount(requestId) view, use it.
@@ -332,7 +322,7 @@ export class OperatorNode {
     }> = [];
 
     let i = 0;
-     console.log("reading action lengths1....")
+    console.log("reading action lengths1....");
     while (true) {
       try {
         // public mapping requestActions => Action[]; we need a view accessor. Expose one in BVS:
@@ -351,24 +341,18 @@ export class OperatorNode {
         });
         i++;
       } catch {
-        console.log("cannot read....")
+        console.log("cannot read....");
         break;
       }
     }
 
-    console.log("reading action lengths....")
-
-
+    console.log("reading action lengths....");
 
     // Process each action individually (idempotent: we’ll skip if we already attested)
     for (let actionIndex = 0; actionIndex < actions.length; actionIndex++) {
-    const already = await (this.bvs.read as any).hasAttested([
-        requestId,
-        BigInt(actionIndex),
-        this.operator.address,
-        ]);
-        if (already) continue;
-        console.log("action", actionIndex);
+      const already = await (this.bvs.read as any).hasAttested([requestId, BigInt(actionIndex), this.operator.address]);
+      if (already) continue;
+      console.log("action", actionIndex);
       await this.executeOrAttest(requestId, chainId as bigint, actions[actionIndex], actionIndex);
     }
   }
@@ -384,7 +368,7 @@ export class OperatorNode {
       extraData: Hex;
       matchMode: number;
     },
-    actionIndex: number
+    actionIndex: number,
   ) {
     // Build handler context
     const ctx: HandlerCtx = {
@@ -405,8 +389,12 @@ export class OperatorNode {
       decodeArgs: (abi) => {
         try {
           // For display only: decode expectedArgs for UX. If this fails, we still can execute by concatenation.
-          const fn = abi.find((f: any) => f.type === "function" && (f.selector?.toLowerCase?.() === A.selector.toLowerCase()
-            || encodeSelector(f).toLowerCase() === A.selector.toLowerCase()));
+          const fn = abi.find(
+            (f: any) =>
+              f.type === "function" &&
+              (f.selector?.toLowerCase?.() === A.selector.toLowerCase() ||
+                encodeSelector(f).toLowerCase() === A.selector.toLowerCase()),
+          );
           if (!fn) return null;
           const inputs = fn.inputs ?? [];
           // expectedArgs is raw-encoded params (no selector). We’d need the param types to decode.
@@ -417,15 +405,13 @@ export class OperatorNode {
         }
       },
 
-      buildCalldata: (fullArgs: Hex) => ((A.selector + (fullArgs as string).slice(2)) as Hex),
+      buildCalldata: (fullArgs: Hex) => (A.selector + (fullArgs as string).slice(2)) as Hex,
 
       canExecute: () => {
         // policy gate — put allowlists, budgets, time windows, role checks, etc.
         return true;
       },
     };
-
-
 
     // If we know the target ABI, we *could* decide how to populate args or run a specialized handler
     const selectorKey = (A.selector as string).toLowerCase();
@@ -437,19 +423,19 @@ export class OperatorNode {
 
     // If we executed (or were given a hash), attest
     if (hashToAttest) {
-      const attesttx = await this.bvs.write.attest([requestId, BigInt(actionIndex), hashToAttest, (res?.notes ?? "0x") as Hex], {
-        account: this.operator.address,
-      });
+      const attesttx = await this.bvs.write.attest(
+        [requestId, BigInt(actionIndex), hashToAttest, (res?.notes ?? "0x") as Hex],
+        {
+          account: this.operator.address,
+        },
+      );
 
       await mineUntilReceipt(ctx.eth, ctx.client, attesttx as any);
 
-
-      console.log(
-        `[${this.label}] attested request=${requestId} action=${actionIndex} tx=${hashToAttest}`
-      );
+      console.log(`[${this.label}] attested request=${requestId} action=${actionIndex} tx=${hashToAttest}`);
     } else {
       console.log(
-        `[${this.label}] NOT attesting request=${requestId} action=${actionIndex} (insufficient args or policy skipped)`
+        `[${this.label}] NOT attesting request=${requestId} action=${actionIndex} (insufficient args or policy skipped)`,
       );
     }
   }
