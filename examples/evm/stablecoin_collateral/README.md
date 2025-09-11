@@ -1,5 +1,5 @@
 ---
-title: Providing collateral using Satlayer
+# Providing collateral using SatLayer
 ---
 
 User-centric collateralization into external ERC-4626 vaults
@@ -14,13 +14,13 @@ Other complex models, like borrowing against BTC, can be also programmed in the 
 
 ## Overview
 
-Operators in SatLayer are vault controllers. Each vault exposes a delegated() operator address.
+Operators in SatLayer are vault controllers. Each vault exposes a `delegated()` operator address.
 
 The Position Locker (PL) lives alongside the vault and lets users opt-in by moving vault shares into the PL—no extra custody or approvals to third parties.
 
 The Conversion Gateway (CG) is a small router owned by the operator/keeper that, wraps 1:1 if needed and deposits per-user into an external ERC-4626 vault through a tiny ExternalStableVaultConnector.
 
-The Connector attributes per-user shares (not pooled debt) so a user’s entitlement = targetVault.convertToAssets(userShares), automatically including yield.
+The Connector attributes per-user shares (not pooled debt) so a user’s `entitlement = targetVault.convertToAssets(userShares)`, automatically including yield.
 
 ## User-centric
 
@@ -45,9 +45,9 @@ Yield is tracked automatically by the external ERC-4626 vault’s share price.
 
 Holds the base asset (e.g., WBTC/LST).
 
-Exposes async redemption (ERC-7540) so PL can requestRedeem(...) and later claimRedeem(...).
+Exposes async redemption (ERC-7540) so PL can `requestRedeem(...)` and later `claimRedeem(...)`.
 
-Exposes delegated() for the current Operator address.
+Exposes `delegated()` for the current Operator address.
 
 ### Position Locker (PL)
 
@@ -73,7 +73,7 @@ Operator/keeper calls the CG; the PL never holds external assets.
 
 Thin adapter around an external ERC-4626 vault.
 
-Keeps per-user share balances (userShares[user]), so entitlement = convertToAssets(userShares[user]).
+Keeps per-user share balances (`userShares[user]`), so `entitlement = convertToAssets(userShares[user])`.
 
 Enforces only CG can depositFor / redeemFor.
 
@@ -98,7 +98,7 @@ flowchart LR
   end
 
   subgraph External["External Venue"]
-    WRAP[1:1 Wrapper: base↔wrapped]
+    WRAP[Wrapper or borrow connector]
 
     EXT[External ERC-4626 Vault:asset=base or wrapped]
   end
@@ -112,7 +112,7 @@ flowchart LR
   V -- claimRedeem to CG --> CG
 
   %% Convert & deposit
-  CG -- (optional) wrap base→wrapped --> WRAP
+  CG -- (optional) wrap or borrow base --> WRAP
   CG -- depositFor(user, assets) --> CONN --> EXT
 
   %% Unwind
@@ -133,18 +133,18 @@ flowchart LR
 
 3. Keeper draws: PL opens a 7540 request for some of the user’s shares.
 
-4. When the request is ready, Keeper claims to CG; PL books debtAssets.
+4. When the request is ready, Keeper claims to CG; PL books `debtAssets`.
 
 5. CG optionally wraps 1:1 (base→wrapped) and deposits per-user into the external vault via Connector.
 
 6. To unwind, Keeper (or user via PL) calls CG: redeemFor(user) from the connector, unwrap 1:1 if needed, and repayAndRestake to PL.
 
-7. If the user unwinds all, their debtAssets becomes 0, so they can opt-out and withdraw their vault shares.
+7. If the user unwinds all, their `debtAssets` becomes 0, so they can opt-out and withdraw their vault shares.
 
 ## Roles & Trust Model
 
-- Operator / Keeper (service): vault.delegated() address.
-  - Has ROLE_KEEPER in PL & CG.
+- Operator / Keeper (service): `vault.delegated()` address.
+  - Has `ROLE_KEEPER` in PL & CG.
 
   - Triggers request/claim and unwind.
 
@@ -158,7 +158,7 @@ flowchart LR
 
 - Buffer in PL’s unlockable keeps a small margin of shares to cover rounding/fees.
 
-- Wrapper must be 1:1; CG enforces out == in or reverts (WRAP_NOT_1_TO_1, UNWRAP_SLIPPAGE).
+- Emergency withdraw is possible with special settings to adapt to edge cases.
 
 ## Setup
 
@@ -182,7 +182,7 @@ pnpm install
 # Build the project
 forge build
 # Run the lifecycle test
-forge test -vvv --match-contract StablecoinFullIntegrationTest
+pnpm test
 ```
 
 ## Disclaimer
