@@ -3,6 +3,8 @@
 
 package registry
 
+type Uint64 int64
+
 type IsOperatorResponse bool
 
 type IsOperatorActiveResponse bool
@@ -115,6 +117,16 @@ type QueryMsg struct {
 	IsOperatorActive            *string                      `json:"is_operator_active,omitempty"`
 	SlashingParameters          *QueryMsgSlashingParameters  `json:"slashing_parameters,omitempty"`
 	IsOperatorOptedInToSlashing *IsOperatorOptedInToSlashing `json:"is_operator_opted_in_to_slashing,omitempty"`
+	ActiveOperatorsCount        *ActiveOperatorsCount        `json:"active_operators_count,omitempty"`
+	ActiveServicesCount         *ActiveServicesCount         `json:"active_services_count,omitempty"`
+}
+
+type ActiveOperatorsCount struct {
+	Service string `json:"service"`
+}
+
+type ActiveServicesCount struct {
+	Operator string `json:"operator"`
 }
 
 type IsOperatorOptedInToSlashing struct {
