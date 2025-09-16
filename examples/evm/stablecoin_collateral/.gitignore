@@ -1,0 +1,16 @@
+# Foundry
+cache/
+src/contracts/out/
+broadcast/
+artifacts/
+forge-cache/
+
+dist/
+target/
+
+# Node.js
+node_modules/
+out/
+
+contracts.iml
+package-lock.json
