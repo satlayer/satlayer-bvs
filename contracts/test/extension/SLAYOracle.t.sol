@@ -46,15 +46,13 @@ contract SLAYOracleTest is Test, TestSuiteV2 {
         // upgrade
         vm.startPrank(owner);
         UnsafeUpgrades.upgradeProxy(
-            address(slayOracle),
-            address(new SLAYOracle()),
-            abi.encodeCall(SLAYOracle.initialize2, (address(mockPyth), address(router)))
+            address(slayOracle), address(new SLAYOracle(address(mockPyth), address(router))), ""
         );
         vm.stopPrank();
 
         // operator creates a vault
         vm.prank(operator);
-        address vaultI = address(vaultFactory.create(underlying));
+        address vaultI = address(vaultFactory.create(underlying, "test", "T"));
         vault = ISLAYVaultV2(vaultI);
 
         // whitelist the vault in router
@@ -160,7 +158,7 @@ contract SLAYOracleTest is Test, TestSuiteV2 {
             underlying_list[i] = new_underlying;
 
             vm.startPrank(operator2);
-            address vaultI = address(vaultFactory.create(new_underlying));
+            address vaultI = address(vaultFactory.create(new_underlying, "test", "T"));
             vaults[i] = vaultI;
             vm.stopPrank();
 
@@ -213,7 +211,7 @@ contract SLAYOracleTest is Test, TestSuiteV2 {
             MockERC20 new_underlying = new MockERC20("MockWBTC", "WBTC", decimals);
 
             vm.startPrank(operator2);
-            address vaultI = address(vaultFactory.create(new_underlying));
+            address vaultI = address(vaultFactory.create(new_underlying, "test", "T"));
             vm.stopPrank();
 
             vm.startPrank(owner);
@@ -248,7 +246,7 @@ contract SLAYOracleTest is Test, TestSuiteV2 {
         // register operator
         vm.startPrank(operator2);
         registry.registerAsOperator("www.no.deposit", "no_deposit");
-        address newVaultAddr = address(vaultFactory.create(underlying));
+        address newVaultAddr = address(vaultFactory.create(underlying, "test", "T"));
         vm.stopPrank();
         // whitelist the vault in router
         vm.prank(owner);

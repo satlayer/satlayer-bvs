@@ -1,17 +1,23 @@
 import UpgradeableBeacon from "@openzeppelin/upgrades-core/artifacts/@openzeppelin/contracts-v5/proxy/beacon/UpgradeableBeacon.sol/UpgradeableBeacon.json";
 import ERC1967Proxy from "@openzeppelin/upgrades-core/artifacts/@openzeppelin/contracts-v5/proxy/ERC1967/ERC1967Proxy.sol/ERC1967Proxy.json";
+import mockPyth from "@satlayer/contracts/out/MockPyth.sol/MockPyth.json";
 import slayBase from "@satlayer/contracts/out/SLAYBase.sol/SLAYBase.json";
+import slayOracle from "@satlayer/contracts/out/SLAYOracle.sol/SLAYOracle.json";
 import slayRegistry from "@satlayer/contracts/out/SLAYRegistryV2.sol/SLAYRegistryV2.json";
 import slayRewards from "@satlayer/contracts/out/SLAYRewardsV2.sol/SLAYRewardsV2.json";
 import slayRouter from "@satlayer/contracts/out/SLAYRouterV2.sol/SLAYRouterV2.json";
 import slayVaultFactory from "@satlayer/contracts/out/SLAYVaultFactoryV2.sol/SLAYVaultFactoryV2.json";
 import slayVault from "@satlayer/contracts/out/SLAYVaultV2.sol/SLAYVaultV2.json";
-import { Account, encodeFunctionData, getContract, GetContractReturnType } from "viem";
+import { Account, encodeDeployData, encodeFunctionData, getContract, GetContractReturnType } from "viem";
 
-import { StartedAnvilContainer, SuperTestClient } from "./anvil-container";
+import { saltToHex, StartedAnvilContainer, SuperTestClient } from "./anvil-container";
 import erc20Abi from "./MockERC20.sol/MockERC20.json";
 
 export class EVMContracts {
+  private oracleContract: GetContractReturnType<typeof slayOracle.abi, SuperTestClient> | undefined;
+
+  private mockPythContract: GetContractReturnType<typeof mockPyth.abi, SuperTestClient> | undefined;
+
   private constructor(
     public readonly started: StartedAnvilContainer,
     public readonly registry: GetContractReturnType<typeof slayRegistry.abi, SuperTestClient>,
@@ -26,6 +32,20 @@ export class EVMContracts {
 
   get wallet(): Account {
     return this.started.getAccount();
+  }
+
+  get mockPyth(): GetContractReturnType<typeof mockPyth.abi, SuperTestClient> {
+    if (!this.mockPythContract) {
+      throw new Error("MockPyth contract not initialized. run initOracle first");
+    }
+    return this.mockPythContract;
+  }
+
+  get oracle(): GetContractReturnType<typeof slayOracle.abi, SuperTestClient> {
+    if (!this.oracleContract) {
+      throw new Error("Oracle contract not initialized. run initOracle first");
+    }
+    return this.oracleContract;
   }
 
   static async bootstrap(started: StartedAnvilContainer): Promise<EVMContracts> {
@@ -233,7 +253,7 @@ export class EVMContracts {
     return new EVMContracts(started, registryContract, routerContract, rewardsContract, vaultFactoryContract);
   }
 
-  /// Initializes an ERC20 token with the given name, symbol, and decimals.
+  // Initializes an ERC20 token with the given name, symbol, and decimals.
   async initERC20({ name, symbol, decimals }: { name: string; symbol: string; decimals: number }) {
     return this.started.deployContract({
       abi: erc20Abi.abi,
@@ -243,23 +263,34 @@ export class EVMContracts {
     });
   }
 
-  /// Initializes a SLAYVault for the given operator and underlying asset.
-  /// Returns the address of the created SLAYVault.
+  // Initializes a SLAYVault for the given operator and underlying asset.
+  // Returns the address of the created SLAYVault.
   async initVault({
     operator,
     underlyingAsset,
+    name,
+    symbol,
   }: {
     operator: Account;
     underlyingAsset: `0x${string}`;
+    name?: string;
+    symbol?: string;
   }): Promise<`0x${string}`> {
+    const nameArg = name ?? `Test`;
+    const symbolArg = symbol ?? `T`;
+
     // get vault address from vault factory
-    const createRes = await this.vaultFactory.simulate.create([underlyingAsset], { account: operator.address });
+    const createRes = await this.vaultFactory.simulate.create([underlyingAsset, nameArg, symbolArg], {
+      account: operator.address,
+    });
     // commit the transaction to create the vault
-    await this.vaultFactory.write.create([underlyingAsset], { account: operator });
+    await this.vaultFactory.write.create([underlyingAsset, nameArg, symbolArg], { account: operator });
+    // mine a block to ensure vault is created and prevents race conditions
+    await this.started.mineBlock(1);
     return createRes.result;
   }
 
-  /// Returns a contract instance for the SLAYVault at the given address.
+  // Returns a contract instance for the SLAYVault at the given address.
   async getVaultContractInstance(
     vaultAddress: `0x${string}`,
   ): Promise<GetContractReturnType<typeof slayVault.abi, SuperTestClient>> {
@@ -268,5 +299,126 @@ export class EVMContracts {
       abi: slayVault.abi,
       client: this.started.getClient(),
     });
+  }
+
+  // Initializes a SLAYOracle
+  async initOracle() {
+    const owner = this.started.getAccount().address;
+
+    // deploy mock Pyth contract
+    const mockPythContract = await this.started.deployContract({
+      abi: mockPyth.abi,
+      bytecode: mockPyth.bytecode.object as `0x${string}`,
+      salt: "MockPyth",
+      constructorArgs: [60, 1],
+    });
+
+    this.mockPythContract = getContract({
+      address: mockPythContract.contractAddress,
+      abi: mockPyth.abi,
+      client: this.started.getClient(),
+    });
+
+    // deploy SLAYBase impl contract
+    const baseContractAddress = StartedAnvilContainer.getCreate2Address({
+      deployBytecode: encodeDeployData({
+        abi: slayBase.abi,
+        args: [],
+        bytecode: slayBase.bytecode.object as `0x${string}`,
+      }),
+      saltHex: saltToHex("SLAYBase"),
+    });
+
+    // deploy oracleProxy contract with ERC1967Proxy and SLAYBase as the impl contract
+    const oracleProxy = await this.started.deployContract({
+      abi: ERC1967Proxy.abi,
+      bytecode: ERC1967Proxy.bytecode as `0x${string}`,
+      salt: "oracleProxy",
+      constructorArgs: [
+        baseContractAddress,
+        encodeFunctionData({
+          abi: slayBase.abi,
+          functionName: "initialize",
+          args: [owner],
+        }),
+      ],
+    });
+
+    // deploy SLAYOracle impl contract
+    const oracleImpl = await this.started.deployContract({
+      abi: slayOracle.abi,
+      bytecode: slayOracle.bytecode.object as `0x${string}`,
+      salt: "SLAYOracle",
+      constructorArgs: [mockPythContract.contractAddress, this.router.address],
+    });
+
+    // get oracleProxy contract instance ( cannot use oracleProxy contract because it is the instance of ERC1967Proxy )
+    const oracleProxyContract = getContract({
+      address: oracleProxy.contractAddress,
+      abi: slayBase.abi,
+      client: this.started.getClient(),
+    });
+    // upgrade oracleProxy to use SLAYOracle impl contract
+    await oracleProxyContract.write.upgradeToAndCall([oracleImpl.contractAddress, ""]);
+
+    await this.started.mineBlock(1);
+
+    this.oracleContract = getContract({
+      address: oracleProxy.contractAddress,
+      abi: slayOracle.abi,
+      client: this.started.getClient(),
+    });
+  }
+
+  /**
+   * Sets oracle price through mockPyth contract
+   * @param priceId - pyth price id
+   * @param price - price in minor units (e.g. 100_000e8 for $100k with 8 decimals)
+   * @param conf - confidence in minor units (e.g. 100e8 for +-$100 confidence)
+   * @param expo - minor units decimals (e.g. -8 for 8 decimals)
+   * @param timestamp - publish timestamp
+   * @example setOraclePrice({
+   *     priceId: "0x0000000000000000000000000000000000000000000000000000000000000000" as `0x${string}`,
+   *     price: BigInt(parseUnits("100000", 8)), // $100k with 8 decimals
+   *     conf: BigInt(parseUnits("100", 8)), // $100 with 8 decimals
+   *     expo: -8,
+   *     timestamp: currentBlock.timestamp,
+   *   })
+   */
+  async setOraclePrice({
+    priceId,
+    price,
+    conf,
+    expo,
+    timestamp,
+  }: {
+    priceId: `0x${string}`;
+    price: bigint; // price in minor units
+    conf: bigint; // confidence in minor units
+    expo: number; // minor units decimals (e.g. -8 for 8 decimals)
+    timestamp: bigint; // publish timestamp
+  }): Promise<void> {
+    if (!this.mockPythContract) {
+      throw new Error("MockPyth contract not initialized. run initOracle first");
+    }
+
+    const updateData = await this.mockPythContract.read.createPriceFeedUpdateData([
+      priceId,
+      price,
+      conf,
+      expo,
+      price, // use same price for EMA
+      conf, // use same conf for EMA
+      timestamp,
+      timestamp, // use same timestamp for prevPublishTime
+    ]);
+
+    // get update fee ( args updateData is expected in array of bytes, hence the double array )
+    const updateFee = await this.mockPythContract.read.getUpdateFee([[updateData]]);
+
+    // update price feeds
+    await this.mockPythContract.write.updatePriceFeeds([[updateData]], { value: updateFee });
+
+    await this.started.mineBlock(1);
   }
 }

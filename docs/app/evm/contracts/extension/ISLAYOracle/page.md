@@ -1,0 +1,1 @@
+../../../../../../contracts/docs/src/src/extension/interface/ISLAYOracle.sol/interface.ISLAYOracle.md

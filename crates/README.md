@@ -56,4 +56,4 @@ Individual vaults contract addresses are not listed here, as they are deployed b
 | BVS Pauser        | `bbn1e743905t9twc3cggaw7kxhcutls2lnlccg94gyv3c837x65ffglqmx3yg3` |
 | BVS Registry      | `bbn1a9tleevqygn862ll2la49g637fjttfzzlttdrmmua35fadpuvnksuyud7a` |
 | BVS Vault Router  | `bbn1tztx8vkgw24rm5f6ny52qyt6kpg7gyfd5nggvfgjjfj8n7ggkx7qfhvdum` |
-| BVS Vault Factory | `bbn1tnpg0hs099tpmaavzjzx02kvf7lcqhwmkrp0spg30aejmfydxnkqfzwdyx` |
+| BVS Vault Factory | `bbn1cwm9fr8myw45zj5df5l4lrxyn03hleampj0a7nefztm5vt4w0r9qg2653p` |

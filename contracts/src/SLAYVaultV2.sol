@@ -475,4 +475,9 @@ contract SLAYVaultV2 is
 
         emit SlashingLocked(amount);
     }
+
+    /// @inheritdoc ISLAYVaultV2
+    function getWithdrawalDelay() external view returns (uint32) {
+        return REGISTRY.getWithdrawalDelay(_delegated);
+    }
 }

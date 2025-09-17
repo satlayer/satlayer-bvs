@@ -59,7 +59,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         MockERC20 underlying = new MockERC20("Token", "TKN", 18);
 
         vm.prank(operator);
-        address vault = address(vaultFactory.create(underlying));
+        address vault = address(vaultFactory.create(underlying, "test", "T"));
         assertFalse(router.isVaultWhitelisted(vault));
 
         vm.prank(owner);
@@ -96,7 +96,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         MockERC20 underlying = new MockERC20("Token", "TKN", 18);
 
         vm.prank(operator);
-        address vault = address(vaultFactory.create(underlying));
+        address vault = address(vaultFactory.create(underlying, "test", "T"));
         assertFalse(router.isVaultWhitelisted(vault));
 
         vm.startPrank(owner);
@@ -121,14 +121,14 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         for (uint256 i = 0; i < 10; i++) {
             vm.prank(operator);
-            address vaultI = address(vaultFactory.create(underlying));
+            address vaultI = address(vaultFactory.create(underlying, "test", "T"));
             vm.prank(owner);
             router.setVaultWhitelist(vaultI, true);
             assertTrue(router.isVaultWhitelisted(vaultI));
         }
 
         vm.prank(operator);
-        address vault = address(vaultFactory.create(underlying));
+        address vault = address(vaultFactory.create(underlying, "test", "T"));
 
         vm.prank(owner);
 
@@ -148,14 +148,14 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         for (uint256 i = 0; i < 10; i++) {
             vm.prank(operator);
-            vaults[i] = address(vaultFactory.create(underlying));
+            vaults[i] = address(vaultFactory.create(underlying, "test", "T"));
 
             vm.prank(owner);
             router.setVaultWhitelist(vaults[i], true);
         }
 
         vm.prank(operator);
-        address newVault = address(vaultFactory.create(underlying));
+        address newVault = address(vaultFactory.create(underlying, "test", "T"));
         assertFalse(router.isVaultWhitelisted(newVault));
 
         vm.prank(owner);
@@ -187,14 +187,14 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         for (uint256 i = 0; i < 20; i++) {
             vm.prank(operator);
-            address vaultI = address(vaultFactory.create(underlying));
+            address vaultI = address(vaultFactory.create(underlying, "test", "T"));
 
             vm.prank(owner);
             router.setVaultWhitelist(vaultI, true);
         }
 
         vm.prank(operator);
-        address vault = address(vaultFactory.create(underlying));
+        address vault = address(vaultFactory.create(underlying, "test", "T"));
 
         vm.prank(owner);
         vm.expectRevert("Exceeds max vaults per operator");
@@ -292,7 +292,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         for (uint256 i = 0; i < 5; i++) {
             vm.prank(operator);
-            address vault = address(vaultFactory.create(underlying));
+            address vault = address(vaultFactory.create(underlying, "test", "T"));
 
             vm.prank(owner);
             router.setVaultWhitelist(vault, true);
@@ -395,7 +395,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         address[2] memory vaults;
         for (uint256 i = 0; i < 2; i++) {
             vm.prank(operator);
-            address vault = address(vaultFactory.create(underlying));
+            address vault = address(vaultFactory.create(underlying, "test", "T"));
 
             vm.prank(owner);
             router.setVaultWhitelist(vault, true);
@@ -470,7 +470,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         address[2] memory vaults;
         for (uint256 i = 0; i < 2; i++) {
             vm.prank(operator);
-            address vault = address(vaultFactory.create(underlying));
+            address vault = address(vaultFactory.create(underlying, "test", "T"));
 
             vm.prank(owner);
             router.setVaultWhitelist(vault, true);
@@ -546,7 +546,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         address[2] memory vaults;
         for (uint256 i = 0; i < 2; i++) {
             vm.prank(operator);
-            address vault = address(vaultFactory.create(underlying));
+            address vault = address(vaultFactory.create(underlying, "test", "T"));
 
             vm.prank(owner);
             router.setVaultWhitelist(vault, true);
@@ -608,7 +608,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         uint8 underlyingDecimal = underlying.decimals();
         uint256 underlyingMinorUnit = 10 ** underlyingDecimal;
         vm.prank(operator);
-        address vault = address(vaultFactory.create(underlying));
+        address vault = address(vaultFactory.create(underlying, "test", "T"));
         vm.prank(owner);
         router.setVaultWhitelist(vault, true);
         underlying.mint(vault, 1_000_000 * underlyingMinorUnit); // mint 1m to the vault
@@ -716,7 +716,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         uint8 underlyingDecimal = underlying.decimals();
         uint256 underlyingMinorUnit = 10 ** underlyingDecimal;
         vm.prank(operator);
-        address vault = address(vaultFactory.create(underlying));
+        address vault = address(vaultFactory.create(underlying, "test", "T"));
         vm.prank(owner);
         router.setVaultWhitelist(vault, true);
         underlying.mint(vault, 1_000_000 * underlyingMinorUnit); // mint 1m to the vault
@@ -803,7 +803,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         uint8 underlyingDecimal = underlying.decimals();
         uint256 underlyingMinorUnit = 10 ** underlyingDecimal;
         vm.prank(operator);
-        address vault = address(vaultFactory.create(underlying));
+        address vault = address(vaultFactory.create(underlying, "test", "T"));
         vm.prank(owner);
         router.setVaultWhitelist(vault, true);
         underlying.mint(vault, 1_000_000 * underlyingMinorUnit); // mint 1m to the vault
@@ -875,7 +875,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         uint8 underlyingDecimal = underlying.decimals();
         uint256 underlyingMinorUnit = 10 ** underlyingDecimal;
         vm.prank(operator);
-        address vault = address(vaultFactory.create(underlying));
+        address vault = address(vaultFactory.create(underlying, "test", "T"));
         vm.prank(owner);
         router.setVaultWhitelist(vault, true);
         underlying.mint(vault, 1_000_000 * underlyingMinorUnit); // mint 1m to the vault
@@ -970,7 +970,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         uint8 underlyingDecimal = underlying.decimals();
         uint256 underlyingMinorUnit = 10 ** underlyingDecimal;
         vm.prank(operator);
-        address vault = address(vaultFactory.create(underlying));
+        address vault = address(vaultFactory.create(underlying, "test", "T"));
         vm.prank(owner);
         router.setVaultWhitelist(vault, true);
         underlying.mint(vault, 1_000_000 * underlyingMinorUnit); // mint 1m to the vault
@@ -1427,7 +1427,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         uint8 underlyingDecimal = underlying.decimals();
         uint256 underlyingMinorUnit = 10 ** underlyingDecimal;
         vm.prank(operator);
-        address vault = address(vaultFactory.create(underlying));
+        address vault = address(vaultFactory.create(underlying, "test", "T"));
         vm.prank(owner);
         router.setVaultWhitelist(vault, true);
         underlying.mint(vault, 1_000_000 * underlyingMinorUnit); // mint 1m to the vault
@@ -1555,7 +1555,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         uint8 underlyingDecimal = underlying.decimals();
         uint256 underlyingMinorUnit = 10 ** underlyingDecimal;
         vm.prank(operator);
-        address vault = address(vaultFactory.create(underlying));
+        address vault = address(vaultFactory.create(underlying, "test", "T"));
         vm.prank(owner);
         router.setVaultWhitelist(vault, true);
         underlying.mint(vault, 1_000_000 * underlyingMinorUnit); // mint 1m to the vault
@@ -1620,7 +1620,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         uint8 underlyingDecimal = underlying.decimals();
         uint256 underlyingMinorUnit = 10 ** underlyingDecimal;
         vm.prank(operator);
-        address vault = address(vaultFactory.create(underlying));
+        address vault = address(vaultFactory.create(underlying, "test", "T"));
         vm.prank(owner);
         router.setVaultWhitelist(vault, true);
         underlying.mint(vault, 1_000_000 * underlyingMinorUnit); // mint 1m to the vault
@@ -1683,7 +1683,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         address[] memory vaultsCreated = new address[](5);
         for (uint256 i = 0; i < 5; i++) {
             vm.prank(operator);
-            address vaultI = address(vaultFactory.create(underlying));
+            address vaultI = address(vaultFactory.create(underlying, "test", "T"));
             vaultsCreated[i] = vaultI;
 
             vm.prank(owner);
