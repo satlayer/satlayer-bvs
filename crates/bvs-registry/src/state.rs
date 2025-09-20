@@ -141,12 +141,14 @@ pub fn set_registration_status(
     match status {
         RegistrationStatus::Active => {
             increase_operator_active_registration_count(store, operator)?;
+            increase_service_active_operator_count(store, service)?;
             // if service has enabled slashing, opt-in operator to slashing
             if is_slashing_enabled(store, service, Some(env.block.time.seconds()))? {
                 opt_in_to_slashing(store, env, service, operator)?;
             }
         }
         RegistrationStatus::Inactive => {
+            decrease_service_active_operator_count(store, service)?;
             decrease_operator_active_registration_count(store, operator)?;
         }
         _ => {}
@@ -172,6 +174,10 @@ pub fn require_active_registration_status(
 /// This is used to check if the operator is actively registered to any service (> 0)
 pub(crate) const OPERATOR_ACTIVE_REGISTRATION_COUNT: Map<&Operator, u64> =
     Map::new("operator_active_registration_count");
+
+/// Stores the active registration count of operators validating particular service.
+pub(crate) const SERVICE_ACTIVE_OPERATORS_COUNT: Map<&Service, u64> =
+    Map::new("service_active_operators_count");
 
 /// Check if the operator is actively registered to any service
 pub fn is_operator_active(store: &dyn Storage, operator: &Operator) -> StdResult<bool> {
@@ -205,6 +211,30 @@ pub fn decrease_operator_active_registration_count(
         new_count.ok_or_else(|| {
             StdError::generic_err("Decrease operator active registration count failed")
         })
+    })
+}
+
+/// Increase the service active operator count by 1
+pub fn increase_service_active_operator_count(
+    store: &mut dyn Storage,
+    service: &Service,
+) -> StdResult<u64> {
+    SERVICE_ACTIVE_OPERATORS_COUNT.update(store, service, |count| {
+        let new_count = count.unwrap_or(0).checked_add(1);
+        new_count
+            .ok_or_else(|| StdError::generic_err("Increase service active operator count failed"))
+    })
+}
+
+/// Decrease the service active operator count by 1
+pub fn decrease_service_active_operator_count(
+    store: &mut dyn Storage,
+    service: &Service,
+) -> StdResult<u64> {
+    SERVICE_ACTIVE_OPERATORS_COUNT.update(store, service, |count| {
+        let new_count = count.unwrap_or(0).checked_sub(1);
+        new_count
+            .ok_or_else(|| StdError::generic_err("Decrease service active operator count failed"))
     })
 }
 
