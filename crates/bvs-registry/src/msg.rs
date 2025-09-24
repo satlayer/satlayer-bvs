@@ -100,6 +100,12 @@ pub enum QueryMsg {
         operator: String,
         timestamp: Option<u64>,
     },
+
+    #[returns(u64)]
+    ActiveOperatorsCount { service: String },
+
+    #[returns(u64)]
+    ActiveServicesCount { operator: String },
 }
 
 #[cw_serde]
