@@ -43,7 +43,7 @@
     "@satlayer/bvs-vault-router": "workspace:*",
     "@satlayer/contracts": "workspace:*",
     "@satlayer/cosmwasm-schema": "workspace:*",
-    "testcontainers": "^11.5.1",
+    "testcontainers": "^11.6.0",
     "viem": "^2.37.7"
   }
 }
