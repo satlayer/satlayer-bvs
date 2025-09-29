@@ -27,10 +27,10 @@
     ]
   },
   "dependencies": {
-    "@cosmjs/cosmwasm-stargate": "^0.34.0",
-    "@cosmjs/crypto": "^0.34.0",
-    "@cosmjs/proto-signing": "^0.34.0",
-    "@cosmjs/stargate": "^0.34.0",
+    "@cosmjs/cosmwasm-stargate": "^0.36.0",
+    "@cosmjs/crypto": "^0.36.0",
+    "@cosmjs/proto-signing": "^0.36.0",
+    "@cosmjs/stargate": "^0.36.0",
     "@openzeppelin/upgrades-core": "^1.44.1",
     "@satlayer/bvs-guardrail": "workspace:*",
     "@satlayer/bvs-pauser": "workspace:*",
