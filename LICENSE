@@ -5,6 +5,38 @@ License text copyright (c) 2017 MariaDB Corporation Ab, All Rights Reserved.
 
 -----------------------------------------------------------------------------
 
+Parameters
+
+Licensor:             Mithril Foundation ("SatLayer Foundation")
+
+Licensed Work:        SatLayer Core
+                      The Licensed Work is (c) 2025 Mithril Foundation
+
+Additional Use Grant: Notwithstanding the restrictions in this License, the
+                      Licensed Work may be used for testing purposes, including
+                      evaluation, experimentation, and development in
+                      non-production environments.
+
+                      The Licensed Work may also be used for configuring,
+                      deploying, and operating services or operators that
+                      depend on it, provided that such use does not constitute
+                      a Competitive Offering.
+
+                      A “Competitive Offering” means any product, service, or
+                      platform that competes, directly or indirectly, with the
+                      commercial offerings of SatLayer, including but not
+                      limited to vaults, routers, registries, staking,
+                      slashing, bridging, or other operator or service
+                      infrastructure that substitutes for or materially
+                      overlaps with SatLayer’s core offerings.
+
+Change Date:          Two years from the date the Licensed Work is versioned
+                      and released in SatLayer’s official release repository.
+
+Change License:       GNU General Public License v2.0
+
+-----------------------------------------------------------------------------
+
 Terms
 
 The Licensor hereby grants you the right to copy, modify, create derivative
