@@ -36,7 +36,7 @@ keywords = ["SatLayer", "Restaking", "BTC", "cosmos", "cosmwasm"]
 
 [workspace.dependencies]
 # CW Core
-cosmwasm-schema = "2.2.2"
+cosmwasm-schema = "3.0.2"
 cosmwasm-std = { version = "2.2.2", features = [
   # https://github.com/babylonlabs-io/babylon/blob/d065cdd9d7f1219fece38cb678d1233566cf530b/app/keepers/keepers.go#L101
   "cosmwasm_2_0",
