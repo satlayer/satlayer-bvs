@@ -54,7 +54,7 @@ rs_merkle = { version = "1.5.0", default-features = false }
 cw2 = "2.0.0"
 cw20 = "2.0.0"
 cw20-base = "2.0.0"
-cw-utils = "2.0.0"
+cw-utils = "3.0.0"
 cw3 = "2.0.0"
 cw4 = "2.0.0"
 cw4-group = "2.0.0"
